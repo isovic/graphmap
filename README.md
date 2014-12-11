@@ -8,7 +8,7 @@ Tested on Mint 17 (Ubuntu 14.04), Ubuntu Server 14.04, Fedora 20 and Gentoo.
 
 ### Description
 GraphMap is a novel mapper targeted at aligning long, error-prone third-generation sequencing data.
-It can handle Oxford Nanopore data with unmatched accuracy, and also presents a significant improvement to the state-of-the-art for PacBio reads (namely, compared to BLASR and BWA-MEM).
+It can handle Oxford Nanopore data with unmatched accuracy, and also presents a significant improvement to the state-of-the-art for PacBio read mappers (namely, compared to BLASR and BWA-MEM).
 
 Our mapper was also aimed at ease-of-use: the default parameters should be able to address any data you present it.
 This is an extremely important feature for technologies with highly varying error rates, especially when also the error-profile continues changing.
