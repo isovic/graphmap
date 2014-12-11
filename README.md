@@ -1,4 +1,4 @@
-** GraphMap - A very accurate and sensitive long-read, high error-rate sequence mapper
+## GraphMap - A very accurate and sensitive long-read, high error-rate sequence mapper
 
 Version: v0.18b
 Release date: 11 December 2014
@@ -6,7 +6,7 @@ Release date: 11 December 2014
 Precompiled binary, built on Mint 16 (Ubuntu 13.10) x64.
 Tested on Mint 17 (Ubuntu 14.04), Ubuntu Server 14.04, Fedora 20 and Gentoo.
 
-*** Description
+### Description
 GraphMap is a novel mapper targeted at aligning long, error-prone third-generation sequencing data.
 It can handle Oxford Nanopore data with unmatched accuracy, and also presents a significant improvement to the state-of-the-art for PacBio reads (namely, compared to BLASR and BWA-MEM).
 
@@ -16,12 +16,12 @@ Although GraphMap was not designed for NGS data, it can also handle reads from d
 
 Please keep in mind that this is an early development version, and some parameters might have to be tweaked in order to best suit the rapidly changing Oxford Nanopore data.
 
-*** Comparison to other mappers
+### Comparison to other mappers
 ![comparison1](isovic.github.com/graphmap/doc/comparison/comparison1.png)
 
 
 
-*** Usage
+### Usage
 
 ```
 # Process all reads from a given FASTA/FASTQ file with maximum number of threads:
@@ -42,7 +42,7 @@ Please keep in mind that this is an early development version, and some paramete
 
 
 
-*** Contact information
+### Contact information
 For additional information, help and bug reports please send an email to one of the following:
 ivan.sovic@irb.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
 
