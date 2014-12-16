@@ -1,4 +1,4 @@
-## GraphMap - A very accurate and sensitive long-read, high error-rate sequence mapper
+## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
 
 Version: v0.18b
 Release date: 11 December 2014
@@ -8,18 +8,15 @@ Tested on Mint 17 (Ubuntu 14.04), Ubuntu Server 14.04, Fedora 20 and Gentoo.
 
 ### Description
 GraphMap is a novel mapper targeted at aligning long, error-prone third-generation sequencing data.
-It can handle Oxford Nanopore data with very high accuracy, and also presents a significant improvement to the state-of-the-art for PacBio read mappers (namely, compared to BLASR and BWA-MEM).
+It can handle Oxford Nanopore data with very high sensitivity and accuracy, and also presents a significant improvement over the state-of-the-art for PacBio read mappers (namely, compared to BLASR and BWA-MEM).
 
-Our mapper was also aimed at ease-of-use: the default parameters should be able to address any data you present it.
-This is an extremely important feature for technologies with highly varying error rates, especially when also the error-profile continues changing.
-Although GraphMap was not designed for NGS data, it can also handle Illumina and Roche reads, albeit slower than the best existing methods.
+GraphMap was designed for ease-of-use: the default parameters can handle a wide range of read lengths and error profiles. This is an important feature for technologies where the error rates and error profiles can vary widely across sequencing runs. In addition, GraphMap allows users to uniformly map read datasets from disparate technologies with high sensitivity and accuracy. While GraphMap is not runtime optimized for short-read data (e.g. compared to Bowtie2), it provides accurate and typically more sensitive mappings for Illumina and Ion Torrent reads.
 
-Please keep in mind that this is an early development version, and some parameters might have to be tweaked in order to best suit the rapidly changing Oxford Nanopore data.
+Please keep in mind that this is an early development version and we welcome your comments and feedback on GraphMap.
 
 ### Comparison to other mappers
+
 Comparison statistics will be uploaded soon.
-
-
 
 ### Usage
 
@@ -40,9 +37,8 @@ Comparison statistics will be uploaded soon.
 ./graphmap -I -r escherichia_coli.fa
 ```
 
-
-
 ### Contact information
+
 For additional information, help and bug reports please send an email to one of the following:
 ivan.sovic@irb.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
 
