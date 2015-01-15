@@ -2,7 +2,9 @@
 
 **__Version: v0.19b__**
 Release date: 16 January 2015
+
 Precompiled binary, built on Ubuntu 10.04 x64.
+
 Tested on Mint 17.1 x64.
 
 Important updates:
