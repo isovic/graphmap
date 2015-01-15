@@ -1,9 +1,22 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
 
-Version: v0.18b
+**__Version: v0.19b__**
+Release date: 16 January 2015
+Precompiled binary, built on Ubuntu 10.04 x64.
+Tested on Mint 17.1 x64.
+
+Important updates:
+- Better support for circular genomes - use '-C' option if your reference is circular!
+- Added a more sensitive mode (though much slower) - check out the '-x' option in the help!
+- Better alignments for Illumina reads - again, check out the '-x' option.
+- Better dynamic of the AS (alignment score) - value 254 best score, value 0 worst/unmapped.
+
+To use the normal (fast) mode, simply use the default parameters (nothing is changed, just omit the '-x' option).
+
+**__Version: v0.18b__**
 Release date: 11 December 2014
 
-Precompiled binary, built on Mint 16 (Ubuntu 13.10) x64.
+Precompiled binary, built on Ubuntu 10.04 x64.
 Tested on Mint 17 (Ubuntu 14.04), Ubuntu Server 14.04, Fedora 20 and Gentoo.
 
 ### Description
@@ -24,6 +37,14 @@ Comparison statistics will be uploaded soon.
 # Process all reads from a given FASTA/FASTQ file with maximum number of threads:
 ./graphmap -r escherichia_coli.fa -d reads.fastq -o alignments.sam
 
+# Process reads using more sensitive parameters for Illumina and nanopore data:
+./graphmap -x nanopore -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+./graphmap -x illumina -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+
+# Process reads from a circular genome:
+./graphmap -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+./graphmap -x nanopore -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+
 # Limit the number of threads to 8, and load reads in batches of 50MB:
 ./graphmap -t 8 -B 50 -r escherichia_coli.fa -d reads.fastq -o alignments.sam
 
@@ -41,4 +62,3 @@ Comparison statistics will be uploaded soon.
 
 For additional information, help and bug reports please send an email to one of the following:
 ivan.sovic@irb.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
-
