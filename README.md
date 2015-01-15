@@ -13,7 +13,7 @@ Important updates:
 
 To use the normal (fast) mode, simply use the default parameters (nothing is changed, just omit the '-x' option).
 
-
+  
 **__Version: v0.18b__**
 Release date: 11 December 2014  
 Precompiled binary, built on Ubuntu 10.04 x64.  
