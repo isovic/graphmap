@@ -2,9 +2,7 @@
 
 **__Version: v0.19b__**
 Release date: 16 January 2015
-
 Precompiled binary, built on Ubuntu 10.04 x64.
-
 Tested on Mint 17.1 x64.
 
 Important updates:
@@ -15,9 +13,9 @@ Important updates:
 
 To use the normal (fast) mode, simply use the default parameters (nothing is changed, just omit the '-x' option).
 
+
 **__Version: v0.18b__**
 Release date: 11 December 2014
-
 Precompiled binary, built on Ubuntu 10.04 x64.
 Tested on Mint 17 (Ubuntu 14.04), Ubuntu Server 14.04, Fedora 20 and Gentoo.
 
