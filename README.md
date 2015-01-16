@@ -3,7 +3,10 @@
 **__Version: v0.19b__**
 Release date: 16 January 2015  
 Precompiled binary, built on Ubuntu 10.04 x64.  
-Tested on Mint 17.1 x64.
+Tested on Mint 17.1 x64.  
+**Update**
+Compiled a MacOS version too, now can also be found in the bin directory.  
+Build on MacOS X 10.9.5  
 
 Important updates:
 - Better support for circular genomes - use '-C' option if your reference is circular!
