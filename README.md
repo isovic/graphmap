@@ -8,15 +8,15 @@ Tested on Mint 17.1 x64.
 Significantly improved speed and sensitivity.
 
 Added some important features:
-1. Mapping quality.
-2. Sensible alignment score.
-3. E-value added in reported alignments! Look for a custom ZE parameter in the SAM lines.
-4. Secondary alignments can now be output as well (the -Z parameter).
+- Mapping quality.
+- Sensible alignment score.
+- E-value added in reported alignments! Look for a custom ZE parameter in the SAM lines.
+- Secondary alignments can now be output as well (the -Z parameter).
 
 Addressed several reported issues:
-1. Output only the first whitespace-separated token in the qname field of the SAM output. Previously the entire read's header was output.
-2. The same for the rname.
-3. Reads that are marked unmapped now contain no additional mapping information as before.
+- Output only the first whitespace-separated token in the qname field of the SAM output. Previously the entire read's header was output.
+- The same for the rname.
+- Reads that are marked unmapped now contain no additional mapping information as before.
 
 Please note that by default, GraphMap will use more memory to allow higher speed and sensitivity.
 To run in parsimonious (half the memory requirements), please use the -P parameter.
