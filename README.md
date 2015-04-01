@@ -1,5 +1,30 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
 
+**__Version: v0.20b__**
+Release date: 02 April 2015  
+Precompiled binary, built on Ubuntu 10.04 x64.  
+Tested on Mint 17.1 x64.
+
+Significantly improved speed and sensitivity.
+
+Added some important features:
+1. Mapping quality.
+2. Sensible alignment score.
+3. E-value added in reported alignments! Look for a custom ZE parameter in the SAM lines.
+4. Secondary alignments can now be output as well (the -Z parameter).
+
+Addressed several reported issues:
+1. Output only the first whitespace-separated token in the qname field of the SAM output. Previously the entire read's header was output.
+2. The same for the rname.
+3. Reads that are marked unmapped now contain no additional mapping information as before.
+
+Please note that by default, GraphMap will use more memory to allow higher speed and sensitivity.
+To run in parsimonious (half the memory requirements), please use the -P parameter.
+
+Note #2: some command line parameters were changed (removed/added) since the last version, but most stayed the same.
+In case you are using one of the removed parameters, you will be warned and the process will not run.
+
+
 **__Version: v0.19b__**
 Release date: 16 January 2015  
 Precompiled binary, built on Ubuntu 10.04 x64.  
@@ -38,16 +63,14 @@ Comparison statistics will be uploaded soon.
 ### Usage
 
 ```
-# Process all reads from a given FASTA/FASTQ file with maximum number of threads:
+# Process all reads from a given FASTA/FASTQ file with default number of threads:
 ./graphmap -r escherichia_coli.fa -d reads.fastq -o alignments.sam
 
-# Process reads using more sensitive parameters for Illumina and nanopore data:
-./graphmap -x nanopore -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+# Process reads using more sensitive parameters for Illumina data:
 ./graphmap -x illumina -r escherichia_coli.fa -d reads.fastq -o alignments.sam
 
 # Process reads from a circular genome:
 ./graphmap -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam
-./graphmap -x nanopore -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam
 
 # Limit the number of threads to 8, and load reads in batches of 50MB:
 ./graphmap -t 8 -B 50 -r escherichia_coli.fa -d reads.fastq -o alignments.sam
