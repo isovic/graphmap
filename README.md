@@ -2,7 +2,7 @@
 
 **__Version: v0.20b__**
 **Update**
-Release date: 24 April 2015  
+Release date: 26 April 2015  
 
 Added the source code.
 
