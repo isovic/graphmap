@@ -1,6 +1,22 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
 
 **__Version: v0.20b__**
+**Update**
+Release date: 24 April 2015  
+
+Added the source code.
+
+To build from source:
+```
+make
+```
+If the libraries have to be recompiled on your system, type:
+```
+make deps
+```
+More installation instructions can be found in the INSTALL file.  
+
+
 Release date: 02 April 2015  
 Precompiled binary, built on Ubuntu 10.04 x64.  
 Tested on Mint 17.1 x64.
@@ -11,7 +27,7 @@ Added some important features:
 - Mapping quality.
 - Sensible alignment score.
 - E-value added in reported alignments! Look for a custom ZE parameter in the SAM lines.
-- Secondary alignments can now be output as well (the -Z parameter).
+- Secondary alignments can now be output as well (use the -Z parameter).
 
 Addressed several reported issues:
 - Output only the first whitespace-separated token in the qname field of the SAM output. Previously the entire read's header was output.

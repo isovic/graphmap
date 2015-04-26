@@ -1,0 +1,1 @@
+/usr/bin/cc   -Wall -O3 -DNDEBUG -fomit-frame-pointer    CMakeFiles/mksary.dir/mksary.o  -o mksary  -L/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/../lib -rdynamic ../lib/libdivsufsort.a -Wl,-rpath,/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/../lib 
