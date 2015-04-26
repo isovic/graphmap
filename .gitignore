@@ -5,7 +5,5 @@ obj_debug/
 obj_linux/
 obj_mac/
 obj_test/
-bin/*
-bin/*/*
-!bin/Linux-x64/
-!bin/Linux-x64/graphmap
+bin/graphmap-not_release
+bin/graphmap-debug
