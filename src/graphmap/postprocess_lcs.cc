@@ -336,7 +336,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   float maximum_allowed_deviation = l_diff * sqrt(2.0f) / 2.0f;
   float sigma_L2 = 0.0f, confidence_L1 = 0.0f;
   int64_t k = 0, l = 0;
-  // Actuall L1 calculation.
+  // Actual L1 calculation.
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
   if (ret_L1) {

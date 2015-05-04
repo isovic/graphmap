@@ -10,38 +10,54 @@
 
 
 int HybridRealignment(const SingleSequence *read, const Index *index, const ProgramParameters &parameters, const PathGraphEntry *best_path,
-                      int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part,
-                      int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part,
+                      int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part, int64_t *ret_nonclipped_left_part,
+                      int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part, int64_t *ret_nonclipped_right_part,
                       SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
                       int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
   if (parameters.realignment_algorithm == "seqan") {
     if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false) {
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Linear alignment.\n", "HybridRealignment");
-      return LocalRealignmentLinear(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+      return LocalRealignmentLinear(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
     }
     else {
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Circular alignment.\n", "HybridRealignment");
-      return LocalRealignmentCircular(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+      return LocalRealignmentCircular(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
     }
 
   } else if (parameters.realignment_algorithm == "edlib") {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using EDlib for local realignment!\n\n", "HybridRealignment");
     if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false)
-      return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+      return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
     else
-      return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+      return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
 //    if (best_path->region.is_split == false || parameters.is_reference_circular == false)
 //      return LocalRealignmentLinearExperimental(MyersNWWrapper, read, index, parameters, best_path, reference_length, ret_alignment_position, ret_cigar, ret_orientation, ret_reference_id, ret_position_ambiguity);
 //    else
 //      return LocalRealignmentCircularExperimental(MyersNWWrapper, read, index, parameters, best_path, reference_length, ret_alignment_position, ret_cigar, ret_orientation, ret_reference_id, ret_position_ambiguity);
+  } else if (parameters.realignment_algorithm == "anchor") {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment for local realignment!\n\n", "HybridRealignment");
+    bool is_circular = best_path->get_region_data().is_split == false || parameters.is_reference_circular == false;
+    return AnchoredAlignment(is_circular, true, MyersNWWrapper, MyersSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+
+//    if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false)
+//      return AnchoredAlignmentLinear(MyersNWWrapper, MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+//    else
+//      return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+//      return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+//      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Circular anchored alignment not implemented yet!!\n\n", "HybridRealignment");
+
+  } else if (parameters.realignment_algorithm == "anchorsq") {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment for local realignment!\n\n", "HybridRealignment");
+    bool is_circular = best_path->get_region_data().is_split == false || parameters.is_reference_circular == false;
+    return AnchoredAlignment(is_circular, false, SeqAnNWWrapper, SeqAnSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
   } else {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using EDlib for local realignment!\n\n", "HybridRealignment");
     if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false)
-      return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+      return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
     else
-      return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
+      return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
   }
 
   return -1;
@@ -230,8 +246,8 @@ int ClipCircularAlignment(int64_t alignment_start, int64_t alignment_end, unsign
 //}
 
 int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters &parameters, const PathGraphEntry *best_path,
-                           int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part,
-                           int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part,
+                           int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part, int64_t *ret_nonclipped_left_part,
+                           int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part, int64_t *ret_nonclipped_right_part,
                            SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
                            int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
 
@@ -314,7 +330,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
 
   CountAlignmentOperations(alignment, read->get_data(), index->get_data(), reference_id, alignment_position_start, orientation,
                            parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
-                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part);
+                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
 
   alignment.clear();
 
@@ -365,8 +381,8 @@ int CalcEditDistanceLinear(EditDistanceFunctionType EditDistanceFunction, const 
 
 
 int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters &parameters, const PathGraphEntry *best_path,
-                             int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part,
-                             int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part,
+                             int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part, int64_t *ret_nonclipped_left_part,
+                             int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part, int64_t *ret_nonclipped_right_part,
                              SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
                              int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
 
@@ -414,9 +430,10 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
   CountAlignmentOperations(alignment_left_part, read->get_data(), data_copy, reference_id, best_aligning_position_start, orientation,
                            parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
-                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part);
+                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
   
   *ret_AS_right_part = *ret_AS_left_part;
+  *ret_nonclipped_right_part = *ret_nonclipped_left_part;
 
 
 
@@ -572,7 +589,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
 
 int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start, SeqOrientation orientation,
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
-                             int64_t* ret_eq, int64_t* ret_x, int64_t* ret_i, int64_t* ret_d, int64_t *ret_alignment_score) {
+                             int64_t* ret_eq, int64_t* ret_x, int64_t* ret_i, int64_t* ret_d, int64_t *ret_alignment_score, int64_t *ret_nonclipped_length) {
   unsigned char last_move = -1;  // Code of last move.
   int64_t num_same_moves = 0;
   int64_t read_position = 0;
@@ -584,19 +601,31 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
   int64_t num_d = 0;
   int64_t alignment_score = 0;
 
+  int64_t nonclipped_length = 0;
+
   for (int i = 0; i < alignment.size(); i++) {
     char align_op = 255;
     align_op = alignment[i];
 
+//    if (align_op == EDLIB_S) {
+//      read_position += 1;
+//
+//    } else
     if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X) {
       if (read_data[read_position] == ref_data[alignment_position_start + ref_position]) {
         num_eq += 1;
         alignment_score += match;
+//        printf ("=");
+//        fflush(stdout);
 
       } else {
         num_x += 1;
         alignment_score -= mismatch;
+//        printf ("X");
+//        fflush(stdout);
       }
+
+      nonclipped_length += 1;
 
     } else if (align_op == EDLIB_I) {
       num_i += 1;
@@ -604,6 +633,9 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
 //      alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open + gap_extend) : gap_extend);
       // This is for the (gap_open + (N - 1) * gap_extend).
       alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open) : gap_extend);
+      nonclipped_length += 1;
+//      printf ("I");
+//      fflush(stdout);
 
     } else if (align_op == EDLIB_D) {
       num_d += 1;
@@ -611,6 +643,8 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
 //      alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open + gap_extend) : gap_extend);
       // This is for the (gap_open + (N - 1) * gap_extend).
       alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open) : gap_extend);
+//      printf ("D");
+//      fflush(stdout);
     }
 
     // Increase coordinates.
@@ -620,11 +654,15 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
       ref_position += 1;
   }
 
+//  printf ("\n\n");
+//  fflush(stdout);
+
   *ret_eq = num_eq;
   *ret_x = num_x;
   *ret_i = num_i;
   *ret_d = num_d;
   *ret_alignment_score = alignment_score;
+  *ret_nonclipped_length = nonclipped_length;
 
   return 0;
 }
@@ -656,15 +694,18 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
           // num_same_moves
           // last_move == EDLIB_M
           // If the number of consecutive insertions or deletions is very high, something is wrong.
-          if ((last_move == EDLIB_I || last_move == EDLIB_D) && num_same_moves >= 99) {
+//          if ((last_move == EDLIB_I || last_move == EDLIB_D) && num_same_moves >= 99) {
+//          if ((last_move == EDLIB_I || last_move == EDLIB_D)) {
 //            printf ("CheckAlignmentSane returned false! return 1.\n");
 //            fflush(stdout);
-            return 1;
-          }
+//            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 1.\n"), "CheckAlignmentSane");
+//            return 1;
+//          }
           // If there are insertions following deletions (or other way around), something is wrong again.
           if ((last_move == EDLIB_I && alignment_char == EDLIB_D) || (last_move == EDLIB_D && alignment_char == EDLIB_I)) {
 //            printf ("CheckAlignmentSane returned false! return 2.\n");
 //            fflush(stdout);
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 2.\n"), "CheckAlignmentSane");
             return 2;
           }
         }
@@ -677,20 +718,23 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
   }
 
   if (read != NULL && read_length != read->get_sequence_length()) {
-//    printf ("CheckAlignmentSane returned false! return 3.\n");
-//    printf ("read_length = %ld\n", read_length);
-//    printf ("read->get_sequence_length() = %ld\n", read->get_sequence_length());
-//    fflush(stdout);
+    printf ("CheckAlignmentSane returned false! return 3.\n");
+    printf ("read_length = %ld\n", read_length);
+    printf ("read->get_sequence_length() = %ld\n", read->get_sequence_length());
+    fflush(stdout);
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 3. read_length = %ld, read->get_sequence_length() = %ld\\n", read_length, read->get_sequence_length()), "CheckAlignmentSane");
     return 3;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) && ref_length > index->get_reference_lengths()[reference_hit_id]) {
 //    printf ("CheckAlignmentSane returned false! return 4.\n");
 //    fflush(stdout);
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 4.\n"), "CheckAlignmentSane");
     return 4;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) && (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
 //    printf ("CheckAlignmentSane returned false! return 5.\n");
 //    fflush(stdout);
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 5.\n"), "CheckAlignmentSane");
     return 5;
   }
 

@@ -433,12 +433,12 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const InfoAlignment &a
 
   if (verbose_sam_output >= 3) {
     float mismatch_rate = (((float) (alignment_info.num_x_ops + alignment_info.num_i_ops + alignment_info.num_d_ops)) / ((float) (alignment_info.num_eq_ops + alignment_info.num_x_ops + alignment_info.num_d_ops + alignment_info.num_i_ops)));
-    float match_rate = (((float) alignment_info.num_eq_ops) / ((float) read_->get_sequence_length()));
+    float match_rate = (((float) alignment_info.num_eq_ops) / ((float) alignment_info.nonclipped_length)); // ((float) read_->get_sequence_length()));
 
     std::stringstream X3_ss;
     X3_ss << VerboseToString("_");
     X3_ss << "__region_votes=" << get_region_data().region_votes; // << "__max_region_votes=" << get_region_data()..bin_value << "__num_region_iterations=" << num_region_iterations_;
-    X3_ss << "__num_eq_ops=" << alignment_info.num_eq_ops << "__num_x_ops=" << alignment_info.num_x_ops << "__num_i_ops=" << alignment_info.num_i_ops << "__num_d_ops=" << alignment_info.num_d_ops << "__match_rate=" << FormatString("%.2f", match_rate) << "__mismatch_rate=" << FormatString("%.2f", mismatch_rate);
+    X3_ss << "__num_eq_ops=" << alignment_info.num_eq_ops << "__num_x_ops=" << alignment_info.num_x_ops << "__num_i_ops=" << alignment_info.num_i_ops << "__num_d_ops=" << alignment_info.num_d_ops << "__nonclippedlen=" << alignment_info.nonclipped_length << "__match_rate=" << FormatString("%.2f", match_rate) << "__mismatch_rate=" << FormatString("%.2f", mismatch_rate);
 
     ss << "\tX3:Z:" << X3_ss.str();
   }

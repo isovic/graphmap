@@ -96,6 +96,12 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 //        return 0;
 //      }
     }
+  // for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
+
+  //   if (mapping_data->bins[i].bin_value < min_allowed_bin_value)
+  //     break;
+  //   if (i >= parameters->max_num_regions && ((i > 0 && mapping_data->bins[i].bin_value != mapping_data->bins[i-1].bin_value) || i == 0))
+  //     break;
     
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
@@ -113,7 +119,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
-    int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    #ifndef RELEASE_VERSION
+        int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    #else
+        int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    #endif
     local_score.Clear();
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
@@ -385,10 +395,12 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
 
     int64_t AS_left_part = 0, AS_right_part = 0;
     double evalue_left_part = 0, evalue_right_part = 0;
+    int64_t nonclipped_length_left_part = 0, nonclipped_length_right_part = 0;
     // TODO: Promijeniti interface ove funkcije da ne vraca edit distance kao povratnu vrijednost, nego preko parametra, a da povratna vrijednost bude samo status o uspjehu.
-    int edit_distance = HybridRealignment(read, index_, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
-    CalculateEValueDNA(AS_left_part, read->get_sequence_length(), index_->get_data_length_forward(), evalue_params, &evalue_left_part);
-    CalculateEValueDNA(AS_right_part, read->get_sequence_length(), index_->get_data_length_forward(), evalue_params, &evalue_right_part);
+    int edit_distance = HybridRealignment(read, index_, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
+
+    CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index_->get_data_length_forward(), evalue_params, &evalue_left_part);
+    CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index_->get_data_length_forward(), evalue_params, &evalue_right_part);
 
     int64_t sum_of_error_ops = num_x_ops + num_i_ops + num_d_ops;
     float mismatch_rate = (((float) (num_x_ops + num_i_ops + num_d_ops)) / ((float) (num_eq_ops + num_x_ops + num_d_ops + num_i_ops)));
@@ -434,6 +446,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_x_ops = num_x_ops;
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_i_ops = num_i_ops;
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_d_ops = num_d_ops;
+    mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().nonclipped_length = nonclipped_length_left_part;
 
     if (cigar_right_part.size() > 0) {
       InfoAlignment secondary_alignment;
@@ -444,6 +457,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       secondary_alignment.pos_end = relative_position_right_part + 1;
       secondary_alignment.alignment_score = AS_right_part;
       secondary_alignment.evalue = evalue_right_part;
+      secondary_alignment.nonclipped_length = nonclipped_length_right_part;
       mapping_data->final_mapping_ptrs.at(i)->AddSecondaryAlignmentData(secondary_alignment);
     }
   }

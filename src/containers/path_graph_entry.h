@@ -28,6 +28,11 @@
 
 
 
+typedef struct Cluster {
+  Range query;
+  Range ref;
+};
+
 typedef struct InfoMapping {
   int64_t lcs_length = 0;
   int64_t cov_bases_max = 0;
@@ -40,6 +45,8 @@ typedef struct InfoMapping {
   bool is_mapped = false;
   bool is_reverse = false;
   int64_t local_score_id = 0;
+
+  std::vector<Cluster> clusters;
 //  Range distance;
 //  float ratio;
 //  float ratio_suppress;
@@ -87,6 +94,7 @@ typedef struct InfoAlignment {
   int64_t num_x_ops = 0;
   int64_t num_i_ops = 0;
   int64_t num_d_ops = 0;
+  int64_t nonclipped_length = 0;
 
   std::string unmapped_reason = "Not processed.";
 

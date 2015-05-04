@@ -40,6 +40,7 @@ int edlibAlignmentToCigarForward(unsigned char* alignment, int alignmentLength, 
 int edlibAlignmentToCigarForward2(unsigned char* alignment, int alignmentLength, char** cigar_);
 int edlibAlignmentToCigarReverse(unsigned char* alignment, int alignmentLength, char** cigar_);
 int edlibAlignmentToCigarReverse2(unsigned char* alignment, int alignmentLength, char** cigar_);
+int ConvertInsertionsToClipping(unsigned char* alignment, int alignmentLength);
 
 std::string ReverseCigarString(std::string &cigar);
 

@@ -117,6 +117,16 @@ std::vector<size_t> ordered_sort_array(const T* values, int64_t values_size) {
     return indices;
 }
 
+/// User needs to free the memory using 'free'.
+template <typename T>
+T* reverse_data(const T* data, int64_t data_len) {
+  T* ret_data = (T *) malloc(sizeof(T) * data_len);
+  for (int64_t i=0; i<data_len; i++)
+    ret_data[i] = data[data_len - i - 1];
+  return ret_data;
+}
+
+
 
 
 #endif /* UTILITY_GENERAL_H_ */

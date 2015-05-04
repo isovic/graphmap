@@ -190,13 +190,13 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
   }
 
   for (int64_t i=0; i<alignment.size(); i++) {
-    if (alignment[i] == 1)
-      alignment[i] = 4;
+    if (alignment[i] == EDLIB_I)
+      alignment[i] = EDLIB_S;
     else break;
   }
   for (int64_t i=(((int64_t) alignment.size()) - 1); i>=0; i--) {
-    if (alignment[i] == 1)
-      alignment[i] = 4;
+    if (alignment[i] == EDLIB_I)
+      alignment[i] = EDLIB_S;
     else break;
   }
 
@@ -245,6 +245,56 @@ int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
     globalAlignment(align,
                      seqan::Score<int, seqan::Simple>(match_score, mismatch_penalty, gap_extend_penalty, gap_open_penalty),
                      seqan::AlignConfig<true, false, false, true>()); // top, left, right, bottom
+  }
+
+  int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
+  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
+    return -1;
+  if (CheckAlignmentSaneSimple(ret_alignment))
+    return -1;
+
+  int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
+
+  *ret_alignment_position_start = start_offset;
+  *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
+  *ret_edit_distance = (int64_t) seqan_edit_distance;
+
+  return 0;
+}
+
+int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
+                           const int8_t *reference_data, int64_t reference_length,
+                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
+                           int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
+
+//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
+
+  if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
+    return -1;
+
+
+
+  seqan::Infix<char *>::Type inf_target = seqan::infix((char *) reference_data, 0, reference_length);
+  seqan::Dna5String seq_target = inf_target;
+  seqan::Infix<char *>::Type inf_query = seqan::infix((char *) read_data, 0, read_length);
+  seqan::Dna5String seq_query = inf_query;
+
+  seqan::Align<seqan::Dna5String> align;
+  seqan::resize(rows(align), 2);
+  seqan::assignSource(row(align, 0), seq_target);
+  seqan::assignSource(row(align, 1), seq_query);
+
+  int result = -1;
+  if (band_width > 0) {
+    globalAlignment(align,
+                     seqan::Score<int, seqan::Simple>(match_score, mismatch_penalty, gap_extend_penalty, gap_open_penalty),
+                     seqan::AlignConfig<false, false, false, false>(),  // top, left, right, bottom
+                     -band_width, band_width);
+  } else {
+    globalAlignment(align,
+                     seqan::Score<int, seqan::Simple>(match_score, mismatch_penalty, gap_extend_penalty, gap_open_penalty),
+                     seqan::AlignConfig<false, false, false, false>()); // top, left, right, bottom
   }
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
@@ -383,13 +433,13 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
   int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
 
   for (int64_t i=0; i<alignment_length; i++) {
-    if (alignment[i] == 1)
-      alignment[i] = 4;
+    if (alignment[i] == EDLIB_I)
+      alignment[i] = EDLIB_S;
     else break;
   }
   for (int64_t i=(((int64_t) alignment_length) - 1); i>=0; i--) {
-    if (alignment[i] == 1)
-      alignment[i] = 4;
+    if (alignment[i] == EDLIB_I)
+      alignment[i] = EDLIB_S;
     else break;
   }
 
@@ -438,16 +488,78 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
 
   int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
 
-  for (int64_t i=0; i<alignment_length; i++) {
-    if (alignment[i] == 1)
-      alignment[i] = 4;
-    else break;
+//  for (int64_t i=0; i<alignment_length; i++) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
+//  for (int64_t i=(((int64_t) alignment_length) - 1); i>=0; i--) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
+
+  *ret_alignment_position_start = positions[0] - (reconstructed_length - 1);
+  *ret_alignment_position_end = positions[0];
+  *ret_edit_distance = (int64_t) score;
+  ret_alignment.assign(alignment, (alignment + alignment_length));
+  //  *ret_cigar = AlignmentToCigar(alignment, alignment_length);
+
+  if (positions)
+    free(positions);
+
+  if (alignment)
+      free(alignment);
+
+  return 0;
+}
+
+int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
+                   const int8_t *reference_data, int64_t reference_length,
+                   int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
+                   int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
+
+//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
+
+  if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
+    return -1;
+
+  int alphabet_length = 128;
+  int score = 0;
+  unsigned char* alignment = NULL;
+  int alignment_length = 0;
+
+  int *positions = NULL;
+  int num_positions = 0;
+
+  int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+                        (const unsigned char *) reference_data, reference_length,
+                        alphabet_length, band_width, MYERS_MODE_SHW, &score, &positions, &num_positions,
+                        true, &alignment, &alignment_length);
+
+  if (myers_return_code == MYERS_STATUS_ERROR) {
+    return -2;
   }
-  for (int64_t i=(((int64_t) alignment_length) - 1); i>=0; i--) {
-    if (alignment[i] == 1)
-      alignment[i] = 4;
-    else break;
+  if (num_positions == 0) {
+    return -3;
   }
+  if (alignment_length == 0) {
+    return -4;
+  }
+
+  int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
+
+//  for (int64_t i=0; i<alignment_length; i++) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
+//  for (int64_t i=(((int64_t) alignment_length) - 1); i>=0; i--) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
 
   *ret_alignment_position_start = positions[0] - (reconstructed_length - 1);
   *ret_alignment_position_end = positions[0];
@@ -528,11 +640,11 @@ int CheckAlignmentSaneSimple(std::vector<unsigned char> &alignment) {
           // num_same_moves
           // last_move == EDLIB_M
           // If the number of consecutive insertions or deletions is very high, something is wrong.
-          if ((last_move == EDLIB_I || last_move == EDLIB_D) && num_same_moves >= 99) {
-//            printf ("CheckAlignmentSane returned false! return 1.\n");
-//            fflush(stdout);
-            return 1;
-          }
+//          if ((last_move == EDLIB_I || last_move == EDLIB_D) && num_same_moves >= 99) {
+////            printf ("CheckAlignmentSane returned false! return 1.\n");
+////            fflush(stdout);
+//            return 1;
+//          }
           // If there are insertions following deletions (or other way around), something is wrong again.
           if ((last_move == EDLIB_I && alignment_char == EDLIB_D) || (last_move == EDLIB_D && alignment_char == EDLIB_I)) {
 //            printf ("CheckAlignmentSane returned false! return 2.\n");

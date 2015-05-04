@@ -76,15 +76,50 @@ std::string ReverseCigarString(std::string &cigar) {
   return ret_cigar.str();
 }
 
+int ConvertInsertionsToClipping(unsigned char* alignment, int alignmentLength) {
+  for (int64_t i=0; i<alignmentLength; i++) {
+    if (alignment[i] == EDLIB_I)
+      alignment[i] = EDLIB_S;
+    else break;
+  }
+  for (int64_t i=(((int64_t) alignmentLength) - 1); i>=0; i--) {
+    if (alignment[i] == EDLIB_I)
+      alignment[i] = EDLIB_S;
+    else break;
+  }
+
+  return 0;
+}
+
 int edlibAlignmentToCigarForward(unsigned char* alignment, int alignmentLength,
                           char** cigar_) {
+
+    unsigned char *alignment_with_clipping = alignment;
+
+    if (alignment[0] == EDLIB_I || alignment[alignmentLength-1] == EDLIB_I) {
+      alignment_with_clipping = (unsigned char *) malloc(sizeof(unsigned char) * (alignmentLength + 1));
+      memcpy(alignment_with_clipping, alignment, alignmentLength);
+      alignment_with_clipping[alignmentLength] = '\0';
+
+      for (int64_t i=0; i<alignmentLength; i++) {
+        if (alignment_with_clipping[i] == EDLIB_I)
+          alignment_with_clipping[i] = EDLIB_S;
+        else break;
+      }
+      for (int64_t i=(((int64_t) alignmentLength) - 1); i>=0; i--) {
+        if (alignment_with_clipping[i] == EDLIB_I)
+          alignment_with_clipping[i] = EDLIB_S;
+        else break;
+      }
+    }
+
     std::vector<char>* cigar = new std::vector<char>();
     unsigned char lastMove = -1;  // Code of last move.
     int numOfSameMoves = 0;
     for (int i = 0; i <= alignmentLength; i++) {
       char alignment_char = 0;
       if (i < alignmentLength) {
-        alignment_char = alignment[i];
+        alignment_char = alignment_with_clipping[i];
         if (alignment_char == 3)
           alignment_char = 0;
       }
@@ -130,6 +165,9 @@ int edlibAlignmentToCigarForward(unsigned char* alignment, int alignmentLength,
     // thus binaries won't run on older versions of systems.
     memmove(*cigar_, &(*cigar)[0], cigar->size() * sizeof(char));
     delete cigar;
+
+    if (alignment_with_clipping != alignment)
+      free(alignment_with_clipping);
 
     return MYERS_STATUS_OK;
 }
