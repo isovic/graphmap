@@ -189,16 +189,16 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
       }
   }
 
-  for (int64_t i=0; i<alignment.size(); i++) {
-    if (alignment[i] == EDLIB_I)
-      alignment[i] = EDLIB_S;
-    else break;
-  }
-  for (int64_t i=(((int64_t) alignment.size()) - 1); i>=0; i--) {
-    if (alignment[i] == EDLIB_I)
-      alignment[i] = EDLIB_S;
-    else break;
-  }
+//  for (int64_t i=0; i<alignment.size(); i++) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
+//  for (int64_t i=(((int64_t) alignment.size()) - 1); i>=0; i--) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
 
   ret_alignment = alignment;
 
@@ -307,6 +307,56 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
 
   *ret_alignment_position_start = start_offset;
   *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
+  *ret_edit_distance = (int64_t) seqan_edit_distance;
+
+  return 0;
+}
+
+int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
+                           const int8_t *reference_data, int64_t reference_length,
+                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
+                           int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
+
+//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
+
+  if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
+    return -1;
+
+
+
+  seqan::Infix<char *>::Type inf_target = seqan::infix((char *) reference_data, 0, reference_length);
+  seqan::Dna5String seq_target = inf_target;
+  seqan::Infix<char *>::Type inf_query = seqan::infix((char *) read_data, 0, read_length);
+  seqan::Dna5String seq_query = inf_query;
+
+  seqan::Align<seqan::Dna5String> align;
+  seqan::resize(rows(align), 2);
+  seqan::assignSource(row(align, 0), seq_target);
+  seqan::assignSource(row(align, 1), seq_query);
+
+  int result = -1;
+  if (band_width > 0) {
+    globalAlignment(align,
+                     seqan::Score<int, seqan::Simple>(match_score, mismatch_penalty, gap_extend_penalty, gap_open_penalty),
+                     seqan::AlignConfig<false, false, false, true>(),  // top, left, right, bottom
+                     -band_width, band_width);
+  } else {
+    globalAlignment(align,
+                     seqan::Score<int, seqan::Simple>(match_score, mismatch_penalty, gap_extend_penalty, gap_open_penalty),
+                     seqan::AlignConfig<false, false, false, true>()); // top, left, right, bottom
+  }
+
+  int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
+  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
+    return -1;
+  if (CheckAlignmentSaneSimple(ret_alignment))
+    return -1;
+
+  int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
+
+  *ret_alignment_position_start = start_offset;
+  *ret_alignment_position_end = start_offset + (reconstructed_length);
   *ret_edit_distance = (int64_t) seqan_edit_distance;
 
   return 0;
@@ -432,16 +482,16 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 
   int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
 
-  for (int64_t i=0; i<alignment_length; i++) {
-    if (alignment[i] == EDLIB_I)
-      alignment[i] = EDLIB_S;
-    else break;
-  }
-  for (int64_t i=(((int64_t) alignment_length) - 1); i>=0; i--) {
-    if (alignment[i] == EDLIB_I)
-      alignment[i] = EDLIB_S;
-    else break;
-  }
+//  for (int64_t i=0; i<alignment_length; i++) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
+//  for (int64_t i=(((int64_t) alignment_length) - 1); i>=0; i--) {
+//    if (alignment[i] == EDLIB_I)
+//      alignment[i] = EDLIB_S;
+//    else break;
+//  }
 
   *ret_alignment_position_start = positions[0] - (reconstructed_length - 1);
   *ret_alignment_position_end = positions[0];

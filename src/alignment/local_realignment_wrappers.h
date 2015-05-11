@@ -73,6 +73,11 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
                            int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                            int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                            int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
+int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
+                           const int8_t *reference_data, int64_t reference_length,
+                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
+                           int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 
 int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment);
 

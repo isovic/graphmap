@@ -41,7 +41,10 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 //  std::vector<int> cluster;
   std::vector<ClusterAndIndices *> clusters;
   ClusterAndIndices *new_cluster = NULL;
-  int64_t min_cluster_length = read->get_sequence_length() * 0.10f;
+//  int64_t min_cluster_length = read->get_sequence_length() * 0.10f;
+//  int64_t min_cluster_length = read->get_sequence_length() * 0.02f;
+//  int64_t min_covered_bases = read->get_sequence_length() * 0.02f;
+  int64_t min_cluster_length = 0;
   int64_t min_covered_bases = read->get_sequence_length() * 0.02f;
 
   int64_t last_nonskipped_i = lcskpp_indices.size() + 1;
@@ -123,6 +126,12 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     int64_t covered_bases = clusters[i]->coverage;
     if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
       lcskpp_indices_clusters.insert(lcskpp_indices_clusters.end(), clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.end());
+      #ifndef RELEASE_VERSION
+        if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Passed! i = %ld, num_anchors: %ld, length: %ld, coverage: %ld, query.start = %ld, query.end = %ld\n", i, clusters[i]->num_anchors,
+                                                                                                                                          (clusters[i]->query.end - clusters[i]->query.start), clusters[i]->coverage, clusters[i]->query.start, clusters[i]->query.end), "[]");
+        }
+      #endif
     }
   }
 
@@ -237,14 +246,25 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   mapping_info.is_reverse = (local_score->get_region().reference_id >= index->get_num_sequences_forward());
   mapping_info.local_score_id = local_score->get_scores_id();
 
+#ifndef RELEASE_VERSION
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+      int64_t reference_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
+      int64_t region_start = local_score->get_region().start;
+#endif
+
   for (int64_t i=0; i<clusters.size(); i++) {
     if (clusters[i]) {
       int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start;
-      if (cluster_length >= min_cluster_length) {
+      int64_t covered_bases = clusters[i]->coverage;
+      if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
         Cluster mapping_cluster;
         mapping_cluster.query = clusters[i]->query;
         mapping_cluster.ref = clusters[i]->ref;
         mapping_info.clusters.push_back(mapping_cluster);
+#ifndef RELEASE_VERSION
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
+                                                                                                                                    mapping_cluster.query.start, mapping_cluster.ref.start - reference_start, mapping_cluster.query.end, mapping_cluster.ref.end - reference_start), "");
+#endif
       }
       delete clusters[i];
     }
@@ -826,7 +846,40 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       return ret_code1*2000;
     }
     edit_distance += anchor_edit_distance;
-    alignment.insert(alignment.end(), anchor_alignment.begin(), anchor_alignment.end());
+    /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
+    /// Switching from deletions to insertions is basically a mismatch streak.
+    if (alignment.size() > 0 && anchor_alignment.size() > 0 && ((alignment.back() == EDLIB_D && anchor_alignment[0] == EDLIB_I) || (alignment.back() == EDLIB_I && anchor_alignment[0] == EDLIB_D))) {
+      int64_t num_trailing_indels = 0;
+      int64_t num_leading_indels = 0;
+      int64_t current_op1 = alignment.size() - 1;
+      while (current_op1 >= 0) {
+        if ((current_op1 + 1) < alignment.size() && alignment[current_op1] != alignment[current_op1+1])
+          break;
+        num_trailing_indels += 1;
+        current_op1 -= 1;
+      }
+      int64_t current_op2 = 0;
+      while (current_op2 < anchor_alignment.size()) {
+        if (current_op2 > 0 && anchor_alignment[current_op2] != anchor_alignment[current_op2-1])
+          break;
+        num_leading_indels += 1;
+        current_op2 += 1;
+      }
+
+      int64_t min_count = std::min(num_trailing_indels, num_leading_indels);
+
+      for (current_op1 = 0; current_op1 < min_count; current_op1++) {
+        if ((ref_data + ref_start + anchor_alignment_position_start - current_op1 - 1) == (read->get_data() + (query_start) - current_op1))
+          alignment[alignment.size() - current_op1 - 1] = EDLIB_EQUAL;
+        else
+          alignment[alignment.size() - current_op1 - 1] = EDLIB_X;
+      }
+
+      alignment.insert(alignment.end(), anchor_alignment.begin() + min_count, anchor_alignment.end());
+
+    } else {
+      alignment.insert(alignment.end(), anchor_alignment.begin(), anchor_alignment.end());
+    }
 
     /// Align in between the anchors.
     if ((i + 1) < best_path->get_mapping_data().clusters.size()) {
@@ -834,19 +887,75 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       int64_t next_query_end = best_path->get_mapping_data().clusters[i+1].query.end + parameters.k_graph;
       int64_t next_ref_start = best_path->get_mapping_data().clusters[i+1].ref.start;
       int64_t next_ref_end = best_path->get_mapping_data().clusters[i+1].ref.end + parameters.k_graph;
+      int64_t inbetween_query_length = (next_query_start - (query_end));
+      int64_t inbetween_ref_length = (next_ref_start - (ref_end));
 
-      int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
-      std::vector<unsigned char> between_anchor_alignment;
-      int ret_code2 = AlignmentFunctionNW(read->get_data() + (query_end), (next_query_start - (query_end)),
-                                       (int8_t *) (ref_data + ref_end), (next_ref_start - (ref_end)),
-                                       -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
-                                       &between_alignment_position_start, &between_alignment_position_end,
-                                       &between_anchor_edit_distance, between_anchor_alignment);
+      /// Check if there is actually any distance between the queries, or between the references.
+      /// If there is no difference, that means there is a clean insertion/deletion.
+      if (inbetween_query_length == 0 && inbetween_ref_length != 0) {
+        std::vector<unsigned char> deletions_inbetween(inbetween_ref_length, EDLIB_D);
+        alignment.insert(alignment.end(), deletions_inbetween.begin(), deletions_inbetween.end());
 
-      if (ret_code2 != 0 || between_anchor_alignment.size() == 0)
-        return ret_code2*3000;
-      edit_distance += between_anchor_edit_distance;
-      alignment.insert(alignment.end(), between_anchor_alignment.begin(), between_anchor_alignment.end());
+      } else if (inbetween_ref_length == 0 && inbetween_query_length != 0) {
+        std::vector<unsigned char> insertions_inbetween(inbetween_query_length, EDLIB_I);
+        alignment.insert(alignment.end(), insertions_inbetween.begin(), insertions_inbetween.end());
+
+      } else if (inbetween_query_length != 0 && inbetween_ref_length != 0) {
+
+        int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
+        std::vector<unsigned char> between_anchor_alignment;
+        int ret_code2 = AlignmentFunctionNW(read->get_data() + (query_end), inbetween_query_length,
+                                         (int8_t *) (ref_data + ref_end), inbetween_ref_length,
+                                         -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                                         &between_alignment_position_start, &between_alignment_position_end,
+                                         &between_anchor_edit_distance, between_anchor_alignment);
+
+        if (ret_code2 != 0 || between_anchor_alignment.size() == 0) {
+//          printf ("Current cluster: %ld\n", i);
+//          printf ("query_start = %ld\n", (query_end));
+//          printf ("query_length = %ld\n", (next_query_start - (query_end)));
+//          printf ("ref_start = %ld\n", (ref_end));
+//          printf ("ref_start = %ld\n", (next_ref_start - (ref_end)));
+//          fflush(stdout);
+
+          return ret_code2*3000;
+        }
+        edit_distance += between_anchor_edit_distance;
+
+        /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
+        /// Switching from deletions to insertions is basically a mismatch streak.
+        if (alignment.size() > 0 && between_anchor_alignment.size() > 0 && ((alignment.back() == EDLIB_D && between_anchor_alignment[0] == EDLIB_I) || (alignment.back() == EDLIB_I && between_anchor_alignment[0] == EDLIB_D))) {
+          int64_t num_trailing_indels = 0;
+          int64_t num_leading_indels = 0;
+          int64_t current_op1 = alignment.size() - 1;
+          while (current_op1 >= 0) {
+            if ((current_op1 + 1) < alignment.size() && alignment[current_op1] != alignment[current_op1+1])
+              break;
+            num_trailing_indels += 1;
+            current_op1 -= 1;
+          }
+          int64_t current_op2 = 0;
+          while (current_op2 < between_anchor_alignment.size()) {
+            if (current_op2 > 0 && between_anchor_alignment[current_op2] != between_anchor_alignment[current_op2-1])
+              break;
+            num_leading_indels += 1;
+            current_op2 += 1;
+          }
+
+          int64_t min_count = std::min(num_trailing_indels, num_leading_indels);
+          for (current_op1 = 0; current_op1 < min_count; current_op1++) {
+            if ((ref_data + ref_end + between_alignment_position_start - current_op1 - 1) == (read->get_data() + (query_end) - current_op1))
+              alignment[alignment.size() - current_op1 - 1] = EDLIB_EQUAL;
+            else
+              alignment[alignment.size() - current_op1 - 1] = EDLIB_X;
+          }
+
+          alignment.insert(alignment.end(), between_anchor_alignment.begin() + min_count, between_anchor_alignment.end());
+
+        } else {
+          alignment.insert(alignment.end(), between_anchor_alignment.begin(), between_anchor_alignment.end());
+        }
+      }
     }
   }
 
@@ -885,7 +994,39 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
           alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
         } else {
-          alignment.insert(alignment.end(), leftover_right_alignment.begin(), leftover_right_alignment.end());
+
+          /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
+          /// Switching from deletions to insertions is basically a mismatch streak.
+          if (alignment.size() > 0 && leftover_right_alignment.size() > 0 && ((alignment.back() == EDLIB_D && leftover_right_alignment[0] == EDLIB_I) || (alignment.back() == EDLIB_I && leftover_right_alignment[0] == EDLIB_D))) {
+            int64_t num_trailing_indels = 0;
+            int64_t num_leading_indels = 0;
+            int64_t current_op1 = alignment.size() - 1;
+            while (current_op1 >= 0) {
+              if ((current_op1 + 1) < alignment.size() && alignment[current_op1] != alignment[current_op1+1])
+                break;
+              num_trailing_indels += 1;
+              current_op1 -= 1;
+            }
+            int64_t current_op2 = 0;
+            while (current_op2 < leftover_right_alignment.size()) {
+              if (current_op2 > 0 && leftover_right_alignment[current_op2] != leftover_right_alignment[current_op2-1])
+                break;
+              num_leading_indels += 1;
+              current_op2 += 1;
+            }
+
+            int64_t min_count = std::min(num_trailing_indels, num_leading_indels);
+            for (current_op1 = 0; current_op1 < min_count; current_op1++) {
+              if ((ref_data + alignment_position_end + 1 + leftover_right_start - current_op1 - 1) == (read->get_data() + (query_end + 1) - current_op1))
+                alignment[alignment.size() - current_op1 - 1] = EDLIB_EQUAL;
+              else
+                alignment[alignment.size() - current_op1 - 1] = EDLIB_X;
+            }
+
+            alignment.insert(alignment.end(), leftover_right_alignment.begin() + min_count, leftover_right_alignment.end());
+          } else {
+            alignment.insert(alignment.end(), leftover_right_alignment.begin(), leftover_right_alignment.end());
+          }
           alignment_position_end += leftover_right_end + 1;
         }
 
@@ -948,14 +1089,23 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
 
 
-
   ConvertInsertionsToClipping((unsigned char *) &(alignment[0]), alignment.size());
 
   CountAlignmentOperations(alignment, read->get_data(), ref_data, reference_id, alignment_position_start, orientation,
                            parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
                            ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
 
-
+#ifndef RELEASE_VERSION
+  if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
+    std::string alignment_as_string = "";
+    alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data()), read->get_sequence_length(),
+                                               (const unsigned char *) (ref_data + alignment_position_start), (alignment_position_end - alignment_position_start + 1),
+                                               (unsigned char *) &(alignment[0]), alignment.size(),
+                                               (0), MYERS_MODE_NW);
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                             FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
+  }
+#endif
 
 
 
@@ -1069,6 +1219,9 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
     if (ref_data)
       delete[] ref_data;
+
+    if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position))
+      return -345;
   }
 
   alignment.clear();

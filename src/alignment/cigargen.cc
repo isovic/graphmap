@@ -411,7 +411,7 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
         ss << "T: ";
         int startTIdx = 0;
         for (int j = start; j < start + row_width && j < alignmentLength; j++) {
-            if (alignment[j] == 1)
+            if (alignment[j] == EDLIB_I || alignment[j] == EDLIB_S)
                 ss << "_";
             else
                 ss << (char) target[++tIdx];
@@ -425,8 +425,10 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
         for (int j = start; j < start + row_width && j < alignmentLength; j++) {
             if (alignment[j] == 0)
               ss << "|";
-            else if (alignment[j] == 3)
+            else if (alignment[j] == EDLIB_X)
               ss << "X";
+            else if (alignment[j] == EDLIB_S)
+              ss << "-";
             else
               ss << " ";
         }
@@ -436,7 +438,7 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
         ss << "Q: ";
         int startQIdx = qIdx;
         for (int j = start; j < start + row_width && j < alignmentLength; j++) {
-            if (alignment[j] == 2)
+            if (alignment[j] == EDLIB_D)
               ss << "_";
             else
                 ss << (char) query[++qIdx];
