@@ -787,6 +787,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       alignment.insert(alignment.begin(), insertions_front.begin(), insertions_front.end());
 
     } else {
+      if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                            "Aligning the begining of the read (overhang).\n", "LocalRealignmentLinear");
+      }
+
       /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
       int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
       int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
@@ -829,6 +834,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
 
   for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
+    if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          "Aligning an anchor.\n", "LocalRealignmentLinear");
+    }
+
     /// Align the anchor.
     int64_t query_start = best_path->get_mapping_data().clusters[i].query.start;
     int64_t query_end = best_path->get_mapping_data().clusters[i].query.end + parameters.k_graph;
@@ -901,6 +911,10 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         alignment.insert(alignment.end(), insertions_inbetween.begin(), insertions_inbetween.end());
 
       } else if (inbetween_query_length != 0 && inbetween_ref_length != 0) {
+        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                              "Aligning in between anchors.\n", "LocalRealignmentLinear");
+        }
 
         int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
         std::vector<unsigned char> between_anchor_alignment;
@@ -968,6 +982,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
 
     } else {
+      if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                            "Aligning the end of the read (overhang).\n", "LocalRealignmentLinear");
+      }
+
       int64_t leftover_right_start = 0, leftover_right_end = 0, leftover_right_edit_distance = 0;
       std::vector<unsigned char> leftover_right_alignment;
       int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),

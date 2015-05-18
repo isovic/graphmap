@@ -115,7 +115,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   bool output_specified_by_file = false;
   bool output_specified_by_folder = false;
 
-  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:w:uq:D:O:B:IG:E:M:X:CF:ZS:PA:")) != -1) {
+  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:w:uq:D:O:B:IG:E:M:X:CF:ZS:PA:")) != -1) {
     switch (c) {
 //      case 'j':
 //        sscanf (optarg, "%ld", &(parameters->k_region));
@@ -272,7 +272,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
 //          parameters->max_num_regions = 0;
 //          parameters->max_num_regions_cutoff = 0;
 //          parameters->filter_by_edit_distance = true;
-          parameters->realignment_algorithm = "seqan";
+          parameters->alignment_algorithm = "gotoh";
           parameters->composite_parameters = machine_type;
         }
 //        else if (machine_type == ((std::string) "pacbio")) {
@@ -310,7 +310,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
 //          parameters->max_num_regions = 0;
 //          parameters->max_num_regions_cutoff = 0;
 //          parameters->filter_by_edit_distance = true;
-//          parameters->realignment_algorithm = "seqan";
+//          parameters->alignment_algorithm = "myers";
 //          parameters->composite_parameters = machine_type;
 //        }
         else {
@@ -340,8 +340,11 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         break;
 
 #ifndef RELEASE_VERSION
+      case 'a':
+        parameters->alignment_algorithm = std::string(optarg);
+        break;
       case 'w':
-        parameters->realignment_algorithm = std::string(optarg);
+        parameters->alignment_approach = std::string(optarg);
         break;
       case 'G':
         sscanf (optarg, "%ld", &(parameters->gap_open_penalty));
@@ -486,7 +489,8 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
   printf ("%snum_links = %ld\n", line_prefix.c_str(), parameters->num_links);
   printf ("%smin_num_anchor_bases = %ld\n", line_prefix.c_str(), parameters->min_num_anchor_bases);
   printf ("%skmer_step = %ld\n", line_prefix.c_str(), parameters->kmer_step);
-  printf ("%srealignment_algorithm = %s\n", line_prefix.c_str(), parameters->realignment_algorithm.c_str());
+  printf ("%salignment_algorithm = %s\n", line_prefix.c_str(), parameters->alignment_algorithm.c_str());
+  printf ("%salignment_approach = %s\n", line_prefix.c_str(), parameters->alignment_approach.c_str());
   printf ("%smatch_score = %ld\n", line_prefix.c_str(), parameters->match_score);
   printf ("%smismatch_penalty = %ld\n", line_prefix.c_str(), parameters->mismatch_penalty);
   printf ("%sgap_open_penalty = %ld\n", line_prefix.c_str(), parameters->gap_open_penalty);
@@ -564,7 +568,8 @@ void VerboseUsageAndExit(FILE *fp) {
 
   ss << "General-purpose pre-set options:\n";
 //  ss << "\t-x STR\tPre-set parameters to increase sensitivity for different sequencing technologies.\n\t\tValid options are: 'illumina' and 'nanopore'.\n";
-  ss << "\t-x STR\tPre-set parameters to increase sensitivity for different sequencing technologies.\n\t\tValid options are: 'illumina'.\n";
+  ss << "\t-x STR\tPre-set parameters to increase sensitivity for different sequencing technologies.\n\t\tValid options are:\n";
+  ss << "\t             illumina - Equivalent to: '-a gotoh -w sg -M 5 -X 4 -G 8 -E 6'\n";
   ss << "\n";
 
 //#ifndef RELEASE_VERSION
@@ -592,18 +597,29 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-Z\tIf specified, all alignments within (-P FLT) will be output to a file.\n\t\tOtherwise, only one alignment will be output.\n";
   ss << "\n";
   ss << "\t-F\tIf specified, the parsimonious memory mode will be used. If omitted, a fast and sensitive\n\t\t(but 2x memory-hungry) mode will be used.\n";
+  ss << "\n";
 
 #ifndef RELEASE_VERSION
+    ss << "\t-S INT\tKmer step for region selection. [" << DEFAULT_KMER_STEP << "]\n";
+    ss << "\n";
+#endif
+
+  ss << "Alignment options:\n";
 //    ss << "\t-w INT\tKmer step during graph construction (the number of bases to skip between\n\t\tbeginnings of every adjacent kmer) [" << DEFAULT_KMER_GRAPH_STEP << "]\n";
 //    ss << "\t-p\tOne kmer of a read can have multiple hits within the same region.\n\t\tThis parameter enables using multiple hits per region\n";
-    ss << "\t-w STR\tSpecifies which algorithm should be used for alignment. Options are:\n\t\tedlib, edlib2, ssw, hybrid, seqan, seqansg. [" << DEFAULT_REALIGNMENT_ALGORITHM << "]\n";
-    ss << "\t-M INT\tMatch score for the DP alignment. [" << DEFAULT_MATCH_SCORE << "]\n";
-    ss << "\t-X INT\tMismatch penalty for the DP alignment. [" << DEFAULT_MISMATCH_PENALTY << "]\n";
-    ss << "\t-G INT\tGap open penalty for the DP alignment. [" << DEFAULT_GAP_OPEN_PENALTY << "]\n";
-    ss << "\t-E INT\tGap extend penalty for the DP alignment. [" << DEFAULT_GAP_EXTEND_PENALTY << "]\n";
-    ss << "\n";
-    ss << "\t-S INT\tKmer step for region selection. [" << DEFAULT_KMER_STEP << "]\n";
-#endif
+  ss << "\t-a STR\tSpecifies which algorithm should be used for alignment. Options are: [" << DEFAULT_ALIGNMENT_ALGORITHM << "]\n";
+  ss << "\t             myers     - Myers' bit-vector approach. Edit distance alignment.\n";
+  ss << "\t             gotoh     - Gotoh alignment with affine gaps.\n";
+  ss << "\t-w STR\tSpecifies the alignment strategy. Options are: [" << DEFAULT_ALIGNMENT_APPROACH << "]\n";
+  ss << "\t             sg     - semiglobal alignment over best region. Can be used with both Myers and Gotoh.\n";
+  ss << "\t             anchor - anchored alignment with end-to-end extension. Uses Myers alignment only.\n";
+//  ss << "\t             overlap - anchored alignment with end-to-end extension\n";
+//  ss << "\t             splice - spliced alignment (each anchor chain output separately)";
+
+  ss << "\t-M INT\tMatch score for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MATCH_SCORE << "]\n";
+  ss << "\t-X INT\tMismatch penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MISMATCH_PENALTY << "]\n";
+  ss << "\t-G INT\tGap open penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_GAP_OPEN_PENALTY << "]\n";
+  ss << "\t-E INT\tGap extend penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_GAP_EXTEND_PENALTY << "]\n";
 
   ss << "\n";
 

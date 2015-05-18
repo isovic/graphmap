@@ -50,7 +50,8 @@
 #define DEFAULT_PROCESS_READS_FROM_FOLDER       false
 #define DEFAULT_BATCH_SIZE_IN_MB                (int64_t) 200
 
-#define DEFAULT_REALIGNMENT_ALGORITHM     std::string("edlib")
+#define DEFAULT_ALIGNMENT_ALGORITHM     std::string("myers")
+#define DEFAULT_ALIGNMENT_APPROACH        std::string("sg")
 #define DEFAULT_CALCULATE_ONLY_INDEX      false
 
 #define DEFAULT_MATCH_SCORE               (int64_t) 5 // 5 // 4 // 1
@@ -112,7 +113,8 @@ struct ProgramParameters {
 
   int64_t batch_size_in_mb = DEFAULT_BATCH_SIZE_IN_MB;             // 'B', specifies the size of a batch for sequence loading. If <= 0, all sequences will be loaded at once, otherwise the specified number of megabytes will be loaded consequentially.
 
-  std::string realignment_algorithm = DEFAULT_REALIGNMENT_ALGORITHM;  // 'w', specifies whether EDlib or SSW or hybrid should be used for realignment in the last step.
+  std::string alignment_algorithm = DEFAULT_ALIGNMENT_ALGORITHM;  // 'w', specifies whether EDlib or SSW or hybrid should be used for realignment in the last step.
+  std::string alignment_approach = DEFAULT_ALIGNMENT_APPROACH;
 
   bool calc_only_index = DEFAULT_CALCULATE_ONLY_INDEX;
 

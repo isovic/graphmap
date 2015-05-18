@@ -113,10 +113,10 @@ void GraphMap::Run(ProgramParameters& parameters) {
   else
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be circular.\n"), "Run");
 
-  if (parameters.realignment_algorithm == "edlib")
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in non-parsimonious mode.\n"), "Run");
-  else if (parameters.realignment_algorithm == "seqan")
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in slower, more accurate mode: %s.\n", parameters.composite_parameters.c_str()), "Run");
+//  if (parameters.alignment_algorithm == "edlib")
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in non-parsimonious mode.\n"), "Run");
+//  else if (parameters.alignment_algorithm == "seqan")
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in slower, more accurate mode: %s.\n", parameters.composite_parameters.c_str()), "Run");
 
   if (parameters.output_multiple_alignments == 0)
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Only one alignment will be reported per mapped read.\n"), "Run");
