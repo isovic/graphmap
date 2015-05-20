@@ -45,7 +45,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 //  int64_t min_cluster_length = read->get_sequence_length() * 0.02f;
 //  int64_t min_covered_bases = read->get_sequence_length() * 0.02f;
   int64_t min_cluster_length = 0;
-  int64_t min_covered_bases = read->get_sequence_length() * 0.02f;
+  int64_t min_covered_bases = std::max(30.0f, read->get_sequence_length() * 0.02f);
 
   int64_t last_nonskipped_i = lcskpp_indices.size() + 1;
   for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
