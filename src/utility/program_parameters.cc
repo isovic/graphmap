@@ -115,7 +115,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   bool output_specified_by_file = false;
   bool output_specified_by_folder = false;
 
-  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:w:uq:D:O:B:IG:E:M:X:CF:ZS:PA:")) != -1) {
+  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:")) != -1) {
     switch (c) {
 //      case 'j':
 //        sscanf (optarg, "%ld", &(parameters->k_region));
@@ -342,9 +342,9 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
       case 'a':
         parameters->alignment_algorithm = std::string(optarg);
         break;
-      case 'w':
-        parameters->alignment_approach = std::string(optarg);
-        break;
+//      case 'w':
+//        parameters->alignment_approach = std::string(optarg);
+//        break;
       case 'G':
         sscanf (optarg, "%ld", &(parameters->gap_open_penalty));
         break;
@@ -610,9 +610,10 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-a STR\tSpecifies which algorithm should be used for alignment. Options are: [" << DEFAULT_ALIGNMENT_ALGORITHM << "]\n";
   ss << "\t             myers     - Myers' bit-vector approach. Edit distance alignment.\n";
   ss << "\t             gotoh     - Gotoh alignment with affine gaps.\n";
-  ss << "\t-w STR\tSpecifies the alignment strategy. Options are: [" << DEFAULT_ALIGNMENT_APPROACH << "]\n";
-  ss << "\t             sg     - semiglobal alignment over best region. Can be used with both Myers and Gotoh.\n";
-  ss << "\t             anchor - anchored alignment with end-to-end extension. Uses Myers alignment only.\n";
+  ss << "\t             anchor    - anchored alignment with end-to-end extension. Uses Myers' NW alignment.\n";
+//  ss << "\t-w STR\tSpecifies the alignment strategy. Options are: [" << DEFAULT_ALIGNMENT_APPROACH << "]\n";
+//  ss << "\t             sg     - semiglobal alignment over best region. Can be used with both Myers and Gotoh.\n";
+//  ss << "\t             anchor - anchored alignment with end-to-end extension. Uses Myers alignment only.\n";
 //  ss << "\t             overlap - anchored alignment with end-to-end extension\n";
 //  ss << "\t             splice - spliced alignment (each anchor chain output separately)";
 
