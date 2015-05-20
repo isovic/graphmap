@@ -339,7 +339,6 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         sscanf (optarg, "%ld", &(parameters->max_num_regions_cutoff));
         break;
 
-#ifndef RELEASE_VERSION
       case 'a':
         parameters->alignment_algorithm = std::string(optarg);
         break;
@@ -359,6 +358,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         sscanf (optarg, "%ld", &(parameters->mismatch_penalty));
         break;
 
+#ifndef RELEASE_VERSION
       case 'S':
         sscanf (optarg, "%d", &(parameters->kmer_step));
         break;

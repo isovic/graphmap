@@ -740,7 +740,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     return -12;
   }
 
-//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "More generic implementation of the alignment step.\n", "LocalRealignmentLinear");
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Entering anchored alignment.\n", "AnchoredAlignment");
   int8_t *ref_data = (int8_t *) index->get_data();
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
 
@@ -757,6 +757,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       return -15;
     }
 
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Concatenating regions for circular alignment.\n", "AnchoredAlignment");
     ConcatenateSplitRegion(index, (Region &) best_path->get_region_data(), &ref_data, &region_length_joined, &start_offset, &position_of_ref_end);
     reference_start = 0;
     reference_length = region_length_joined;

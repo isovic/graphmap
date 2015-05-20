@@ -186,7 +186,11 @@ int ClipCircularAlignment(int64_t alignment_start, int64_t alignment_end, unsign
     // split_region_start_offset - the absolute offset of the starting position of the split region, used in the data_ variable of the reference index. In other words, it's the
     //                             position of the region start before the reference end, in absolute coordinates. So it has the information about the reference start already.
     *ret_left_alignment_pos_start = ((alignment_start + split_region_start_offset - reference_start) % (reference_length)) + reference_start;
-    *ret_left_alignment_pos_end = reference_start + reference_length - 1;
+    /// The last part compensates if there was actually an indel in between the last M operation and the required clip length.
+    *ret_left_alignment_pos_end = reference_start + reference_length - 1 - (position_of_ref_end - last_m_pos_on_ref);
+//    printf ("last_m_pos_on_ref = %ld\n", last_m_pos_on_ref);
+//    printf ("position_of_ref_end = %ld\n", position_of_ref_end);
+//    fflush(stdout);
 
 //    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Left part:\n"), "ClipCircularAlignment");
 //    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("ret_left_alignment_pos_start = %ld\n", (*ret_left_alignment_pos_start)), "ClipCircularAlignment");

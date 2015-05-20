@@ -30,7 +30,7 @@ int ConcatenateSplitRegion(const Index *index_reference, const Region &region, i
   if (region.start < region.split_start) {
     memmove(data_copy, &(index_reference->get_data()[region.split_start]), region_length_second);
     memmove((data_copy + region_length_second), &(index_reference->get_data()[region.start]), region_length_first);
-    position_of_ref_end = region.split_end - region.split_start;
+    position_of_ref_end = region.split_end - region.split_start + 1;
     start_offset = region.split_start;
 
     // If the main region is at the end of the reference. The region is then expanded towards left and right, but on the right it zips back
@@ -40,6 +40,34 @@ int ConcatenateSplitRegion(const Index *index_reference, const Region &region, i
     memmove((data_copy + region_length_first), &(index_reference->get_data()[region.split_start]), region_length_second);
     position_of_ref_end = region.end - region.start;
     start_offset = region.start;
+
+    printf ("Left part:\n");
+    for (int i=0; i<region_length_first; i++) {
+      printf ("%c", data_copy[i]);
+    }
+    printf ("\n");
+    printf ("Right part:\n");
+    for (int i=0; i<region_length_second; i++) {
+      printf ("%c", (data_copy + region_length_first)[i]);
+    }
+    printf ("\n");
+    printf ("All together:\n");
+    for (int i=0; i<(region_length_first+region_length_second); i++) {
+      printf ("%c", data_copy[i]);
+    }
+    printf ("\n");
+
+    printf ("Tu sam 1!\n");
+    for (int i=0; i<5; i++)
+      printf ("[%ld] %c\n", i, data_copy[position_of_ref_end + i]);
+    fflush(stdout);
+    printf ("\n");
+    for (int i=(position_of_ref_end-10); i<=(position_of_ref_end); i++)
+      printf ("[%ld] %c\t %d\n", ((start_offset + i)%index_reference->get_data_length_forward()), data_copy[i], index_reference->get_data_length_forward());
+    fflush(stdout);
+    printf ("\n");
+
+    printf ("\n----------------------\n\n");
   }
 
   data_copy[region_length_joined] = '\0';

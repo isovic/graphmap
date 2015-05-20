@@ -119,11 +119,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
-    #ifndef RELEASE_VERSION
-        int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
-    #else
-        int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
-    #endif
+//    #ifndef RELEASE_VERSION
+    int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+//    #else
+//        int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+//    #endif
     local_score.Clear();
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
