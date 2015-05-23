@@ -139,6 +139,9 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
   *ret_start_offset = gapsPattern._clippingBeginPos;
   *ret_end_offset = count;
 
+  alignment.insert(alignment.begin(), (*ret_start_offset), (char) EDLIB_D);
+  *ret_start_offset = 0;
+
 //  // Use a stringstream to construct the cigar string.
 //  std::string cigar = "";
 
@@ -199,6 +202,9 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
 //      alignment[i] = EDLIB_S;
 //    else break;
 //  }
+
+//  alignment.insert(alignment.end(), (*ret_end_offset), (char) EDLIB_D);
+//  *ret_end_offset = 0;
 
   ret_alignment = alignment;
 
@@ -275,9 +281,9 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
 
 
 
-  seqan::Infix<char *>::Type inf_target = seqan::infix((char *) reference_data, 0, reference_length-1);
+  seqan::Infix<char *>::Type inf_target = seqan::infix((char *) reference_data, 0, reference_length);
   seqan::Dna5String seq_target = inf_target;
-  seqan::Infix<char *>::Type inf_query = seqan::infix((char *) read_data, 0, read_length - 1);
+  seqan::Infix<char *>::Type inf_query = seqan::infix((char *) read_data, 0, read_length);
   seqan::Dna5String seq_query = inf_query;
 
   seqan::Align<seqan::Dna5String> align;
@@ -305,18 +311,21 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
 
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
-  if (true) {
-    std::string alignment_as_string = "";
-    alignment_as_string = PrintAlignmentToString((const unsigned char *) (read_data), read_length,
-                                               (const unsigned char *) (reference_data), (reference_length),
-                                               (unsigned char *) &(ret_alignment[0]), ret_alignment.size(),
-                                               (0), MYERS_MODE_NW);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true,
-                                             FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), start_offset), "SeqAnNWWrapper");
-  }
+//  if (true) {
+//    std::string alignment_as_string = "";
+//    alignment_as_string = PrintAlignmentToString((const unsigned char *) (read_data), read_length,
+//                                               (const unsigned char *) (reference_data), (reference_length),
+//                                               (unsigned char *) &(ret_alignment[0]), ret_alignment.size(),
+//                                               (0), MYERS_MODE_NW);
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true,
+//                                             FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), start_offset), "SeqAnNWWrapper");
+//  }
+
+//    printf ("start_offset = %d\n", start_offset);
+//    fflush(stdout);
 
   *ret_alignment_position_start = start_offset;
-  *ret_alignment_position_end = end_offset; // start_offset + (reconstructed_length - 1);
+  *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
   *ret_edit_distance = (int64_t) seqan_edit_distance;
 
   return 0;
@@ -366,7 +375,7 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
   *ret_alignment_position_start = start_offset;
-  *ret_alignment_position_end = end_offset; // start_offset + (reconstructed_length);
+  *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
   *ret_edit_distance = (int64_t) seqan_edit_distance;
 
   return 0;
@@ -592,11 +601,30 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
 
   int *positions = NULL;
   int num_positions = 0;
+  int found_k = 0;
 
+//  int myers_return_code1 = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+//                        (const unsigned char *) reference_data, reference_length,
+//                        alphabet_length, band_width, MYERS_MODE_SHW, &score, &positions, &num_positions,
+//                        false, &alignment, &alignment_length, &found_k);
+//  int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+//                        (const unsigned char *) reference_data, reference_length,
+//                        alphabet_length, found_k*2, MYERS_MODE_SHW, &score, &positions, &num_positions,
+//                        true, &alignment, &alignment_length);
   int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
                         (const unsigned char *) reference_data, reference_length,
                         alphabet_length, band_width, MYERS_MODE_SHW, &score, &positions, &num_positions,
-                        true, &alignment, &alignment_length);
+                        true, &alignment, &alignment_length, &found_k);
+
+//  printf ("read_length = %d\n", read_length);
+//  printf ("reference_length = %d\n", reference_length);
+//  printf ("band_width = %d\n", band_width);
+//  printf ("found_k = %d\n", found_k);
+//  printf ("score = %d\n", score);
+//  for (int i=0; i<num_positions; i++) {
+//    printf ("SHW position [%d] = %d\n", i, positions[i]);
+//  }
+//  fflush(stdout);
 
   if (myers_return_code == MYERS_STATUS_ERROR) {
     return -2;

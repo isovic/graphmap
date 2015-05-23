@@ -31,7 +31,7 @@
 typedef struct Cluster {
   Range query;
   Range ref;
-};
+} Cluster;
 
 typedef struct InfoMapping {
   int64_t lcs_length = 0;

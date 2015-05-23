@@ -17,7 +17,255 @@ struct ClusterAndIndices {
   std::vector<int> lcskpp_indices;
 };
 
+bool CheckDistanceTooBig(const Vertices& registry_entries, int64_t index_last, int64_t index_current, const ProgramParameters* parameters) {
+  int64_t distance_query = registry_entries.query_ends[index_current] - registry_entries.query_starts[index_last];
+  int64_t distance_ref = registry_entries.reference_ends[index_current] - registry_entries.reference_starts[index_last];
+  float max_length = ((float) std::max(distance_query, distance_ref));
+  float min_length = ((float) std::min(distance_query, distance_ref));
+  if ((min_length == 0 && max_length != 0) || (min_length > 0 && (max_length / min_length - 1.0f) > parameters->error_rate)) {
+    return true;
+  }
+
+  return false;
+}
+
 int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
+  int lcskpp_length = 0;
+  std::vector<int> lcskpp_indices;
+  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
+  if (lcskpp_length == 0) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
+    return 1;
+  }
+  int64_t min_cluster_length = 0;
+  int64_t min_covered_bases = std::max(30.0f, read->get_sequence_length() * 0.02f);
+
+  std::vector<ClusterAndIndices *> clusters;
+  ClusterAndIndices *new_cluster = NULL;
+  int64_t last_nonskipped_i = lcskpp_indices.size() + 1;
+//  for (int64_t i=0; i<lcskpp_indices.size(); i++) {
+  for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
+    /// Skip anchors which might be too erroneous.
+    int64_t current_lcskp_index = lcskpp_indices.at(i);
+
+    int64_t anchor_len_query = local_score->get_registry_entries().query_ends[current_lcskp_index] - local_score->get_registry_entries().query_starts[current_lcskp_index];
+    int64_t anchor_len_ref = local_score->get_registry_entries().reference_ends[current_lcskp_index] - local_score->get_registry_entries().reference_starts[current_lcskp_index];
+    float max_length = ((float) std::max(anchor_len_query, anchor_len_ref));
+    float min_length = ((float) std::min(anchor_len_query, anchor_len_ref));
+    if (min_length <= 0)
+      continue;
+    float anchor_error = max_length / min_length - 1.0f;
+    if (anchor_error > parameters->error_rate)
+      continue;
+
+    if (last_nonskipped_i > lcskpp_indices.size()) {
+
+//      cluster.push_back(lcskpp_indices.at(i));
+    } else {
+      /// This is going to work, because last_nonskipped_i will be set the second iteration of the loop. The value of i starts counting from int64_t i=(lcskpp_indices.size() - 1).
+      int64_t previous_lcskp_index = lcskpp_indices.at(last_nonskipped_i);
+
+      bool wrong_to_previous1 = CheckDistanceTooBig(local_score->get_registry_entries(), previous_lcskp_index, current_lcskp_index, parameters);
+      bool wrong_to_previous2 = (new_cluster->lcskpp_indices.size() < 2) ? false :
+                                (CheckDistanceTooBig(local_score->get_registry_entries(), new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-2], current_lcskp_index, parameters));
+      if (wrong_to_previous1 == true && wrong_to_previous2 == true) {
+        /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit neither to the previous point, nor to the point before that.
+        if (new_cluster != NULL) {
+          clusters.push_back(new_cluster);
+          new_cluster = NULL;
+        }
+      } else if (wrong_to_previous1 == true && wrong_to_previous2 == false) {
+        /// In this case, the previous point was an outlier, because the new point fits better to the one before the previous one. Overwrite the previous entry in new_cluster.
+        new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index];
+        new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index];
+        new_cluster->coverage -= local_score->get_registry_entries().covered_bases_queries[previous_lcskp_index];
+        new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
+        new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-1] = current_lcskp_index;
+
+        if (new_cluster->lcskpp_indices.size() == 1) {
+          new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
+          new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
+        }
+        last_nonskipped_i = i;
+      }
+    }
+    if (new_cluster == NULL) {
+      new_cluster = new ClusterAndIndices;
+      new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
+      new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
+    }
+    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index];
+    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index];
+    new_cluster->num_anchors += 1;
+    new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
+    new_cluster->lcskpp_indices.push_back(current_lcskp_index);
+
+    last_nonskipped_i = i;
+  }
+  if (new_cluster != NULL) {
+    clusters.push_back(new_cluster);
+    new_cluster = NULL;
+  }
+
+  for (int64_t i=0; i<clusters.size(); i++) {
+    if (clusters[i]->lcskpp_indices.size() > 2) {
+      if (local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.front()] < 2*min_covered_bases)
+        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.begin()+1);
+      int64_t num_elements = clusters[i]->lcskpp_indices.size();
+      if (local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()] < 2*min_covered_bases)
+        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin()+(num_elements-1), clusters[i]->lcskpp_indices.begin()+num_elements);
+    }
+    clusters[i]->query.start = local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()];
+    clusters[i]->query.end = local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()] + parameters->k_graph;
+    clusters[i]->ref.start = local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()];
+    clusters[i]->ref.end = local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()] + parameters->k_graph;
+  }
+
+  std::vector<int> cluster_indices;
+  int64_t current_cluster = clusters.size() - 1;
+  for (int64_t i=0; i<clusters.size(); i++) {
+    int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start;
+    int64_t covered_bases = clusters[i]->coverage;
+    if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
+      cluster_indices.insert(cluster_indices.end(), clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.end());
+    }
+  }
+
+  // Find the L1 parameters (median line and the confidence intervals).
+  float l_diff = read->get_sequence_length() * parameters->error_rate;
+  float maximum_allowed_deviation = l_diff * sqrt(2.0f) / 2.0f;
+  float sigma_L2 = 0.0f, confidence_L1 = 0.0f;
+  int64_t k = 0, l = 0;
+  // Actuall L1 calculation.
+  int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, cluster_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
+  // Sanity check.
+  if (ret_L1) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
+    return 1;
+  }
+  float allowed_L1_deviation = 3.0f * confidence_L1;
+
+  // Count the number of covered bases, and find the first and last element of the LCSk.
+  int64_t indexfirst = -1;
+  int64_t indexlast = -1;
+
+  int64_t covered_bases = 0;
+  int64_t covered_bases_query = 0, covered_bases_reference = 0;
+  int64_t num_covering_kmers = 0;
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
+  for (uint64_t i = 0; i < cluster_indices.size(); i++) {
+    covered_bases_query += local_score->get_registry_entries().covered_bases_queries[cluster_indices[i]];
+    covered_bases_reference += local_score->get_registry_entries().covered_bases_references[cluster_indices[i]];
+    num_covering_kmers += local_score->get_registry_entries().num_kmers[cluster_indices[i]];
+  }
+  covered_bases = std::max(covered_bases_query, covered_bases_reference);
+
+  if (cluster_indices.size() > 0) {
+    indexfirst = cluster_indices.back();
+    indexlast = cluster_indices.front();
+  }
+
+  // There are no valid graph paths! All scores were dismissed because of high deviation.
+  // This is most likely a false positive.
+  if (indexfirst == -1 || indexlast == -1) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
+    return 1;
+  }
+
+  InfoMapping mapping_info;
+  mapping_info.lcs_length = lcskpp_length;
+  mapping_info.cov_bases_query = covered_bases_query;
+  mapping_info.cov_bases_ref = covered_bases_reference;
+  mapping_info.cov_bases_max = covered_bases;
+  mapping_info.query_coords.start = local_score->get_registry_entries().query_starts[indexlast];
+  mapping_info.query_coords.end = local_score->get_registry_entries().query_ends[indexfirst];
+  mapping_info.ref_coords.start = local_score->get_registry_entries().reference_starts[indexlast];
+  mapping_info.ref_coords.end = local_score->get_registry_entries().reference_ends[indexfirst];
+  mapping_info.num_covering_kmers = num_covering_kmers;
+  mapping_info.deviation = confidence_L1;
+  mapping_info.is_reverse = (local_score->get_region().reference_id >= index->get_num_sequences_forward());
+  mapping_info.local_score_id = local_score->get_scores_id();
+
+#ifndef RELEASE_VERSION
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+#endif
+
+  for (int64_t i=0; i<clusters.size(); i++) {
+    if (clusters[i]) {
+      int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start;
+      int64_t covered_bases = clusters[i]->coverage;
+      if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
+        Cluster mapping_cluster;
+        mapping_cluster.query = clusters[i]->query;
+        mapping_cluster.ref = clusters[i]->ref;
+        mapping_info.clusters.push_back(mapping_cluster);
+#ifndef RELEASE_VERSION
+      int64_t reference_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
+      int64_t region_start = local_score->get_region().start;
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
+                                                                                                                                    mapping_cluster.query.start, mapping_cluster.ref.start - reference_start, mapping_cluster.query.end, mapping_cluster.ref.end - reference_start), "");
+#endif
+      }
+      delete clusters[i];
+    }
+  }
+
+
+
+  InfoL1 l1_info;
+  l1_info.l1_l = l;
+  l1_info.l1_k = 1.0f;
+  l1_info.l1_lmin = l - l_diff;
+  l1_info.l1_lmax = l + l_diff;
+  l1_info.l1_confidence_abs = confidence_L1;
+  l1_info.l1_std = sigma_L2;
+  l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
+  l1_info.l1_rough_end = l1_info.l1_k * read->get_sequence_length() + l1_info.l1_lmax;
+  if (l1_info.l1_rough_start < index->get_reference_starting_pos()[local_score->get_region().reference_id])
+    l1_info.l1_rough_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
+  if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
+    l1_info.l1_rough_end = (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
+
+  CheckMinimumMappingConditions_(&mapping_info, &l1_info, index, read, parameters);
+
+  PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
+
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+  mapping_data->intermediate_mappings.push_back(new_entry);
+
+
+
+#ifndef RELEASE_VERSION
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/scores-%ld.csv", local_score->get_scores_id()), read, local_score, NULL, 0, 0, false);
+
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
+
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false);
+
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, l, 3.0f * confidence_L1, true);
+
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("LCSk clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+    for (int64_t i=0; i<clusters.size(); i++) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] num_anchors: %ld, length: %ld, coverage: %ld, query.start = %ld, query.end = %ld\n", i, clusters[i]->num_anchors, (clusters[i]->query.end - clusters[i]->query.start), clusters[i]->coverage, clusters[i]->query.start, clusters[i]->query.end), "[]");
+    }
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+  }
+
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
+#endif
+
+  return 0;
+}
+
+
+
+int GraphMap::ExperimentalPostProcessRegionWithLCS1_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "PostProcessRegionWithLCS_");
 
   int lcskpp_length = 0;
@@ -50,8 +298,10 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   int64_t last_nonskipped_i = lcskpp_indices.size() + 1;
   for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
     /// Skip anchors which might be too erroneous.
-    int64_t anchor_len_query = local_score->get_registry_entries().query_ends[lcskpp_indices.at(i)] - local_score->get_registry_entries().query_starts[lcskpp_indices.at(i)];
-    int64_t anchor_len_ref = local_score->get_registry_entries().reference_ends[lcskpp_indices.at(i)] - local_score->get_registry_entries().reference_starts[lcskpp_indices.at(i)];
+    int64_t current_lcskp_index = lcskpp_indices.at(i);
+
+    int64_t anchor_len_query = local_score->get_registry_entries().query_ends[current_lcskp_index] - local_score->get_registry_entries().query_starts[current_lcskp_index];
+    int64_t anchor_len_ref = local_score->get_registry_entries().reference_ends[current_lcskp_index] - local_score->get_registry_entries().reference_starts[current_lcskp_index];
     float max_length = ((float) std::max(anchor_len_query, anchor_len_ref));
     float min_length = ((float) std::min(anchor_len_query, anchor_len_ref));
     if (min_length <= 0)
@@ -64,30 +314,57 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 
 //      cluster.push_back(lcskpp_indices.at(i));
     } else {
-      int64_t distance_query = local_score->get_registry_entries().query_ends[lcskpp_indices.at(i)] - local_score->get_registry_entries().query_starts[lcskpp_indices.at(last_nonskipped_i)];
-      int64_t distance_ref = local_score->get_registry_entries().reference_ends[lcskpp_indices.at(i)] - local_score->get_registry_entries().reference_starts[lcskpp_indices.at(last_nonskipped_i)];
-      float max_length = ((float) std::max(distance_query, distance_ref));
-      float min_length = ((float) std::min(distance_query, distance_ref));
-      if ((min_length == 0 && max_length != 0) || (min_length > 0 && (max_length / min_length - 1.0f) > parameters->error_rate)) {
+      /// This is going to work, because last_nonskipped_i will be set the second iteration of the loop. The value of i starts counting from int64_t i=(lcskpp_indices.size() - 1).
+      int64_t previous_lcskp_index = lcskpp_indices.at(last_nonskipped_i);
+
+      bool wrong_to_previous1 = CheckDistanceTooBig(local_score->get_registry_entries(), previous_lcskp_index, current_lcskp_index, parameters);
+      bool wrong_to_previous2 = (new_cluster->lcskpp_indices.size() < 2) ? false :
+                                (CheckDistanceTooBig(local_score->get_registry_entries(), new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-2], current_lcskp_index, parameters));
+      if (wrong_to_previous1 == true && wrong_to_previous2 == true) {
+        /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit neither to the previous point, nor to the point before that.
         if (new_cluster != NULL) {
           clusters.push_back(new_cluster);
           new_cluster = NULL;
         }
+      } else if (wrong_to_previous1 == true && wrong_to_previous2 == false) {
+        /// In this case, the previous point was an outlier, because the new point fits better to the one before the previous one. Overwrite the previous entry in new_cluster.
+        new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index];
+        new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index];
+        new_cluster->coverage -= local_score->get_registry_entries().covered_bases_queries[previous_lcskp_index];
+        new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
+        new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-1] = current_lcskp_index;
+
+        if (new_cluster->lcskpp_indices.size() == 1) {
+          new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
+          new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
+        }
+        last_nonskipped_i = i;
+      }
+
+//      int64_t distance_query = local_score->get_registry_entries().query_ends[current_lcskp_index] - local_score->get_registry_entries().query_starts[previous_lcskp_index];
+//      int64_t distance_ref = local_score->get_registry_entries().reference_ends[current_lcskp_index] - local_score->get_registry_entries().reference_starts[previous_lcskp_index];
+//      float max_length = ((float) std::max(distance_query, distance_ref));
+//      float min_length = ((float) std::min(distance_query, distance_ref));
+//      if ((min_length == 0 && max_length != 0) || (min_length > 0 && (max_length / min_length - 1.0f) > parameters->error_rate)) {
+//        if (new_cluster != NULL) {
+//          clusters.push_back(new_cluster);
+//          new_cluster = NULL;
+//        }
 //        printf ("Tu sam 1! distance_query = %ld, distance_ref = %ld\n", distance_query, distance_ref);
 //        fflush(stdout);
-      }
+//      }
     }
 //      cluster.push_back(lcskpp_indices[i]);
     if (new_cluster == NULL) {
       new_cluster = new ClusterAndIndices;
-      new_cluster->query.start = local_score->get_registry_entries().query_starts[lcskpp_indices.at(i)];
-      new_cluster->ref.start = local_score->get_registry_entries().reference_starts[lcskpp_indices.at(i)];
+      new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
+      new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
     }
-    new_cluster->query.end = local_score->get_registry_entries().query_ends[lcskpp_indices.at(i)];
-    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[lcskpp_indices.at(i)];
+    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index];
+    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index];
     new_cluster->num_anchors += 1;
-    new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices.at(i)];
-    new_cluster->lcskpp_indices.push_back(lcskpp_indices.at(i));
+    new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
+    new_cluster->lcskpp_indices.push_back(current_lcskp_index);
 
     last_nonskipped_i = i;
 
@@ -135,6 +412,13 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     }
   }
 
+#ifndef RELEASE_VERSION
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
+  }
+#endif
+
   lcskpp_indices.clear();
   lcskpp_indices = lcskpp_indices_clusters;
 
@@ -175,7 +459,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("l_median = %ld\n", l), "PostProcessRegionWithLCS_-DoubleLCSk");
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("allowed_L1_deviation = %f\n", allowed_L1_deviation), "PostProcessRegionWithLCS_-DoubleLCSk");
-      VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
+//      VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
 //      VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, l, allowed_L1_deviation, true);
       VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices_clusters, 0, 0, false);
     }
@@ -823,6 +1107,19 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
             free(reversed_alignment);
         }
 
+        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+          std::string alignment_as_string = "";
+
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                    FormatString("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1)), "[]");
+          alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
+                                                       (const unsigned char *) (reversed_ref_front), clip_count_front*2,
+                                                       (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
+                                                       (0), MYERS_MODE_SHW);
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                    FormatString("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str()), "[]");
+        }
+
         if (reversed_query_front)
           free(reversed_query_front);
         if (reversed_ref_front)
@@ -856,6 +1153,19 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     if (ret_code1 != 0 || anchor_alignment.size() == 0) {
       return ret_code1*2000;
     }
+
+    if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          "Aligning in between anchors.\n", "LocalRealignmentLinear");
+      std::string alignment_as_string = "";
+      alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data() + query_start), query_end - query_start,
+                                                   (const unsigned char *) (ref_data + ref_start), (ref_end - ref_start),
+                                                   (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
+                                                   (0), MYERS_MODE_NW);
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                FormatString("Aligning anchor %d:\n%s\n", i, alignment_as_string.c_str()), "[]");
+    }
+
     edit_distance += anchor_edit_distance;
     /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
     /// Switching from deletions to insertions is basically a mismatch streak.
@@ -891,6 +1201,8 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     } else {
       alignment.insert(alignment.end(), anchor_alignment.begin(), anchor_alignment.end());
     }
+
+
 
     /// Align in between the anchors.
     if ((i + 1) < best_path->get_mapping_data().clusters.size()) {
@@ -936,6 +1248,16 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           return ret_code2*3000;
         }
         edit_distance += between_anchor_edit_distance;
+
+        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+          std::string alignment_as_string = "";
+          alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (query_end), inbetween_query_length,
+                                                       (const unsigned char *) (ref_data + ref_end), inbetween_ref_length,
+                                                       (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
+                                                       (0), MYERS_MODE_NW);
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                    FormatString("Aligning in between anchors %d and %d:\n%s\n", i, (i+1), alignment_as_string.c_str()), "[]");
+        }
 
         /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
         /// Switching from deletions to insertions is basically a mismatch streak.
@@ -1014,6 +1336,16 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
           alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
         } else {
+
+          if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+            std::string alignment_as_string = "";
+            alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
+                                                         (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
+                                                         (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
+                                                         (0), MYERS_MODE_SHW);
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                      FormatString("Aligning the end of the read:\n%s\n", alignment_as_string.c_str()), "[]");
+          }
 
           /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
           /// Switching from deletions to insertions is basically a mismatch streak.

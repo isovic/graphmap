@@ -120,7 +120,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     }
 
 //    #ifndef RELEASE_VERSION
-    int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    if (parameters->alignment_algorithm == "anchor") {
+      int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    } else {
+      int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    }
 //    #else
 //        int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
 //    #endif
