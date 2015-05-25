@@ -34,6 +34,7 @@
 
 
 
+
 //void VerboseAlignment(SingleSequence *read, ProgramParameters &parameters, VertexData &vertex, std::string &cigar, int current_score,
 //                      const unsigned char* query, const int query_length,
 //                      const unsigned char* target, const int target_length,

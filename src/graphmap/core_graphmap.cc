@@ -115,7 +115,7 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
     int64_t max_j = std::min(num_links, hit) + position;
     int64_t steps_away_query = 0;
     int64_t best_vertex_length = -1;
-    for (int64_t j = (position); j < max_j; j++) {
+    for (int64_t j = (position); j <= max_j; j++) {
       int64_t timestamp_diff = mapping_data->iteration - mapping_data->vertices.timestamps[j];
       // The timestamp_diff < mapping_data->iteration prevents negative mapping_data->vertices.num_kmers[j] values.
       if (timestamp_diff < mapping_data->iteration && timestamp_diff <= num_links && timestamp_diff > 0) {

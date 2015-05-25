@@ -287,7 +287,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   }
 
   if (num_points_under_max_dev_threshold == 0)
-    return 1;
+    return 2;
 
   // Calculate the standard deviation and the confidence interval for only those
   // points that are within the maximum allowed limits.

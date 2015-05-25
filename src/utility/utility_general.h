@@ -64,6 +64,15 @@ enum ProcessedReadState {
 #define SAM_PCR_OR_OPTICAL_DUP            1 << 10
 #define SAM_SUPPLEMENTARY_ALIGN           1 << 11
 
+#define ALIGNMENT_GOOD                0
+#define ALIGNMENT_NOT_SANE            -123
+#define ALIGNMENT_WRONG_CLUSTER_SIZE  -12
+#define ALIGNMENT_NOT_CIRCULAR        -15
+#define ALIGNMENT_WRONG_DATA          -1
+#define ALIGNMENT_CONVERSION_PROBLEM  -2
+#define ALIGNMENT_LOCALIZATION_PROBLEM  -3
+#define ALIGNMENT_MYERS_INTERNAL_ERROR  -4
+
 
 
 std::string GetUTCTime(std::string fmt="%a, %d %b %y %T %z");

@@ -39,7 +39,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                                 false, &current_alignment, &current_alignment_length);
   if (current_num_positions == 0 || myers_return_code != MYERS_STATUS_OK) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Something went wrong when calculating the ending position using Myers HW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
-    return 2;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   alignment_end = current_positions[0];
   if (ret_end_ambiguity != NULL)
@@ -71,7 +71,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                                 false, &current_alignment, &current_alignment_length, &current_band_width);
   if (current_num_positions == 0 || myers_return_code != MYERS_STATUS_OK) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Something went wrong when calculating the starting position using Myers SHW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
-    return 3;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   alignment_start = alignment_end - current_positions[0];
 
@@ -104,7 +104,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
   *ret_edit_distance = current_score;
   *ret_band_width = current_band_width;
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment) {
@@ -215,7 +215,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
 //
 //  ret_cigar = cigar;
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
@@ -227,7 +227,7 @@ int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
 
 
 
@@ -255,9 +255,9 @@ int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
   if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
-    return -1;
+    return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
-    return -1;
+    return ALIGNMENT_NOT_SANE;
 
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
@@ -265,7 +265,7 @@ int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
   *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
   *ret_edit_distance = (int64_t) seqan_edit_distance;
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
@@ -277,7 +277,7 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
 
 
 
@@ -305,9 +305,9 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
   if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
-    return -1;
+    return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
-    return -1;
+    return ALIGNMENT_NOT_SANE;
 
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
@@ -328,7 +328,7 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
   *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
   *ret_edit_distance = (int64_t) seqan_edit_distance;
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
@@ -340,7 +340,7 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
 
 
 
@@ -368,9 +368,9 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
   if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
-    return -1;
+    return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
-    return -1;
+    return ALIGNMENT_NOT_SANE;
 
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
@@ -378,7 +378,7 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
   *ret_alignment_position_end = start_offset + (reconstructed_length - 1);
   *ret_edit_distance = (int64_t) seqan_edit_distance;
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t read_length,
@@ -390,16 +390,16 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0) {
-    if (read_data == NULL)
-      return -10;
-    if (reference_data == NULL)
-      return -11;
-    if (read_length <= 0)
-      return -12;
-    if (reference_length <= 0)
-      return -13;
+//    if (read_data == NULL)
+//      return -10;
+//    if (reference_data == NULL)
+//      return -11;
+//    if (read_length <= 0)
+//      return -12;
+//    if (reference_length <= 0)
+//      return -13;
 
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
   }
 
   // Find the start and end positions of the optimal alignment with Myers bit-vector algorithm. The Myers' algorithm uses all parameters equal to 1.
@@ -411,7 +411,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
                                                &ambiguity_start, &ambiguity_end,
                                                &localized_edit_distance, &localized_band_width, false);
   if (ret_code != 0)
-    return -2;
+    return ALIGNMENT_LOCALIZATION_PROBLEM;
 
   band_width = localized_band_width;
 
@@ -451,9 +451,9 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
   if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
-    return -3;
+    return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
-    return -4;
+    return ALIGNMENT_NOT_SANE;
 
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
@@ -468,7 +468,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
   *ret_alignment_position_end = start_offset + localized_start + (reconstructed_length - 1);
   *ret_edit_distance = (int64_t) localized_edit_distance;
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
@@ -480,7 +480,7 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
 
   int alphabet_length = 128;
   int score = 0;
@@ -496,7 +496,7 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
                         true, &alignment, &alignment_length);
 
   if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
-    return -2;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
 
   int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
@@ -524,7 +524,7 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
   if (alignment)
       free(alignment);
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
@@ -536,7 +536,7 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
 
   int alphabet_length = 128;
   int score = 0;
@@ -552,7 +552,7 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
                         true, &alignment, &alignment_length);
 
   if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
-    return -2;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
 
   int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
@@ -580,7 +580,7 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
   if (alignment)
       free(alignment);
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
@@ -592,7 +592,7 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-    return -1;
+    return ALIGNMENT_WRONG_DATA;
 
   int alphabet_length = 128;
   int score = 0;
@@ -627,13 +627,13 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
 //  fflush(stdout);
 
   if (myers_return_code == MYERS_STATUS_ERROR) {
-    return -2;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   if (num_positions == 0) {
-    return -3;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   if (alignment_length == 0) {
-    return -4;
+    return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
 
   int64_t reconstructed_length = CalculateReconstructedLength(alignment, alignment_length);
@@ -661,7 +661,7 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
   if (alignment)
       free(alignment);
 
-  return 0;
+  return ALIGNMENT_GOOD;
 }
 
 int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
@@ -670,7 +670,7 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
                              int64_t *ret_edit_distance, int myers_mode_code) {
 
     if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
-      return -1;
+      return ALIGNMENT_WRONG_DATA;
 
     int alphabet_length = 128;
     int score = 0;
@@ -686,7 +686,7 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
                           false, &alignment, &alignment_length);
 
     if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0) {
-      return -2;
+      return ALIGNMENT_MYERS_INTERNAL_ERROR;
     }
 
     if (ret_alignment_position_end != NULL)
@@ -700,7 +700,7 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
     if (alignment)
         free(alignment);
 
-    return 0;
+    return ALIGNMENT_GOOD;
 }
 
 // Checks if there is a strange (large) number of insertions and deletions, or consecutive insertion/deletion operations.

@@ -424,7 +424,9 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
 
-      continue;
+      // Keep the output if alignment is insane for debug purposes.
+      if (edit_distance != ALIGNMENT_NOT_SANE)
+        continue;
     }
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
