@@ -49,10 +49,12 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   }
 #endif
 
-  int64_t min_cluster_length = std::max(50.0f, read->get_sequence_length() * 0.02f);
-  int64_t min_covered_bases = 30;
-//  int64_t min_cluster_length = 0;
+//  int64_t min_cluster_length = std::max(30.0f, read->get_sequence_length() * 0.02f);
+//  int64_t min_covered_bases = 20;
+  int64_t min_cluster_length = 0;
 //  int64_t min_covered_bases = std::max(20.0f, read->get_sequence_length() * 0.01f);
+//  int64_t min_cluster_length = std::max(50.0f, read->get_sequence_length() * 0.02f);
+  int64_t min_covered_bases = std::max(30.0f, read->get_sequence_length() * 0.02f);
 
   std::vector<ClusterAndIndices *> clusters;
   ClusterAndIndices *new_cluster = NULL;
@@ -93,8 +95,8 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
         }
       } else if (wrong_to_previous1 == true && wrong_to_previous2 == false) {
         /// In this case, the previous point was an outlier, because the new point fits better to the one before the previous one. Overwrite the previous entry in new_cluster.
-        new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph;
-        new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph;
+        new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph - 1;
+        new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph - 1;
         new_cluster->coverage -= local_score->get_registry_entries().covered_bases_queries[previous_lcskp_index];
         new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
         new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-1] = current_lcskp_index;
@@ -113,8 +115,8 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
       new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
       new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
     }
-    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph;
-    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph;
+    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph - 1;
+    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph - 1;
     new_cluster->num_anchors += 1;
     new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
     new_cluster->lcskpp_indices.push_back(current_lcskp_index);
@@ -126,56 +128,63 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     new_cluster = NULL;
   }
 
-  for (int64_t i=0; i<clusters.size(); i++) {
-
-//    for (int i1=0; i1<clusters[i]->lcskpp_indices.size(); i1++) {
-//      printf ("[indices i = %ld, i1 = %ld] %ld\n", i, i1, clusters[i]->lcskpp_indices[i1]);
+//  for (int64_t i=0; i<clusters.size(); i++) {
+//
+////    for (int i1=0; i1<clusters[i]->lcskpp_indices.size(); i1++) {
+////      printf ("[indices i = %ld, i1 = %ld] %ld\n", i, i1, clusters[i]->lcskpp_indices[i1]);
+////    }
+////    printf ("\n");
+//
+//    if (clusters[i]->lcskpp_indices.size() > 2) {
+////      printf ("i = %ld\n", i);
+////      printf ("num_elements = %ld\n", clusters[i]->lcskpp_indices.size());
+//      if (local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.front()] < 2*min_covered_bases) {
+////        printf ("Tu sam 1!\n");
+////        printf ("[front before] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()],
+////                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.front()],
+////                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()],
+////                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.front()]);
+//        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.begin()+1);
+////        printf ("[front after] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()],
+////                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.front()],
+////                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()],
+////                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.front()]);
+//      }
+//      int64_t num_elements = clusters[i]->lcskpp_indices.size();
+////      printf ("num_elements = %ld\n", clusters[i]->lcskpp_indices.size());
+////      printf ("cov_bases[back] = %ld\n", local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()]);
+//      if (local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()] < 2*min_covered_bases) {
+////        printf ("Tu sam 2!\n");
+////        printf ("[back before] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.back()],
+////                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()],
+////                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.back()],
+////                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()]);
+////        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin()+(num_elements-1), clusters[i]->lcskpp_indices.begin()+num_elements);
+////        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.end()-1, clusters[i]->lcskpp_indices.end());
+//        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin()+(num_elements-1));
+////        .erase((num_elements-1));
+//
+////        printf ("[back after] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.back()],
+////                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()],
+////                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.back()],
+////                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()]);
+//      }
+////      printf ("num_elements = %ld\n", clusters[i]->lcskpp_indices.size());
+////      printf ("cov_bases[back] = %ld\n", local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()]);
+////      printf ("---\n");
 //    }
-//    printf ("\n");
+//    clusters[i]->query.start = local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()];
+//    clusters[i]->query.end = local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()] + parameters->k_graph;
+//    clusters[i]->ref.start = local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()];
+//    clusters[i]->ref.end = local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()] + parameters->k_graph;
+//  }
 
-    if (clusters[i]->lcskpp_indices.size() > 2) {
-//      printf ("i = %ld\n", i);
-//      printf ("num_elements = %ld\n", clusters[i]->lcskpp_indices.size());
-      if (local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.front()] < 2*min_covered_bases) {
-//        printf ("Tu sam 1!\n");
-//        printf ("[front before] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()],
-//                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.front()],
-//                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()],
-//                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.front()]);
-        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.begin()+1);
-//        printf ("[front after] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()],
-//                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.front()],
-//                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()],
-//                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.front()]);
-      }
-      int64_t num_elements = clusters[i]->lcskpp_indices.size();
-//      printf ("num_elements = %ld\n", clusters[i]->lcskpp_indices.size());
-//      printf ("cov_bases[back] = %ld\n", local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()]);
-      if (local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()] < 2*min_covered_bases) {
-//        printf ("Tu sam 2!\n");
-//        printf ("[back before] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.back()],
-//                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()],
-//                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.back()],
-//                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()]);
-//        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin()+(num_elements-1), clusters[i]->lcskpp_indices.begin()+num_elements);
-//        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.end()-1, clusters[i]->lcskpp_indices.end());
-        clusters[i]->lcskpp_indices.erase(clusters[i]->lcskpp_indices.begin()+(num_elements-1));
-//        .erase((num_elements-1));
 
-//        printf ("[back after] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.back()],
-//                                                                                        local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()],
-//                                                                                        local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.back()],
-//                                                                                        local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()]);
-      }
-//      printf ("num_elements = %ld\n", clusters[i]->lcskpp_indices.size());
-//      printf ("cov_bases[back] = %ld\n", local_score->get_registry_entries().covered_bases_queries[clusters[i]->lcskpp_indices.back()]);
-//      printf ("---\n");
-    }
-    clusters[i]->query.start = local_score->get_registry_entries().query_starts[clusters[i]->lcskpp_indices.front()];
-    clusters[i]->query.end = local_score->get_registry_entries().query_ends[clusters[i]->lcskpp_indices.back()] + parameters->k_graph;
-    clusters[i]->ref.start = local_score->get_registry_entries().reference_starts[clusters[i]->lcskpp_indices.front()];
-    clusters[i]->ref.end = local_score->get_registry_entries().reference_ends[clusters[i]->lcskpp_indices.back()] + parameters->k_graph;
-  }
+
+
+
+
+
 
   std::vector<int> cluster_indices;
   int64_t current_cluster = clusters.size() - 1;
@@ -290,13 +299,19 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
     l1_info.l1_rough_end = (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
 
-  CheckMinimumMappingConditions_(&mapping_info, &l1_info, index, read, parameters);
+//  CheckMinimumMappingConditions_(&mapping_info, &l1_info, index, read, parameters);
+
+  mapping_info.is_mapped = true;
 
   PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
 
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   mapping_data->intermediate_mappings.push_back(new_entry);
 
+
+//  printf ("mapping_data->is_mapped = %d\n", (int)  mapping_info.is_mapped);
+//  fflush(stdout);
+//  exit(1);
 
 
 #ifndef RELEASE_VERSION
@@ -1210,12 +1225,21 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     }
   }
 
-
+  if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+    for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          FormatString("[anchor %d] [%ld, %ld]-[%ld, %ld]\n", i, best_path->get_mapping_data().clusters[i].query.start, best_path->get_mapping_data().clusters[i].ref.start,
+                                                       best_path->get_mapping_data().clusters[i].query.end, best_path->get_mapping_data().clusters[i].ref.end), "[]");
+    }
+  }
 
   for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
     if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           "Aligning an anchor.\n", "LocalRealignmentLinear");
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          FormatString("[anchor %d] [%ld, %ld]-[%ld, %ld]\n", i, best_path->get_mapping_data().clusters[i].query.start, best_path->get_mapping_data().clusters[i].ref.start,
+                                                       best_path->get_mapping_data().clusters[i].query.end, best_path->get_mapping_data().clusters[i].ref.end), "[]");
     }
 
     /// Align the anchor.
@@ -1234,20 +1258,20 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                      &anchor_alignment_position_start, &anchor_alignment_position_end,
                                      &anchor_edit_distance, anchor_alignment);
     if (ret_code1 != 0 || anchor_alignment.size() == 0) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          FormatString("Alignment returned with error! ret_code1 = %d\n", ret_code1), "LocalRealignmentLinear");
 //      return ret_code1*2000;
       return ret_code1;
     }
 
     if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                          "Aligning in between anchors.\n", "LocalRealignmentLinear");
       std::string alignment_as_string = "";
       alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data() + query_start), query_end - query_start,
                                                    (const unsigned char *) (ref_data + ref_start), (ref_end - ref_start),
                                                    (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
                                                    (0), MYERS_MODE_NW);
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                                FormatString("Aligning anchor %d:\n%s\n", i, alignment_as_string.c_str()), "[]");
+                                                FormatString("Aligned anchor %d:\n%s\n", i, alignment_as_string.c_str()), "[]");
     }
 
     edit_distance += anchor_edit_distance;
@@ -1301,13 +1325,34 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
       /// Check if there is actually any distance between the queries, or between the references.
       /// If there is no difference, that means there is a clean insertion/deletion.
-      if (inbetween_query_length == 0 && inbetween_ref_length != 0) {
+      if (inbetween_query_length <= 0 && inbetween_ref_length != 0) {
+        /// Ovo je bilo koristeno do sada:
         std::vector<unsigned char> deletions_inbetween(inbetween_ref_length, EDLIB_D);
         alignment.insert(alignment.end(), deletions_inbetween.begin(), deletions_inbetween.end());
 
-      } else if (inbetween_ref_length == 0 && inbetween_query_length != 0) {
+//        std::vector<unsigned char> deletions_inbetween(inbetween_ref_length + inbetween_query_length, EDLIB_D);
+//        alignment.insert(alignment.end(), deletions_inbetween.begin(), deletions_inbetween.end());
+//        alignment.insert(alignment.end(), EDLIB_M, -inbetween_query_length);
+
+
+//        best_path->get_mapping_data().clusters[i+1].query.start -= inbetween_query_length;
+//        best_path->get_mapping_data().clusters[i+1].ref.start -= inbetween_query_length;
+//        next_query_start = best_path->get_mapping_data().clusters[i+1].query.start;
+//        next_ref_start = best_path->get_mapping_data().clusters[i+1].ref.start;
+
+      } else if (inbetween_ref_length <= 0 && inbetween_query_length != 0) {
+        /// Ovo je bilo koristeno do sada:
         std::vector<unsigned char> insertions_inbetween(inbetween_query_length, EDLIB_I);
         alignment.insert(alignment.end(), insertions_inbetween.begin(), insertions_inbetween.end());
+
+//        best_path->get_mapping_data().clusters[i+1].query.start -= inbetween_query_length;
+//        best_path->get_mapping_data().clusters[i+1].ref.start -= inbetween_query_length;
+//        next_query_start = best_path->get_mapping_data().clusters[i+1].query.start;
+//        next_ref_start = best_path->get_mapping_data().clusters[i+1].ref.start;
+
+//        std::vector<unsigned char> insertions_inbetween(inbetween_query_length + inbetween_ref_length, EDLIB_I);
+//        alignment.insert(alignment.end(), insertions_inbetween.begin(), insertions_inbetween.end());
+//        alignment.insert(alignment.end(), EDLIB_I, -inbetween_ref_length);
 
       } else if (inbetween_query_length != 0 && inbetween_ref_length != 0) {
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
@@ -1332,6 +1377,14 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 //          fflush(stdout);
 
 //          return ret_code2*3000;
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                              FormatString("Alignment returned with error! ret_code2 = %d\n", ret_code2), "LocalRealignmentLinear");
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                              FormatString("inbetween_query_length = %ld\ninbetween_ref_length = %ld\nnext_ref_start = %ld\nref_end = %ld\n",
+                                                           inbetween_query_length, inbetween_ref_length, next_ref_start, ref_end), "[]");
+//          PrintSubstring((char *) (ref_data + ref_end - 1), 10, stdout);
+//          printf ("\n");
+//          fflush(stdout);
           return ret_code2;
         }
         edit_distance += between_anchor_edit_distance;
@@ -1579,11 +1632,16 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
 #ifndef RELEASE_VERSION
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
-    printf ("Alignment array:\n");
+//    printf ("Alignment array:\n");
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                             FormatString("Alignment array:\n"), "[]");
     for (int i1=0; i1<alignment.size(); i1++) {
-      printf ("%d", alignment[i1]);
+//      printf ("%d", alignment[i1]);
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                               FormatString("%d", alignment[i1]), "[]");
     }
-    printf ("\n");
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                             FormatString("\n"), "[]");
 
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
@@ -1593,8 +1651,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
 #endif
 
-    if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position))
+    if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          FormatString("Alignment is insane!\n"), "LocalRealignmentLinear");
       return ALIGNMENT_NOT_SANE;
+    }
 
 
 
@@ -1675,8 +1736,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     if (ref_data)
       delete[] ref_data;
 
-    if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position))
+    if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          FormatString("Alignment is insane!\n"), "LocalRealignmentLinear");
       return ALIGNMENT_NOT_SANE;
+    }
   }
 
   alignment.clear();

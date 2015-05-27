@@ -456,8 +456,10 @@ int GraphMap::CheckMinimumMappingConditions_(InfoMapping *mapping_data, InfoL1 *
 //  if (mapping_data->cov_bases_query < 0.005f* read->get_sequence_length())
 //    mapping_data->is_mapped = false;
 
-  if (PathGraphEntry::CalcFPFilterStatic(*mapping_data, index, read, parameters) < 0.02f)
+  if (PathGraphEntry::CalcFPFilterStatic(*mapping_data, index, read, parameters) < 0.02f) {
     mapping_data->is_mapped = false;
+    return 1;
+  }
 
   return 0;
 }

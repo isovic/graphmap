@@ -373,8 +373,10 @@ int GraphMap::EvaluateMappings_(bool evaluate_edit_distance, MappingData *mappin
 }
 
 int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
-  if (mapping_data->intermediate_mappings.size() == 0)
+  if (mapping_data->intermediate_mappings.size() == 0) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
+  }
 
   EvaluateMappings_(false, mapping_data, read, parameters);
   CollectFinalMappingsAndMapQ_(true, mapping_data, read, parameters);
@@ -384,6 +386,8 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
       mapping_data->unmapped_reason += FormatString("__Unaligned_because_get_mapping_data().is_mapped==false");
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
+
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
       continue;
     }
 
@@ -425,8 +429,12 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
 
       // Keep the output if alignment is insane for debug purposes.
-      if (edit_distance != ALIGNMENT_NOT_SANE)
+      if (edit_distance != ALIGNMENT_NOT_SANE) {
+        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but edit_distance < 0!\n"), "GenerateAlignments_");
         continue;
+      } else {
+        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
+      }
     }
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
