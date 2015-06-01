@@ -115,7 +115,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   bool output_specified_by_file = false;
   bool output_specified_by_folder = false;
 
-  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:")) != -1) {
+  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:")) != -1) {
     switch (c) {
 //      case 'j':
 //        sscanf (optarg, "%ld", &(parameters->k_region));
@@ -358,6 +358,13 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         sscanf (optarg, "%ld", &(parameters->mismatch_penalty));
         break;
 
+      case 'z':
+        sscanf (optarg, "%f", &(parameters->evalue_threshold));
+        break;
+      case 'c':
+        sscanf (optarg, "%ld", &(parameters->mapq_threshold));
+        break;
+
 #ifndef RELEASE_VERSION
       case 'S':
         sscanf (optarg, "%d", &(parameters->kmer_step));
@@ -526,6 +533,9 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
 
   printf ("%sparsimonious_mode = %s\n", line_prefix.c_str(), (parameters->parsimonious_mode == true)?"true":"false");
 
+  printf ("%sevalue_threshold = %f\n", line_prefix.c_str(), parameters->evalue_threshold);
+  printf ("%smapq_threshold = %ld\n", line_prefix.c_str(), parameters->mapq_threshold);
+
   printf ("____________________________________\n");
   #endif
 
@@ -621,6 +631,10 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-X INT\tMismatch penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MISMATCH_PENALTY << "]\n";
   ss << "\t-G INT\tGap open penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_GAP_OPEN_PENALTY << "]\n";
   ss << "\t-E INT\tGap extend penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_GAP_EXTEND_PENALTY << "]\n";
+
+  ss << "\n";
+  ss << "\t-z FLT\tThreshold for E-value. If E-value > FLT, read will be called unmapped. If FLT < 0.0, thredhold not applied. [" << DEFAULT_MAX_EVALUE_THRESHOLD << "]\n";
+  ss << "\t-c INT\tThreshold for mapping quality. If mapq < INT, read will be called unmapped. [" << DEFAULT_MIN_MAPQ_VALUE << "]\n";
 
   ss << "\n";
 

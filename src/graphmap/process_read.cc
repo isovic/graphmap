@@ -120,11 +120,18 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     }
 
 //    #ifndef RELEASE_VERSION
-    if (parameters->alignment_algorithm == "anchor") {
-      int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
-    } else {
+    if (parameters->alignment_algorithm == "myers" || parameters->alignment_algorithm == "gotoh") {
       int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+    } else {
+      int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
     }
+
+//    if (parameters->alignment_algorithm == "anchor") {
+//      int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+//    } else {
+//      int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+//    }
+
 //    #else
 //        int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
 //    #endif
@@ -462,6 +469,15 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_d_ops = num_d_ops;
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().nonclipped_length = nonclipped_length_left_part;
 
+    if (parameters->evalue_threshold >= 0.0f && mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().evalue > parameters->evalue_threshold) {
+      mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
+      mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason += FormatString("_evalue=%f>%f", mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().evalue, parameters->evalue_threshold);
+    }
+    if (parameters->mapq_threshold >= 0 && mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().mapping_quality < parameters->mapq_threshold) {
+      mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
+      mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason += FormatString("_mapq=%ld<%ld", mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().mapping_quality, parameters->mapq_threshold);
+    }
+
     if (cigar_right_part.size() > 0) {
       InfoAlignment secondary_alignment;
       secondary_alignment = mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary();
@@ -472,9 +488,25 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       secondary_alignment.alignment_score = AS_right_part;
       secondary_alignment.evalue = evalue_right_part;
       secondary_alignment.nonclipped_length = nonclipped_length_right_part;
-      mapping_data->final_mapping_ptrs.at(i)->AddSecondaryAlignmentData(secondary_alignment);
+
+      if (mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned == false)
+        secondary_alignment.is_aligned = false;
+
+      if (parameters->evalue_threshold >= 0.0f && secondary_alignment.evalue > parameters->evalue_threshold) {
+        secondary_alignment.is_aligned = false;
+//        secondary_alignment.get_alignment_primary().unmapped_reason += FormatString("_evalue=%f>%f", secondary_alignment.evalue, parameters->evalue_threshold);
+      }
+      if (parameters->mapq_threshold >= 0 && secondary_alignment.mapping_quality < parameters->mapq_threshold) {
+        secondary_alignment.is_aligned = false;
+//        mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason += FormatString("_mapq=%ld<%ld", secondary_alignment.mapping_quality, parameters->mapq_threshold);
+      }
+
+      if (secondary_alignment.is_aligned == true)
+        mapping_data->final_mapping_ptrs.at(i)->AddSecondaryAlignmentData(secondary_alignment);
     }
   }
+
+
 
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");

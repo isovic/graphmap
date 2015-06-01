@@ -74,6 +74,9 @@
 
 #define DEFAULT_PARSIMONIOUS_MODE         false
 
+#define DEFAULT_MAX_EVALUE_THRESHOLD      -1.0f
+#define DEFAULT_MIN_MAPQ_VALUE            0
+
 
 
 struct ProgramParameters {
@@ -137,6 +140,9 @@ struct ProgramParameters {
 
   bool parsimonious_mode = DEFAULT_PARSIMONIOUS_MODE; // If true, only one index will be used, but the memory consumption will be reduced by half. If false, the fast and memory-hungry mode will be used.
   int64_t min_num_anchor_bases = DEFAULT_MIN_NUM_ANCHOR_BASES;
+
+  float evalue_threshold = DEFAULT_MAX_EVALUE_THRESHOLD;
+  int64_t mapq_threshold = DEFAULT_MIN_MAPQ_VALUE;
 };
 
 int ProcessArgs(int argc, char **argv, ProgramParameters *parameters);
