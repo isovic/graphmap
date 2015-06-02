@@ -11,7 +11,7 @@
 //#define RELEASE_VERSION
 
 #define SOFTWARE_NAME "GraphMap"
-#define GRAPHMAP_CURRENT_VERSION "v0.22b"
+#define GRAPHMAP_CURRENT_VERSION "v0.21b"
 #define GRAPHMAP_CURRENT_VERSION_RELEASE_DATE __TIMESTAMP__ // "12 October 2014"
 #define COPYRIGHT "Copyright Ivan Sovic, Mile Sikic and Niranjan Nagarajan, 2015.\n" \
                   "\n" \
