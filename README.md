@@ -1,6 +1,6 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
 
-**__Version: 0.21b__**
+**__Version: 0.21__**
 **Update**
 Release date: 02 June 2015  
 
