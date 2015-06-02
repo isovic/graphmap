@@ -7,3 +7,6 @@ obj_mac/
 obj_test/
 bin/graphmap-not_release
 bin/graphmap-debug
+.project
+.cproject
+.settings/
