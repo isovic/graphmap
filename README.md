@@ -5,11 +5,12 @@
 Release date: 02 June 2015  
 
 New alignment mode available: anchored alignment.  
-Anchored alignmend is an alternative to the default semiglobal alignment. It is less sensitive than default semiglobal, but faster and creates alignments around determined homologies (anchors).  
+
+Anchored alignment is an alternative to the default semiglobal alignment. It is less sensitive than default semiglobal, but faster and creates alignments around determined homologies (anchors).  
 This is a very powerful addition to alignment, as it creates highly accurate and confident alignments even in the presence of high error rates.  
 To run the anchored alignment, use the '-a anchor' option.  
 
-Also, standard Gotoh alignment is also available now as opposed to the default Myers's bit-vector alignment. Custom alignment parameters can be specified via commandline.
+Also, standard Gotoh alignment is also available now as opposed to the default Myers's bit-vector alignment. Custom alignment parameters can be specified via commandline.  
 To use the Gotoh alignment, use '-a gotoh' commandline option.  
 
 Additionally, E-value and mapping quality thresholds can now be applied directly from commandline (-z and -c options).  
