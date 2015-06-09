@@ -359,7 +359,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         break;
 
       case 'z':
-        sscanf (optarg, "%f", &(parameters->evalue_threshold));
+        sscanf (optarg, "%lf", &(parameters->evalue_threshold));
         break;
       case 'c':
         sscanf (optarg, "%ld", &(parameters->mapq_threshold));

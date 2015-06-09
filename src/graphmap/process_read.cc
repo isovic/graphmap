@@ -469,7 +469,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_d_ops = num_d_ops;
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().nonclipped_length = nonclipped_length_left_part;
 
-    if (parameters->evalue_threshold >= 0.0f && mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().evalue > parameters->evalue_threshold) {
+    if (parameters->evalue_threshold >= ((double) 0.0) && mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().evalue > parameters->evalue_threshold) {
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason += FormatString("_evalue=%f>%f", mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().evalue, parameters->evalue_threshold);
     }
@@ -492,7 +492,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       if (mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned == false)
         secondary_alignment.is_aligned = false;
 
-      if (parameters->evalue_threshold >= 0.0f && secondary_alignment.evalue > parameters->evalue_threshold) {
+      if (parameters->evalue_threshold >= ((double) 0.0) && secondary_alignment.evalue > parameters->evalue_threshold) {
         secondary_alignment.is_aligned = false;
 //        secondary_alignment.get_alignment_primary().unmapped_reason += FormatString("_evalue=%f>%f", secondary_alignment.evalue, parameters->evalue_threshold);
       }
