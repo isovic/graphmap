@@ -115,7 +115,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   bool output_specified_by_file = false;
   bool output_specified_by_folder = false;
 
-  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:")) != -1) {
+  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:w:")) != -1) {
     switch (c) {
 //      case 'j':
 //        sscanf (optarg, "%ld", &(parameters->k_region));
@@ -342,9 +342,15 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
       case 'a':
         parameters->alignment_algorithm = std::string(optarg);
         break;
-//      case 'w':
-//        parameters->alignment_approach = std::string(optarg);
-//        break;
+      case 'w':
+#ifndef RELEASE_VERSION
+        parameters->alignment_approach = std::string(optarg);
+        break;
+#else
+        parameters->alignment_approach = DEFAULT_ALIGNMENT_APPROACH;
+        break;
+#endif
+
       case 'G':
         sscanf (optarg, "%ld", &(parameters->gap_open_penalty));
         break;

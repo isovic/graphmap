@@ -105,6 +105,12 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
           continue;
         }
 
+        if (parameters->alignment_approach == "overlapper") {
+          if (index->get_headers()[reference_index % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
+            continue;
+          }
+        }
+
         // Convert the absolute coordinates to local coordinates on the hit reference.
         int64_t y_local = y - reference_starting_pos;
         int64_t l_local = l - reference_starting_pos;
@@ -190,6 +196,12 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
         if (reference_index < 0) {
           LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, y, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
           continue;
+        }
+
+        if (parameters->alignment_approach == "overlapper") {
+          if (index->get_headers()[reference_index % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
+            continue;
+          }
         }
 
         // Convert the absolute coordinates to local coordinates on the hit reference.

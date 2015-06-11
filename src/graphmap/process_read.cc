@@ -77,6 +77,12 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
   // Process regions one by one.
   for (int64_t i = 0; i < mapping_data->bins.size() && i < parameters->max_num_regions; i++) {
+//    if (parameters->alignment_algorithm == "overlapper") {
+//      if (index->get_headers()[mapping_data->bins[i].reference_id % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
+//        continue;
+//      }
+//    }
+
 //  for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
     // If the ret_check value is zero, then just continue as normal.
     int ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, threshold_step, &bin_value_threshold, mapping_data, read, parameters);
@@ -364,7 +370,7 @@ int GraphMap::EvaluateMappings_(bool evaluate_edit_distance, MappingData *mappin
       float alignment_score_float = (1.0f - sigmoid(NM_ratio, parameters->error_rate, 0.05));  // , (readlength * parameters.error_rate), 0.03f)) * 100.0f;
       float covered_bases_ratio = (((float) best_entry->get_mapping_data().cov_bases_max) / ((float) read->get_sequence_length()));
       float factor_covered_bases = (sigmoid(covered_bases_ratio, 0.05, 0.05));
-      float factor_query_length = (((float) (best_entry->get_mapping_data().query_coords.end - best_entry->get_mapping_data().query_coords.start + parameters->k_graph)) / (((float) read->get_sequence_length()) * (1.0f - parameters->error_rate)));
+      float factor_query_length = (((float) (best_entry->get_mapping_data().query_coords.end - best_entry->get_mapping_data().query_coords.start)) / (((float) read->get_sequence_length()) * (1.0f - parameters->error_rate)));
       if (factor_query_length > 1.0f)
         factor_query_length = 1.0f;
       alignment_score_float = alignment_score_float * factor_covered_bases * factor_query_length * 100;
@@ -424,7 +430,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
 
     float covered_bases_ratio = (((float) mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_max) / ((float) read->get_sequence_length()));
     float factor_covered_bases = (sigmoid(covered_bases_ratio, 0.05, 0.05));
-    float factor_query_length = (((float) (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.end - mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.start + parameters->k_graph)) / (((float) read->get_sequence_length()) * (1.0f - parameters->error_rate)));
+    float factor_query_length = (((float) (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.end - mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.start)) / (((float) read->get_sequence_length()) * (1.0f - parameters->error_rate)));
     if (factor_query_length > 1.0f)
       factor_query_length = 1.0f;
     float factor_readlength = std::min(((float) read->get_sequence_length()) / 2000.0f, 1.0f);
@@ -540,7 +546,6 @@ int GraphMap::CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_d
   // Also, there will always be at leas one final_mapping_ptrs_ entry, because we have handled the size() == 0 case
   // a little bit up.
   if (num_unmapped_alignments == mapping_data->final_mapping_ptrs.size() || mapping_data->unmapped_reason.size() > 0) {
-//    final_mapping_ptrs_.at(0)->sam.X3 += "__Unmapped_3.2__no_valid_graph_paths.";
     std::stringstream temp_ss;
     temp_ss << "__num_region_iterations=" << mapping_data->num_region_iterations;
 
@@ -548,32 +553,63 @@ int GraphMap::CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_d
       mapping_data->unmapped_reason += std::string("__Unmapped_3.1__no_valid_graph_paths.") + temp_ss.str();
     else
       mapping_data->unmapped_reason += std::string("__Unmapped_3.2__no_valid_graph_paths.") + temp_ss.str();
-
-//    ret_sam_lines = ss.str();
-//    return STATE_UNMAPPED;
   }
 
   if (mapping_data->unmapped_reason.size() > 0) {
     ret_sam_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
     return STATE_UNMAPPED;
-
-//    SamEntry sam_unmapped;
-//    sam_unmapped.qname = std::string(read->get_header());
-//    sam_unmapped.flag = SAM_THIS_SEG_UNMAPPED;
-//    sam_unmapped.pos = 0;
-//    sam_unmapped.mapq = 0;
-//    sam_unmapped.cigar = "*";
-//    sam_unmapped.seq = std::string((char *) read->get_data());
-//    if (read->get_quality_length() > 0)
-//      sam_unmapped.qual = std::string((char *) read->get_quality());
-//    sam_unmapped.AS = 0;
-//    sam_unmapped.X2 = FormatString("%ld", read->get_sequence_length());
-//    sam_unmapped.X3 = mapping_data->unmapped_reason;
-//    ret_sam_lines = sam_unmapped.ConvertToString(parameters->verbose_sam_output);
-//    return STATE_UNMAPPED;
   }
 
   ret_sam_lines = ss.str();
+
+  return STATE_MAPPED;
+}
+
+int GraphMap::CollectAMOSLines(std::string &ret_amos_lines, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
+  std::stringstream ss;
+
+  int64_t num_mapped_alignments = 0;
+  int64_t num_unmapped_alignments = 0;
+  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
+    if (mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned == false) {
+      num_unmapped_alignments += 1;
+      continue;
+    }
+    if (ss.str().size() > 0)
+      ss << "\n";
+    ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAMOS();
+    num_mapped_alignments += 1;
+  }
+
+//  int64_t num_mapped_alignments = 0;
+//  int64_t num_unmapped_alignments = 0;
+//  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
+//    if (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false) {
+//      num_unmapped_alignments += 1;
+//      continue;
+//    }
+//    if (ss.str().size() > 0)
+//      ss << "\n";
+//    ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAMOS();
+//    num_mapped_alignments += 1;
+//  }
+
+  // If all reported alignments have been declared unmapped for some reason, output one of them to be consistent
+  // and provide an alignment line for each read.
+  // Also, there will always be at leas one final_mapping_ptrs_ entry, because we have handled the size() == 0 case
+  // a little bit up.
+  if (num_unmapped_alignments == mapping_data->final_mapping_ptrs.size() || mapping_data->unmapped_reason.size() > 0) {
+    std::stringstream temp_ss;
+    temp_ss << "__num_region_iterations=" << mapping_data->num_region_iterations;
+    mapping_data->unmapped_reason += FormatString("__num_unmapped_alignments=%ld", num_unmapped_alignments) + temp_ss.str();
+  }
+
+  if (mapping_data->unmapped_reason.size() > 0) {
+//    ret_sam_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
+    return STATE_UNMAPPED;
+  }
+
+  ret_amos_lines = ss.str();
 
   return STATE_MAPPED;
 }

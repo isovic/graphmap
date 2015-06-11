@@ -188,6 +188,8 @@ class PathGraphEntry {
   float fpfilter_read_len_;
 
   std::string GenerateSAMFromInfoAlignment_(const InfoAlignment &alignment_info, bool is_primary, int64_t verbose_sam_output) const;
+  std::string GenerateAMOSFromInfoAlignment_(const InfoAlignment &alignment_info) const;
+  std::string GenerateAMOSFromInfoMappping(const InfoMapping &mapping_info) const;
 
 
 

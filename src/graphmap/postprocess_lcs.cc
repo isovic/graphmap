@@ -67,6 +67,7 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
       uint32_t query_start = vertices->query_starts[i] - min_query;
       uint32_t query_end = vertices->query_ends[i] - min_query;
       uint32_t dist_ref = ref_end - ref_start;
+      uint32_t dist_query = query_end - query_start;
 
       unsigned __int128 event1 = (((unsigned __int128) ref_start) << (8 * 8)) | (((unsigned __int128) query_start) << (4 * 8)) | (((unsigned __int128) (i + num_vertices)));
       events[num_events] = event1;
@@ -77,7 +78,7 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
       num_events += 1;
 
       matches_starts[num_matches] = (uint64_t) (event1 >> (4 * 8));
-      matches_dists_ref[num_matches] = dist_ref;
+      matches_dists_ref[num_matches] = std::max(dist_ref, dist_query);
       matches_indices[num_matches] = i;
 
       num_matches += 1;
@@ -128,6 +129,7 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
         uint32_t query_start = vertices->query_starts[i] - min_query;
         uint32_t query_end = vertices->query_ends[i] - min_query;
         uint32_t dist_ref = ref_end - ref_start;
+        uint32_t dist_query = query_end - query_start;
 
         unsigned __int128 event1 = (((unsigned __int128) ref_start) << (8 * 8)) | (((unsigned __int128) query_start) << (4 * 8)) | (((unsigned __int128) (num_matches + num_filtered_vertices)));
         events[num_events] = event1;
@@ -138,7 +140,7 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
         num_events += 1;
 
         matches_starts[num_matches] = (uint64_t) (event1 >> (4 * 8));
-        matches_dists_ref[num_matches] = dist_ref;
+        matches_dists_ref[num_matches] = std::max(dist_ref, dist_query);
         matches_indices[num_matches] = i;
 
         num_matches += 1;

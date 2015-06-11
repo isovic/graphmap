@@ -50,7 +50,7 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingDa
     data_end = region_length_joined - parameters->k_graph + 1;
   }
 
-  for (uint64_t i = data_start; i < data_end; i++) {  // i+=parameters->kmer_step) {
+  for (uint64_t i = data_start; i <= data_end; i++) {  // i+=parameters->kmer_step) {
     ProcessKmerCacheFriendly_((int8_t *) &(data_ptr[i]), i, local_score, mapping_data, index_read, index, index_secondary, read, parameters);
     mapping_data->iteration += 1;
   }
@@ -117,10 +117,10 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
     int64_t max_j = std::min(num_links, hit) + position;
     int64_t steps_away_query = 0;
     int64_t best_vertex_length = -1;
-    for (int64_t j = (position); j <= max_j; j++) {
+    for (int64_t j = (position + 1); j <= max_j; j++) {
       int64_t timestamp_diff = mapping_data->iteration - mapping_data->vertices.timestamps[j];
       // The timestamp_diff < mapping_data->iteration prevents negative mapping_data->vertices.num_kmers[j] values.
-      if (timestamp_diff < mapping_data->iteration && timestamp_diff <= num_links && timestamp_diff > 0) {
+      if (timestamp_diff <= mapping_data->iteration && timestamp_diff <= num_links && timestamp_diff > 0) {
         int64_t vertex_length = mapping_data->vertices.num_kmers[j];
         if (vertex_length > 0 && (vertex_length > best_vertex_length)) {
           best_vertex_idx = j;
@@ -133,9 +133,9 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
     if (best_vertex_idx == -1) {
       mapping_data->vertices.timestamps[position] = mapping_data->iteration;
       mapping_data->vertices.reference_starts[position] = kmer_start_position;
-      mapping_data->vertices.reference_ends[position] = kmer_start_position;
+      mapping_data->vertices.reference_ends[position] = kmer_start_position + k;
       mapping_data->vertices.query_starts[position] = hit;
-      mapping_data->vertices.query_ends[position] = hit;
+      mapping_data->vertices.query_ends[position] = hit + k;
       mapping_data->vertices.num_kmers[position] = 1;
       mapping_data->vertices.covered_bases_queries[position] = k;
       mapping_data->vertices.covered_bases_references[position] = k;
@@ -150,10 +150,10 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
       mapping_data->vertices.num_kmers[position] = mapping_data->vertices.num_kmers[best_vertex_idx];
 
       mapping_data->vertices.timestamps[position] = mapping_data->iteration;
-      mapping_data->vertices.reference_ends[position] = kmer_start_position;
-      mapping_data->vertices.query_ends[position] = hit;
+      mapping_data->vertices.reference_ends[position] = kmer_start_position + k;
+      mapping_data->vertices.query_ends[position] = hit + k;
       mapping_data->vertices.num_kmers[position] += 1;
-      int64_t steps_away_reference = kmer_start_position - mapping_data->vertices.reference_ends[best_vertex_idx];
+      int64_t steps_away_reference = kmer_start_position - (mapping_data->vertices.reference_ends[best_vertex_idx] - k);
       mapping_data->vertices.covered_bases_queries[position] += ((steps_away_query < k) ? steps_away_query : k);  // Check if hit overlaps the existing path, or is a little offset.
       mapping_data->vertices.covered_bases_references[position] += ((steps_away_reference < k) ? steps_away_reference : k);  // Check if hit overlaps the existing path, or is a little offset.
 

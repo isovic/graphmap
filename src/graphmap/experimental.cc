@@ -95,8 +95,8 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
         }
       } else if (wrong_to_previous1 == true && wrong_to_previous2 == false) {
         /// In this case, the previous point was an outlier, because the new point fits better to the one before the previous one. Overwrite the previous entry in new_cluster.
-        new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph - 1;
-        new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph - 1;
+        new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] - 1;
+        new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] - 1;
         new_cluster->coverage -= local_score->get_registry_entries().covered_bases_queries[previous_lcskp_index];
         new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
         new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-1] = current_lcskp_index;
@@ -115,8 +115,8 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
       new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
       new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
     }
-    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph - 1;
-    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph - 1;
+    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] - 1;
+    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] - 1;
     new_cluster->num_anchors += 1;
     new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
     new_cluster->lcskpp_indices.push_back(current_lcskp_index);
@@ -187,9 +187,8 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 
 
   std::vector<int> cluster_indices;
-  int64_t current_cluster = clusters.size() - 1;
   for (int64_t i=0; i<clusters.size(); i++) {
-    int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start;
+    int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start + 1;
     int64_t covered_bases = clusters[i]->coverage;
     if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
       cluster_indices.insert(cluster_indices.end(), clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.end());
@@ -265,7 +264,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 
   for (int64_t i=0; i<clusters.size(); i++) {
     if (clusters[i]) {
-      int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start;
+      int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start + 1;
       int64_t covered_bases = clusters[i]->coverage;
       if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
         Cluster mapping_cluster;
@@ -1148,15 +1147,18 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
   int64_t clip_count_front = best_path->get_mapping_data().clusters.front().query.start;
 //  int64_t clip_count_back = read->get_sequence_length() - (best_path->get_mapping_data().clusters.back().query.end + parameters.k_graph);
-  int64_t clip_count_back = read->get_sequence_length() - (best_path->get_mapping_data().clusters.back().query.end);
+//  int64_t clip_count_back = read->get_sequence_length() - (best_path->get_mapping_data().clusters.back().query.end);
+  int64_t clip_count_back = read->get_sequence_length() - (best_path->get_mapping_data().clusters.back().query.end) - 1;  /////I
 
   int64_t alignment_position_start = best_path->get_mapping_data().clusters.front().ref.start; // - clip_count_front;
 //  int64_t alignment_position_end = best_path->get_mapping_data().clusters.back().ref.end + parameters.k_graph - 1; // + clip_count_back;
-  int64_t alignment_position_end = best_path->get_mapping_data().clusters.back().ref.end - 1; // + clip_count_back;
+//  int64_t alignment_position_end = best_path->get_mapping_data().clusters.back().ref.end - 1; // + clip_count_back;
+  int64_t alignment_position_end = best_path->get_mapping_data().clusters.back().ref.end; // + clip_count_back;  /////I
 
   int64_t query_start = best_path->get_mapping_data().clusters.front().query.start; // - clip_count_front;
 //  int64_t query_end = best_path->get_mapping_data().clusters.back().query.end + parameters.k_graph - 1; // + clip_count_back;
-  int64_t query_end = best_path->get_mapping_data().clusters.back().query.end - 1; // + clip_count_back;
+//  int64_t query_end = best_path->get_mapping_data().clusters.back().query.end - 1; // + clip_count_back;
+  int64_t query_end = best_path->get_mapping_data().clusters.back().query.end; // + clip_count_back;  /////I
 
 //  int64_t leftover_left_len = query_start;
 //  int64_t leftover_right_len = read->get_sequence_length() - (query_end + 1);
@@ -1249,11 +1251,13 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     int64_t ref_start = best_path->get_mapping_data().clusters[i].ref.start;
 //    int64_t ref_end = best_path->get_mapping_data().clusters[i].ref.end + parameters.k_graph;
     int64_t ref_end = best_path->get_mapping_data().clusters[i].ref.end;
+    int64_t query_alignment_length = query_end - query_start + 1;
+    int64_t ref_alignment_length = ref_end - ref_start + 1;
 
     int64_t anchor_alignment_position_start = 0, anchor_alignment_position_end = 0, anchor_edit_distance = 0;
     std::vector<unsigned char> anchor_alignment;
-    int ret_code1 = AlignmentFunctionNW(read->get_data() + query_start, (query_end - query_start),
-                                     (int8_t *) (ref_data + ref_start), (ref_end - ref_start),
+    int ret_code1 = AlignmentFunctionNW(read->get_data() + query_start, (query_alignment_length),
+                                        (int8_t *) (ref_data + ref_start), (ref_alignment_length),
                                      -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                      &anchor_alignment_position_start, &anchor_alignment_position_end,
                                      &anchor_edit_distance, anchor_alignment);
@@ -1266,8 +1270,8 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
     if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
       std::string alignment_as_string = "";
-      alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data() + query_start), query_end - query_start,
-                                                   (const unsigned char *) (ref_data + ref_start), (ref_end - ref_start),
+      alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data() + query_start), query_alignment_length,
+                                                   (const unsigned char *) (ref_data + ref_start), (ref_alignment_length),
                                                    (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
                                                    (0), MYERS_MODE_NW);
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
@@ -1320,12 +1324,12 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       int64_t next_ref_start = best_path->get_mapping_data().clusters[i+1].ref.start;
 //      int64_t next_ref_end = best_path->get_mapping_data().clusters[i+1].ref.end + parameters.k_graph;
       int64_t next_ref_end = best_path->get_mapping_data().clusters[i+1].ref.end;
-      int64_t inbetween_query_length = (next_query_start - (query_end));
-      int64_t inbetween_ref_length = (next_ref_start - (ref_end));
+      int64_t inbetween_query_length = (next_query_start - (query_end)) - 1;  /////I
+      int64_t inbetween_ref_length = (next_ref_start - (ref_end)) - 1;  /////I
 
       /// Check if there is actually any distance between the queries, or between the references.
       /// If there is no difference, that means there is a clean insertion/deletion.
-      if (inbetween_query_length <= 0 && inbetween_ref_length != 0) {
+      if (inbetween_query_length <= 0 && inbetween_ref_length > 0) {
         /// Ovo je bilo koristeno do sada:
         std::vector<unsigned char> deletions_inbetween(inbetween_ref_length, EDLIB_D);
         alignment.insert(alignment.end(), deletions_inbetween.begin(), deletions_inbetween.end());
@@ -1340,7 +1344,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 //        next_query_start = best_path->get_mapping_data().clusters[i+1].query.start;
 //        next_ref_start = best_path->get_mapping_data().clusters[i+1].ref.start;
 
-      } else if (inbetween_ref_length <= 0 && inbetween_query_length != 0) {
+      } else if (inbetween_ref_length <= 0 && inbetween_query_length > 0) {
         /// Ovo je bilo koristeno do sada:
         std::vector<unsigned char> insertions_inbetween(inbetween_query_length, EDLIB_I);
         alignment.insert(alignment.end(), insertions_inbetween.begin(), insertions_inbetween.end());
@@ -1353,8 +1357,14 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 //        std::vector<unsigned char> insertions_inbetween(inbetween_query_length + inbetween_ref_length, EDLIB_I);
 //        alignment.insert(alignment.end(), insertions_inbetween.begin(), insertions_inbetween.end());
 //        alignment.insert(alignment.end(), EDLIB_I, -inbetween_ref_length);
+      } else if (inbetween_query_length < 0 && inbetween_ref_length < 0) {
+        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                    "Problem aligning in between anchors!\n", "LocalRealignmentLinear");
+        }
+        return ALIGNMENT_DISTANCE_BETWEEN_ANCHORS_PROBLEM;
 
-      } else if (inbetween_query_length != 0 && inbetween_ref_length != 0) {
+      } else if (inbetween_query_length > 0 && inbetween_ref_length > 0) {
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
           LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               "Aligning in between anchors.\n", "LocalRealignmentLinear");
@@ -1362,8 +1372,8 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
         int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
         std::vector<unsigned char> between_anchor_alignment;
-        int ret_code2 = AlignmentFunctionNW(read->get_data() + (query_end), inbetween_query_length,
-                                         (int8_t *) (ref_data + ref_end), inbetween_ref_length,
+        int ret_code2 = AlignmentFunctionNW(read->get_data() + (query_end) + 1, inbetween_query_length,
+                                            (int8_t *) (ref_data + ref_end) + 1, inbetween_ref_length,
                                          -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                          &between_alignment_position_start, &between_alignment_position_end,
                                          &between_anchor_edit_distance, between_anchor_alignment);
@@ -1391,8 +1401,8 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
           std::string alignment_as_string = "";
-          alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (query_end), inbetween_query_length,
-                                                       (const unsigned char *) (ref_data + ref_end), inbetween_ref_length,
+          alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (query_end) + 1, inbetween_query_length,
+                                                       (const unsigned char *) (ref_data + ref_end) + 1, inbetween_ref_length,
                                                        (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
                                                        (0), MYERS_MODE_NW);
           LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,

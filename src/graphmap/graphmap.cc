@@ -256,9 +256,11 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
 void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out) {
   // Write out the SAM header in fp_out.
-  std::string sam_header = GenerateSAMHeader_(parameters, index_);
-  if (sam_header.size() > 0)
-    fprintf (fp_out, "%s\n", sam_header.c_str());
+  if (parameters.alignment_approach != "overlapper") {
+    std::string sam_header = GenerateSAMHeader_(parameters, index_);
+    if (sam_header.size() > 0)
+      fprintf (fp_out, "%s\n", sam_header.c_str());
+  }
 
   // Check whether to load in batches or to load all the data at once.
   if (parameters.batch_size_in_mb <= 0) {
@@ -341,7 +343,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
   int64_t num_reads_processed_in_thread_0 = 0;
 
   EValueParams *evalue_params;
-  SetupScorer("EDNA_FULL_5_4", index_->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
+  SetupScorer((char *) "EDNA_FULL_5_4", index_->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
 
   // Process all reads in parallel.
   #pragma omp parallel for num_threads(num_threads) firstprivate(num_reads_processed_in_thread_0, evalue_params) shared(reads, parameters, last_time, sam_lines, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
@@ -387,7 +389,11 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
     MappingData mapping_data;
     ProcessRead(&mapping_data, index_, index_secondary_, reads->get_sequences()[i], parameters, evalue_params);
-    int mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
+    int mapped_state = STATE_UNMAPPED;
+    if (parameters->alignment_approach == "overlapper")
+      mapped_state = CollectAMOSLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
+    else
+      mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
 
     // Keep the counts.
     if (mapped_state == STATE_MAPPED) {

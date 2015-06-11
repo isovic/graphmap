@@ -72,6 +72,7 @@ enum ProcessedReadState {
 #define ALIGNMENT_CONVERSION_PROBLEM  -2
 #define ALIGNMENT_LOCALIZATION_PROBLEM  -3
 #define ALIGNMENT_MYERS_INTERNAL_ERROR  -4
+#define ALIGNMENT_DISTANCE_BETWEEN_ANCHORS_PROBLEM  -5
 
 
 
@@ -135,6 +136,7 @@ T* reverse_data(const T* data, int64_t data_len) {
   return ret_data;
 }
 
+int GetClippingOpsFromCigar(const std::string &cigar, char *clip_op_front, int64_t *clip_count_front, char *clip_op_back, int64_t *clip_count_back);
 
 
 

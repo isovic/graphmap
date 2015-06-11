@@ -210,7 +210,7 @@ std::string PathGraphEntry::VerboseToString(std::string delimiter) const {
     actual_delimiter = " ";
 
   int64_t query_start = mapping_info_.query_coords.start;
-  int64_t query_end = (mapping_info_.query_coords.end + parameters_->k_graph);
+  int64_t query_end = (mapping_info_.query_coords.end);
   int64_t read_length = read_->get_sequence_length();
   int64_t db_size = index_->get_data_length_forward();
   int64_t cov_bases = mapping_info_.cov_bases_max;
@@ -265,7 +265,7 @@ float PathGraphEntry::CalcDistanceRatioSuppress() const {
 
 float PathGraphEntry::CalcFPFilter() const {
   int64_t query_start = mapping_info_.query_coords.start;
-  int64_t query_end = (mapping_info_.query_coords.end + parameters_->k_graph);
+  int64_t query_end = (mapping_info_.query_coords.end);
   int64_t read_length = read_->get_sequence_length();
   int64_t db_size = index_->get_data_length_forward();
   int64_t cov_bases = mapping_info_.cov_bases_max;
@@ -348,7 +348,7 @@ void PathGraphEntry::set_mapping_data(InfoMapping& mappingData) {
   mapping_info_ = mappingData;
 
   int64_t query_start = mapping_info_.query_coords.start;
-  int64_t query_end = (mapping_info_.query_coords.end + parameters_->k_graph);
+  int64_t query_end = (mapping_info_.query_coords.end);
   int64_t read_length = read_->get_sequence_length();
   int64_t db_size = index_->get_data_length_forward();
   int64_t cov_bases = mapping_info_.cov_bases_max;
@@ -533,16 +533,16 @@ std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_out
   return ss.str();
 }
 
-std::string PathGraphEntry::GenerateAMOS() const {
+std::string PathGraphEntry::GenerateAMOSFromInfoMappping(const InfoMapping &mapping_info) const {
   std::stringstream ss;
 
   int64_t l = l1_info_.l1_l - ((int64_t) index_->get_reference_starting_pos()[region_info_.reference_id]);
   int64_t alignment_end = l1_info_.l1_k * ((float) read_->get_sequence_length()) + l;
 
-  std::string adj = (mapping_info_.is_reverse == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
+  std::string adj = (mapping_info.is_reverse == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
   int64_t read1_id = read_->get_sequence_id() + 1;
   int64_t read2_id = (region_info_.reference_id % index_->get_num_sequences_forward()) + 1;
-  int64_t score = (mapping_info_.query_coords.end - mapping_info_.query_coords.start);
+  int64_t score = (mapping_info.query_coords.end - mapping_info.query_coords.start);
   // The L1 line is the projection of the median diagonal to the reference. In this case, the reference is another read.
   // If the L1 line starts before 0, then read1 has an overhang. The overhang is positive if the prefix of the read is not
   // overlapping, but positive if the suffix is not overlapping, so the l value needs to be inverted.
@@ -553,6 +553,63 @@ std::string PathGraphEntry::GenerateAMOS() const {
 //  printf ("ref_length = %ld\n", index_->get_reference_lengths()[region_info_.reference_id]);
 //  printf ("\n");
 //  fflush(stdout);
+
+  ss << "{OVL" << "\n";
+  ss << "adj:" << adj << "\n";
+  ss << "rds:" << read1_id << "," << read2_id << "\n";
+  ss << "scr:" << score << "\n";
+  ss << "ahg:" << ahang << "\n";
+  ss << "bhg:" << bhang << "\n";
+  ss << "}";
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateAMOS() const {
+  std::stringstream ss;
+
+  ss << GenerateAMOSFromInfoAlignment_(alignment_primary_);
+
+  for (int64_t i=0; i<alignments_secondary_.size(); i++) {
+    ss << "\n";
+    ss << GenerateAMOSFromInfoAlignment_(alignments_secondary_[i]);
+  }
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateAMOSFromInfoAlignment_(const InfoAlignment &alignment_info) const {
+  std::stringstream ss;
+
+//  int64_t l = l1_info_.l1_l - ((int64_t) index_->get_reference_starting_pos()[region_info_.reference_id]);
+//  int64_t alignment_end = l1_info_.l1_k * ((float) read_->get_sequence_length()) + l;
+
+  int64_t alignment_start = alignment_info.pos_start - 1; /// -1 because the variable holds the 1-offset position for alignment as is supposed to be in the SAM format.
+  int64_t alignment_end = alignment_start + alignment_info.nonclipped_length;
+
+  char clip_op_front=0, clip_op_back=0;
+  int64_t clip_count_front=0, clip_count_back=0;
+  if (GetClippingOpsFromCigar(alignment_info.cigar, &clip_op_front, &clip_count_front, &clip_op_back, &clip_count_back)) {
+    return std::string("");
+  }
+
+  std::string adj = (alignment_info.is_reverse == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
+  int64_t read1_id = read_->get_sequence_id() + 1;
+  int64_t read2_id = (region_info_.reference_id % index_->get_num_sequences_forward()) + 1;
+  int64_t score = alignment_info.alignment_score;
+
+  // The L1 line is the projection of the median diagonal to the reference. In this case, the reference is another read.
+  // If the L1 line starts before 0, then read1 has an overhang. The overhang is positive if the prefix of the read is not
+  // overlapping, but positive if the suffix is not overlapping, so the l value needs to be inverted.
+//  int64_t ahang = 0 - l;
+//  int64_t bhang = index_->get_reference_lengths()[region_info_.reference_id] - alignment_end;
+
+  //ahg - Ahang. Length of the non-overlapping portion of the first read.
+  //bhg - Bhang. Length of the non-overlapping portion of the second read.
+  /// The position (alignment_start - clip_count_front) would be roughly where alignment of one reads starts on another.
+  /// If this value is > 0, the first read starts within read2, and thus ahang needs to be negative (hence the '-' sign).
+  int64_t ahang = - (alignment_start - clip_count_front);
+  int64_t bhang = index_->get_reference_lengths()[region_info_.reference_id] - (alignment_end + clip_count_back);
 
   ss << "{OVL" << "\n";
   ss << "adj:" << adj << "\n";

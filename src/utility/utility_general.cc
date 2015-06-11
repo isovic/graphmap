@@ -329,3 +329,34 @@ float sigmoid(float x, float mean, float width) {
 
   return ret;
 }
+
+int GetClippingOpsFromCigar(const std::string &cigar, char *clip_op_front, int64_t *clip_count_front, char *clip_op_back, int64_t *clip_count_back) {
+  if (cigar.size() < 2)
+    return 1;
+
+  int64_t pos_clip_op_front = -1;
+  for (int64_t i=0; i<cigar.size(); i++) {
+    if (!isdigit(cigar[i])) {
+      if (cigar[i] == 'S' || cigar[i] == 'H') {
+        *clip_op_front = cigar[i];
+        *clip_count_front = atoi(cigar.substr(0, i).c_str());
+        pos_clip_op_front = i;
+      }
+      break;
+    }
+  }
+
+  if ((pos_clip_op_front + 1) < cigar.size()) {
+    if (cigar.back() == 'S' || cigar.back() == 'H') {
+      *clip_op_back = cigar.back();
+      for (int64_t i=(cigar.size()-2); i>=0; i--) {
+        if (!isdigit(cigar[i])) {
+          *clip_count_back = atoi(cigar.substr((i + 1), ((cigar.size()-1) - i - 1)).c_str());
+          break;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
