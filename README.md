@@ -1,5 +1,13 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
 
+Preprint of our paper now available on Biorxiv:  
+[Fast and sensitive mapping of error-prone nanopore sequencing reads with GraphMap](http://biorxiv.org/content/early/2015/06/10/020719)  
+
+Sequencing data of E. Coli UTI89 generated in-house and used in the paper now available on:  
+[PRJEB9557](http://www.ebi.ac.uk/ena/data/view/PRJEB9557)  
+  
+
+
 **__Version: 0.21__**
 **Update**
 Release date: 02 June 2015  
