@@ -5,6 +5,7 @@ BIN_MAC = ./bin/Mac/graphmap
 OBJ = ./obj_test
 OBJ_DEBUG = ./obj_debug
 OBJ_LINUX = ./obj_linux
+OBJ_EXTCIGAR = ./obj_extcigar
 OBJ_MAC = ./obj_mac
 SOURCE = src
 
@@ -19,6 +20,7 @@ OBJ_FILES := $(CPP_FILES:.cpp=.o) $(CC_FILES:.cc=.o)
 OBJ_FILES_FOLDER := $(addprefix $(OBJ)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_DEBUG := $(addprefix $(OBJ_DEBUG)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_LINUX := $(addprefix $(OBJ_LINUX)/,$(OBJ_FILES))
+OBJ_FILES_FOLDER_EXTCIGAR := $(addprefix $(OBJ_EXTCIGAR)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_MAC := $(addprefix $(OBJ_MAC)/,$(OBJ_FILES))
 
 LIB_DIRS = -L"/usr/local/lib" -L"libs/libdivsufsort-2.0.1/build/lib"
@@ -27,6 +29,7 @@ INCLUDE = -I"./src/" -I"/usr/include/" -I"libs/libdivsufsort-2.0.1/build/include
 
 CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread
 CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread
+CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread
 CC_FLAGS_NOT_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread
 LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
 LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64
@@ -79,6 +82,20 @@ obj_linux/%.o: %.cpp $(H_FILES)
 
 
 
+extcigar: $(OBJ_FILES_FOLDER_EXTCIGAR)
+	mkdir -p $(dir $(BIN_LINUX))
+	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_LINUX) $(OBJ_FILES_FOLDER_EXTCIGAR) $(LD_LIBS)
+	
+obj_extcigar/%.o: %.cc $(H_FILES)
+	mkdir -p $(dir $@)
+	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_EXTCIGAR) -o $@ $<
+	
+obj_extcigar/%.o: %.cpp $(H_FILES)
+	mkdir -p $(dir $@)
+	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_EXTCIGAR) -o $@ $<
+
+
+
 mac: $(OBJ_FILES_FOLDER_MAC)
 	mkdir -p $(dir $(BIN_MAC))
 	$(GCC_MAC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_MAC) $(OBJ_FILES_FOLDER_MAC) $(LD_LIBS)
@@ -109,6 +126,9 @@ cleandebug:
 
 cleanlinux:
 	-rm -rf $(OBJ_LINUX) $(BIN_LINUX)
+
+cleanextcigar:
+	-rm -rf $(OBJ_EXTCIGAR) $(BIN_LINUX)
 
 cleanmac:
 	-rm -rf $(OBJ_MAC) $(BIN_MAC)
