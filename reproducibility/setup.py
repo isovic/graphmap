@@ -14,7 +14,7 @@ def main():
 
 	if (not os.path.exists('aligneval')):
 		execute_command('git clone https://github.com/isovic/aligneval.git');
-		# execute_command('cd aligneval; ./setup.py all');
+		execute_command('cd aligneval; ./setup.py all');
 
 	folders_to_generate = ['data/reads', 'data/reference', 'results-simulated', 'results-real'];
 	for folder_to_generate in folders_to_generate:
