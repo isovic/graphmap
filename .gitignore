@@ -5,8 +5,10 @@ obj_debug/
 obj_linux/
 obj_mac/
 obj_test/
+obj_extcigar/
 bin/graphmap-not_release
 bin/graphmap-debug
 .project
 .cproject
 .settings/
+# reproducibility/
