@@ -13,8 +13,5 @@ def main():
 		sys.stderr.write('Please run setup.py first, to install all dependencies. Exiting.\n');
 		exit(1);
 
-	
-
-
 if __name__ == "__main__":
 	main();

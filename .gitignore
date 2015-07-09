@@ -11,4 +11,7 @@ bin/graphmap-debug
 .project
 .cproject
 .settings/
-# reproducibility/
+reproducibility/*/
+
+!reproducibility/*.py
+!reproducibility/*.md
