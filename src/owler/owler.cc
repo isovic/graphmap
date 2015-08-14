@@ -1,48 +1,41 @@
 /*
- * graphmap_se.cc
+ * owler_data.cc
  *
- *  Created on: Aug 5, 2014
- *      Author: Ivan Sovic
+ *  Created on: Jul 2, 2015
+ *      Author: isovic
  */
+
+#include "owler/owler.h"
 
 #include <omp.h>
 #include <algorithm>
 #include "divsufsort64.h"
-#include "graphmap/graphmap.h"
-//#include "graphmap/path_graph_registry.h"
-//#include "sam/sam_entry.h"
 #include "index/index_hash.h"
-
 #include "log_system/log_system.h"
-//#include "utility/utility_basic_defines.h"
 #include "utility/utility_general.h"
 
 
 
-GraphMap::GraphMap() {
+Owler::Owler() {
   reference_ = NULL;
-  index_ = NULL;
-  index_secondary_ = NULL;
-//  index_spaced_ = NULL;
+  indexes_.clear();
 }
 
-GraphMap::~GraphMap() {
+Owler::~Owler() {
   reference_ = NULL;
-
-  if (index_)
-    delete index_;
-  index_ = NULL;
-
-  if (index_secondary_)
-    delete index_secondary_;
-  index_secondary_ = NULL;
-
-//  if (index_spaced_)
-//    delete index_spaced_;
+  ClearIndexes_();
 }
 
+void Owler::ClearIndexes_() {
+  for (int i=0; i<indexes_.size(); i++) {
+    if (indexes_[i])
+      delete indexes_[i];
+    indexes_[i] = NULL;
+  }
+  indexes_.clear();
+}
 
-void GraphMap::Run(ProgramParameters& parameters) {
+void Owler::Run(ProgramParameters& parameters) {
   clock_t time_start = clock();
   clock_t last_time = time_start;
 
@@ -53,6 +46,11 @@ void GraphMap::Run(ProgramParameters& parameters) {
   BuildIndex(parameters);
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
   last_time = clock();
+
+  if (indexes_.size() == 0 || (indexes_.size() > 0 && indexes_[0] == NULL)) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No index was generated! Exiting."));
+    return;
+  }
 
   if (parameters.calc_only_index == true) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Finished generating index. Note: only index was generated due to selected program arguments.\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
@@ -65,11 +63,11 @@ void GraphMap::Run(ProgramParameters& parameters) {
   // The following formula has been chosen arbitrarily.
   // The dynamic calculation can be overridden by explicitly stating the max_num_regions and max_num_regions in the arguments passed to the binary.
   if (parameters.max_num_regions == 0) {
-    if (this->index_->get_data_length_forward() < 5000000){
+    if (this->indexes_[0]->get_data_length_forward() < 5000000){
       parameters.max_num_regions = 500;          // Limit the number of allowed regions, because log10 will drop rapidly after this point.
     } else {
       float M10 = 1000;     // Baseline number of allowed regions. M10 is the number of allowed regions for 10Mbp reference size.
-      float factor = log10(((float) this->index_->get_data_length()) / 1000000.0f);     // How many powers of 10 above 1 million?
+      float factor = log10(((float) this->indexes_[0]->get_data_length()) / 1000000.0f);     // How many powers of 10 above 1 million?
       parameters.max_num_regions = (int64_t) (M10 * factor);
     }
 
@@ -98,7 +96,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
   // The dynamic calculation can be overridden by explicitly stating the max_num_hits in the arguments passed to the binary.
   if (parameters.max_num_hits == 0) {
     int64_t num_kmers = (1 << (parameters.k_region * 2));
-    int64_t num_kmers_in_genome = (this->index_->get_data_length_forward() * 2) - parameters.k_region + 1;
+    int64_t num_kmers_in_genome = (this->indexes_[0]->get_data_length_forward() * 2) - parameters.k_region + 1;
     double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
     parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
 
@@ -129,7 +127,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
   // Reads can either be processed from a single file, or they can be processed from several files in a given folder.
   if (parameters.process_reads_from_folder == false) {
     last_time = clock();
-    FILE *fp_out = OpenOutSAMFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
+    FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
 
     // Do the actual work.
     ProcessReadsFromSingleFile(parameters, fp_out);
@@ -156,7 +154,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
           last_time = clock();
           parameters.reads_path = parameters.reads_folder + "/" + read_files.at(i);
           parameters.out_sam_path = parameters.output_folder + "/graphmap-" + sam_files.at(i);
-          FILE *fp_out = OpenOutSAMFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
+          FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
 
           // Do the actual work.
           LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Starting to process read file %ld/%ld ('%s').\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
@@ -178,26 +176,22 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 }
 
-int GraphMap::BuildIndex(ProgramParameters &parameters) {
-  // Run away, you are free now!
-  if (index_)
-    delete index_;
-  index_ = NULL;
-  if (index_secondary_)
-    delete index_secondary_;
-  index_secondary_ = NULL;
+int Owler::BuildIndex(ProgramParameters &parameters) {
+  ClearIndexes_();
 
-//  index_ = new IndexSA();
-  index_ = new IndexSpacedHash();
+//  Index *index_primary = new IndexSpacedHash(SHAPE_TYPE_444);
+//  Index *index_primary = new IndexSpacedHashFast(SHAPE_TYPE_66);
+  Index *index_primary = new IndexOwler(SHAPE_TYPE_66);
+  Index *index_secondary = NULL;
 
-  if (parameters.parsimonious_mode) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
-
-  } else {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
-
-    index_secondary_ = new IndexSpacedHash(SHAPE_TYPE_66);
-  }
+//  if (parameters.parsimonious_mode) {
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
+//
+//  } else {
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
+//
+//    index_secondary = new IndexSpacedHash(SHAPE_TYPE_66);
+//  }
 
   clock_t last_time = clock();
 
@@ -212,38 +206,32 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
     }
-    ret_index_loaded = index_->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path, (parameters.verbose_level > 0));
+    ret_index_loaded = index_primary->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path, (parameters.verbose_level > 0));
 
-//    index_spaced_ = new IndexSpacedHash();
-//    index_spaced_->GenerateFromFile(parameters.reference_path);
-
-
-
-    if (parameters.parsimonious_mode == false ) {
-      fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
-      if (fp == NULL) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
-      } else {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
-        fclose (fp);
-      }
-  //    index_secondary_->GenerateFromFile(parameters.reference_path);
-      ret_index_loaded = index_secondary_->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("sec"), (parameters.verbose_level > 0));
-    }
+//    if (parameters.parsimonious_mode == false ) {
+//      fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
+//      if (fp == NULL) {
+//        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
+//      } else {
+//        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
+//        fclose (fp);
+//      }
+//      ret_index_loaded = index_secondary->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("sec"), (parameters.verbose_level > 0));
+//    }
 
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index loaded in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
 
   } else {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
 
-    index_->GenerateFromFile(parameters.reference_path);
-    index_->StoreToFile(parameters.index_reference_path);
+    index_primary->GenerateFromFile(parameters.reference_path);
+    index_primary->StoreToFile(parameters.index_reference_path);
 
-    if (parameters.parsimonious_mode == false) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
-      index_secondary_->GenerateFromFile(parameters.reference_path);
-      index_secondary_->StoreToFile(parameters.index_reference_path + std::string("sec"));
-    }
+//    if (parameters.parsimonious_mode == false) {
+//      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
+//      index_secondary->GenerateFromFile(parameters.reference_path);
+//      index_secondary->StoreToFile(parameters.index_reference_path + std::string("sec"));
+//    }
 
     ret_index_loaded = 0;
 
@@ -251,17 +239,21 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
   }
 
+  if (index_primary)
+    indexes_.push_back(index_primary);
+  if (index_secondary)
+    indexes_.push_back(index_secondary);
+
   return ret_index_loaded;
 }
 
-void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out) {
+void Owler::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out) {
   // Write out the SAM header in fp_out.
-//  if (parameters.alignment_approach != "overlapper") {
-  if (parameters.outfmt == "sam") {
-    std::string sam_header = GenerateSAMHeader_(parameters, index_);
-    if (sam_header.size() > 0)
-      fprintf (fp_out, "%s\n", sam_header.c_str());
-  }
+//  if (parameters.outfmt == "sam") {
+//    std::string sam_header = GenerateSAMHeader_(parameters, indexes_[0]);
+//    if (sam_header.size() > 0)
+//      fprintf (fp_out, "%s\n", sam_header.c_str());
+//  }
 
   // Check whether to load in batches or to load all the data at once.
   if (parameters.batch_size_in_mb <= 0) {
@@ -278,8 +270,39 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   int64_t num_mapped = 0;
   int64_t num_unmapped = 0;
 
+
+  if (parameters.outfmt == "dot") {
+    fprintf (fp_out, "digraph overlaps {\n");
+//    fprintf (fp_out, "digraph overlaps {\n\tsize = \"4,4\";\n");
+//    fprintf (fp_out, "\tnode [shape=circle,width=0.95,fixedsize=true,style=filled,fillcolor=grey];\n");
+    fprintf (fp_out, "\tnode [shape=circle,fixedsize=true,style=filled,fillcolor=grey];\n");
+
+//    fprintf (fp_out, "{node [shape = circle, width = 0.95, fixedsize = true, style = filled, fillcolor = grey] ");
+//    for (int64_t i=0; i<indexes_[0]->get_num_sequences(); i++) {
+//      if (i > 0)
+//        fprintf (fp_out, " R%ld", i);
+//      else
+//        fprintf (fp_out, "R%ld", i);
+//    }
+//    fprintf (fp_out, "}\n");
+//    fprintf (fp_out, "[fillcolor = palegreen];\n");
+  }
+//Hm iz nekog razloga ne crta strelice iako bi trebao ih crtati u dot formatu!
+
   // Load sequences in batch (if requested), or all at once.
   while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllFromFastaOrFastqAsBatch(false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(parameters.batch_size_in_mb, false))) {
+    if (parameters.outfmt == "dot") {
+////      fprintf (fp_out, "\n{node [shape=circle,width=0.95,fixedsize=true,style=filled,fillcolor=skyblue] ");
+//      fprintf (fp_out, "\t{node [shape=circle,fixedsize=true,style=filled,fillcolor=skyblue] ");
+//      for (int64_t i=0; i<reads.get_sequences().size(); i++) {
+//        if (i > 0)
+//          fprintf (fp_out, " Q%ld", (i + reads.get_current_batch_starting_sequence_id()));
+//        else
+//          fprintf (fp_out, "Q%ld", (i + reads.get_current_batch_starting_sequence_id()));
+//      }
+//      fprintf (fp_out, "}\n");
+    }
+
     if (parameters.batch_size_in_mb <= 0) {
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("All reads loaded in %.2f sec (size around %ld MB). (%ld bases)\n", (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads.GetNumberOfBases()), "ProcessReads");
       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
@@ -302,9 +325,13 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
 
   reads.CloseFileAfterBatchLoading();
+
+  if (parameters.outfmt == "dot") {
+    fprintf (fp_out, "}\n");
+  }
 }
 
-int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
+int Owler::ProcessSequenceFileInParallel(ProgramParameters *parameters, SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
   int64_t num_reads = reads->get_sequences().size();
   std::vector<std::string> sam_lines;
 
@@ -344,7 +371,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
   int64_t num_reads_processed_in_thread_0 = 0;
 
   EValueParams *evalue_params;
-  SetupScorer((char *) "EDNA_FULL_5_4", index_->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
+  SetupScorer((char *) "EDNA_FULL_5_4", indexes_[0]->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
 
   // Process all reads in parallel.
   #pragma omp parallel for num_threads(num_threads) firstprivate(num_reads_processed_in_thread_0, evalue_params) shared(reads, parameters, last_time, sam_lines, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
@@ -382,28 +409,22 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
     // The actual interesting part.
     std::string sam_line = "";
-//    int mapped_state = ProcessOneRead(index_, reads->get_sequences()[i], i, *parameters, sam_line);
 
-//    AlignmentObject alignment(parameters, index_, reads->get_sequences()[i], index_secondary_);
-//    alignment.RunAlignment();
-//    int mapped_state = alignment.CollectSAMLines(sam_line);
-
-    MappingData mapping_data;
-    ProcessRead(&mapping_data, index_, index_secondary_, reads->get_sequences()[i], parameters, evalue_params);
+    OwlerData owler_data;
+    ProcessRead(&owler_data, indexes_, reads->get_sequences()[i], parameters, evalue_params);
     int mapped_state = STATE_UNMAPPED;
-    if (parameters->outfmt == "afg") {
-      mapped_state = CollectAMOSLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
-    } else if (parameters->outfmt == "sam") {
-      mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
-    } else {
-      LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to SAM output.", parameters->outfmt.c_str()));
-      mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
+//    if (parameters->outfmt == "afg") {
+//      mapped_state = CollectAMOSLines(sam_line, &owler_data, reads->get_sequences()[i], parameters);
+////    } else if (parameters->outfmt == "sam") {
+////      mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
+//    } else {
+////      LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to AFG output.", parameters->outfmt.c_str()));
+//      mapped_state = CollectAMOSLines(sam_line, &owler_data, reads->get_sequences()[i], parameters);
+//    }
+    if (owler_data.overlap_lines.size() > 0) {
+      mapped_state = STATE_MAPPED;
+      sam_line = owler_data.overlap_lines;
     }
-
-//    if (parameters->alignment_approach == "overlapper")
-//      mapped_state = CollectAMOSLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
-//    else
-//      mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
 
     // Keep the counts.
     if (mapped_state == STATE_MAPPED) {
@@ -425,8 +446,10 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
     // If the order of the reads should be kept, store them in a vector, otherwise output the alignment to file.
     if (parameters->output_in_original_order == false) {
-      #pragma omp critical
-      fprintf (fp_out, "%s\n", sam_line.c_str());
+      if (sam_line.size() > 0) {
+        #pragma omp critical
+        fprintf (fp_out, "%s\n", sam_line.c_str());
+      }
     }
     else {
       #pragma omp critical
@@ -460,9 +483,6 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
   return 0;
 }
-
-
-
 
 //int GraphMapSE::WriteSAMHeader_(ProgramParameters &parameters, Index *index, FILE *fp_out) {
 //  // Sanity check.
@@ -512,7 +532,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 //  return 0;
 //}
 
-std::string GraphMap::GenerateSAMHeader_(ProgramParameters &parameters, Index *index) {
+std::string Owler::GenerateSAMHeader_(ProgramParameters &parameters, Index *index) {
   // Output reference sequence information.
   std::stringstream ss_header;
 
@@ -551,13 +571,14 @@ std::string GraphMap::GenerateSAMHeader_(ProgramParameters &parameters, Index *i
                  "ID:graphmap\t" <<
                  "PN:graphmap\t" <<
                  "CL:" << parameters.command_line << "\t" <<
-                 "VN:" << std::string(GRAPHMAP_CURRENT_VERSION) << " compiled on " << std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE);
+                 "VN:" << std::string(GRAPHMAP_CURRENT_VERSION);
+//                 "VN:" << std::string(GRAPHMAP_CURRENT_VERSION) << " compiled on " << std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE);
   }
 
   return ss_header.str();
 }
 
-FILE* GraphMap::OpenOutSAMFile_(std::string out_sam_path) {
+FILE* Owler::OpenOutFile_(std::string out_sam_path) {
   // Check if the output SAM file is specified. If it is not, then output to STDOUT.
   FILE *fp_out = stdout;
 
@@ -572,7 +593,7 @@ FILE* GraphMap::OpenOutSAMFile_(std::string out_sam_path) {
   return fp_out;
 }
 
-bool GraphMap::GetFileList_(std::string folder, std::vector<std::string> &ret_files) {
+bool Owler::GetFileList_(std::string folder, std::vector<std::string> &ret_files) {
   ret_files.clear();
 
   DIR *dir;
@@ -593,7 +614,7 @@ bool GraphMap::GetFileList_(std::string folder, std::vector<std::string> &ret_fi
 }
 
 
-bool GraphMap::StringEndsWith_(std::string const &full_string, std::string const &ending) {
+bool Owler::StringEndsWith_(std::string const &full_string, std::string const &ending) {
   if (full_string.length() >= ending.length()) {
     return (full_string.compare(full_string.length() - ending.length(), ending.length(), ending) == 0);
   } else {
@@ -601,7 +622,7 @@ bool GraphMap::StringEndsWith_(std::string const &full_string, std::string const
   }
 }
 
-void GraphMap::FilterFileList_(std::vector<std::string> &files, std::vector<std::string> &ret_read_files, std::vector<std::string> &ret_sam_files) {
+void Owler::FilterFileList_(std::vector<std::string> &files, std::vector<std::string> &ret_read_files, std::vector<std::string> &ret_sam_files) {
   std::string ext_fasta = "fasta";
   std::string ext_fastq = "fastq";
   std::string ext_fa = "fa";

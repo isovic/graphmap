@@ -455,7 +455,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     }
 
     ///////////////////////////
-    ///////////////////////////
     /// Align the anchor.
     int64_t query_start = best_path->get_mapping_data().clusters[i].query.start;
     int64_t query_end = best_path->get_mapping_data().clusters[i].query.end;
@@ -524,7 +523,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     }
 
 
-
     ///////////////////////////
     ///////////////////////////
     /// Align in between the anchors.
@@ -566,6 +564,46 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                          -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                          &between_alignment_position_start, &between_alignment_position_end,
                                          &between_anchor_edit_distance, between_anchor_alignment);
+
+//        int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
+//        std::vector<unsigned char> between_anchor_alignment;
+//        int ret_code2 = AlignmentFunctionNW(read->get_data() + (query_end) + 1 - parameters.k_graph, inbetween_query_length + parameters.k_graph*2,
+//                                            (int8_t *) (ref_data + ref_end) + 1 - parameters.k_graph, inbetween_ref_length + parameters.k_graph*2,
+//                                         -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+//                                         &between_alignment_position_start, &between_alignment_position_end,
+//                                         &between_anchor_edit_distance, between_anchor_alignment);
+//
+//        if (ret_code2 != 0 || between_anchor_alignment.size() == 0) {
+//          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+//                                              FormatString("Alignment returned with error! ret_code2 = %d\n", ret_code2), "LocalRealignmentLinear");
+//          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+//                                              FormatString("inbetween_query_length = %ld\ninbetween_ref_length = %ld\nnext_ref_start = %ld\nref_end = %ld\n",
+//                                                           inbetween_query_length, inbetween_ref_length, next_ref_start, ref_end), "[]");
+//          return ret_code2;
+//        }
+//        edit_distance += between_anchor_edit_distance;
+//
+//        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+//          std::string alignment_as_string = "";
+//          alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (query_end) + 1 - parameters.k_graph, inbetween_query_length + parameters.k_graph*2,
+//                                                       (const unsigned char *) (ref_data + ref_end) + 1 - parameters.k_graph, inbetween_ref_length + parameters.k_graph*2,
+//                                                       (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
+//                                                       (0), MYERS_MODE_NW);
+//          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+//                                                    FormatString("(temp) Aligning in between anchors %d and %d:\n%s\n", i, (i+1), alignment_as_string.c_str()), "[]");
+//        }
+//
+//        between_anchor_alignment = std::vector<unsigned char>(between_anchor_alignment.begin() + parameters.k_graph, between_anchor_alignment.end() - parameters.k_graph);
+//
+//        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+//          std::string alignment_as_string = "";
+//          alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (query_end) + 1, inbetween_query_length,
+//                                                       (const unsigned char *) (ref_data + ref_end) + 1, inbetween_ref_length,
+//                                                       (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
+//                                                       (0), MYERS_MODE_NW);
+//          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+//                                                    FormatString("Aligning in between anchors %d and %d:\n%s\n", i, (i+1), alignment_as_string.c_str()), "[]");
+//        }
 
         if (ret_code2 != 0 || between_anchor_alignment.size() == 0) {
           LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,

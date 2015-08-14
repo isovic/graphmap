@@ -115,7 +115,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   bool output_specified_by_file = false;
   bool output_specified_by_folder = false;
 
-  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:w:")) != -1) {
+  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:w:L:")) != -1) {
     switch (c) {
 //      case 'j':
 //        sscanf (optarg, "%ld", &(parameters->k_region));
@@ -344,12 +344,15 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         break;
       case 'w':
 #ifndef RELEASE_VERSION
-        parameters->alignment_approach = std::string(optarg);
+        parameters->alignment_approach = std::string(optarg);     // overlapper, owler; split? spliced? both?
         break;
 #else
         parameters->alignment_approach = DEFAULT_ALIGNMENT_APPROACH;
         break;
 #endif
+      case 'L':
+        parameters->outfmt = std::string(optarg);
+        break;
 
       case 'G':
         sscanf (optarg, "%ld", &(parameters->gap_open_penalty));
@@ -542,6 +545,8 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
   printf ("%sevalue_threshold = %f\n", line_prefix.c_str(), parameters->evalue_threshold);
   printf ("%smapq_threshold = %ld\n", line_prefix.c_str(), parameters->mapq_threshold);
 
+  printf ("%soutput_format = '%s'\n", line_prefix.c_str(), parameters->outfmt.c_str());
+
   printf ("____________________________________\n");
   #endif
 
@@ -572,7 +577,12 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-r STR\tPath to the reference sequence (fastq or fasta).\n";
   ss << "\t-i STR\tPath to the index of the reference sequence. If not specified, index is generated\n\t\tin the same path as the reference file, with .gmidx extension.\n\t\tFor non-parsimonious mode, secondary index .gmidxsec is also generated.\n";
   ss << "\t-d STR\tPath to the reads file (fastq or fasta).\n";
-  ss << "\t-o STR\tPath to the output SAM file that will be generated.\n";
+  ss << "\t-o STR\tPath to the output file that will be generated.\n";
+#ifndef RELEASE_VERSION
+  ss << "\t-L STR\tFormat in which to output alignments [" << (DEFAULT_OUTPUT_FORMAT) << "]. Options are: \n";
+  ss << "\t             sam     - Standard SAM output.\n";
+  ss << "\t             afg     - AMOS overlap format.\n";
+#endif
   ss << "\n";
   ss << "\t-D STR\tPath to a folder containing read files (in fastq or fasta format) to process.\n\t\tCannot be used in combination with '-d' or '-o'.\n";
   ss << "\t-O STR\tPath to a folder for placing SAM alignments. Use in combination with '-D'.\n";
@@ -632,6 +642,11 @@ void VerboseUsageAndExit(FILE *fp) {
 //  ss << "\t             anchor - anchored alignment with end-to-end extension. Uses Myers alignment only.\n";
 //  ss << "\t             overlap - anchored alignment with end-to-end extension\n";
 //  ss << "\t             splice - spliced alignment (each anchor chain output separately)";
+#ifndef RELEASE_VERSION
+  ss << "\t-w STR\tAlignment approach. Changes the way alignment algorithm is applied [" << DEFAULT_ALIGNMENT_APPROACH << "]. Options are: \n";
+  ss << "\t             overlapper - (Experimental) Runs the entire GraphMap pipeline with small modifications for better overlapping.\n";
+  ss << "\t             owler      - (Experimental) Runs reduced pipeline, does not produce alignments, extremely fast. Output in MHAP, AFG and DOT formats.\n";
+#endif
 
   ss << "\t-M INT\tMatch score for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MATCH_SCORE << "]\n";
   ss << "\t-X INT\tMismatch penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MISMATCH_PENALTY << "]\n";

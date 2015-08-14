@@ -20,7 +20,8 @@
 enum DataFormat {
   kDataFormatAscii = 0,
   kDataFormat2BitSparse,
-  kDataFormat2BitPacked
+  kDataFormat2BitPacked,  /// Bases are stored in the 2-bit format (A = 00, C = 01, G = 10, T = 11). Byte is packed from MSB for the first base to LSB for the last base. I.e. the first base occupies the 2 MSB bits of a byte, and the last base two LSB bits of a byte.
+  kDataFormat2BitPacked2  /// The same as kDataFormat2BitPacked, but bases in a byte are stored in a normal ascending order. I.e. the first base occupies 2 LSB bits of a byte, and the last base 2 MSB bits of a byte.
 };
 
 // A container class that holds a single genomic sequence, for example a

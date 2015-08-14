@@ -156,6 +156,14 @@ class SequenceFile {
   const SequenceVector& get_sequences() const;
   void set_sequences(const SequenceVector& sequences);
 
+  uint64_t get_current_batch_starting_sequence_id() const {
+    return current_batch_starting_sequence_id_;
+  }
+
+  void set_current_batch_starting_sequence_id(uint64_t currentBatchStartingSequenceId) {
+    current_batch_starting_sequence_id_ = currentBatchStartingSequenceId;
+  }
+
  private:
   SequenceVector sequences_;  // Vector holding all the sequences in the file (or in a batch).
   std::string open_file_path_;  // Path to the sequences file that is currently opened (i.e. during batch loading).

@@ -419,14 +419,37 @@ int SingleSequence::ConvertDataFormatFromAscii_(DataFormat new_data_format) {
               << ((3 - (current_base & 3)) << 1);
     }
 
-    new_data[sequence_length_] = '\0';
+    new_data[new_data_length] = '\0';
+
+    delete[] data_;
+    data_ = new_data;
+    data_length_ = new_data_length;
+    data_format_ = new_data_format;
+  } else if (new_data_format == kDataFormat2BitPacked2) {
+
+    uint64_t new_data_length = (sequence_length_ >> 2)
+        + (((sequence_length_ & 3) == 0) ? 0 : 1);
+    int8_t *new_data = new int8_t[new_data_length + 1];
+    if (new_data == NULL) {
+      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_data."));
+      return 1;
+    }
+
+    memset(new_data, 0, new_data_length);
+    for (uint64_t current_base = 0; current_base < sequence_length_;
+        current_base++) {
+      new_data[current_base >> 2] |=
+          kBaseToBwa[(int32_t) data_[current_base]]
+              << (((current_base & 3)) << 1);
+    }
+
+    new_data[new_data_length] = '\0';
 
     delete[] data_;
     data_ = new_data;
     data_length_ = new_data_length;
     data_format_ = new_data_format;
   }
-
   return 0;
 }
 

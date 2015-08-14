@@ -27,6 +27,10 @@
 #include "seqan/sequence.h"
 #include "seqan/stream.h"
 
+#define ALIGNMENT_TYPE_SHW  0     /// Gaps at the end are not penalized.
+#define ALIGNMENT_TYPE_HW   1     /// Gaps at the beginning and the end are not penalized.
+#define ALIGNMENT_TYPE_NW   2     /// Global alignment (gaps at the beginning and the end are penalized).
+
 int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                   const int8_t *reference_data, int64_t reference_length,
                                   int64_t rough_reference_start, int64_t rough_reference_end,
@@ -79,7 +83,8 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
                            int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                            int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 
-int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment);
+//int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, bool is_global, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment);
+int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int alignment_type, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment);
 
 int CheckAlignmentSaneSimple(std::vector<unsigned char> &alignment);
 

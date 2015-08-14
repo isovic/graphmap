@@ -854,6 +854,10 @@ uint64_t Index::get_num_sequences_forward() const {
   return num_sequences_forward_;
 }
 
+uint64_t Index::get_num_sequences() const {
+  return num_sequences_forward_;
+}
+
 const std::vector<uint64_t>& Index::get_reference_lengths() const {
   return reference_lengths_;
 }

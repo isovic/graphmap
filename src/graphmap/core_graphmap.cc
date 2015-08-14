@@ -50,7 +50,7 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingDa
     data_end = region_length_joined - parameters->k_graph + 1;
   }
 
-  for (uint64_t i = data_start; i <= data_end; i++) {  // i+=parameters->kmer_step) {
+  for (uint64_t i = data_start; i < data_end; i++) {  // i+=parameters->kmer_step) {
     ProcessKmerCacheFriendly_((int8_t *) &(data_ptr[i]), i, local_score, mapping_data, index_read, index, index_secondary, read, parameters);
     mapping_data->iteration += 1;
   }

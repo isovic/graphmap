@@ -23,6 +23,8 @@
 
 #include "alignment/local_realignment.h"
 
+#include "owler/owler.h"
+
 int main(int argc, char *argv[]) {
 
   ProgramParameters program_parameters;
@@ -36,8 +38,13 @@ int main(int argc, char *argv[]) {
   }
   fflush(stdout);
 
-  GraphMap graphmap;
-  graphmap.Run(program_parameters);
+  if (program_parameters.alignment_approach == "owler") {
+    Owler owler;
+    owler.Run(program_parameters);
+  } else {
+    GraphMap graphmap;
+    graphmap.Run(program_parameters);
+  }
 
 	return 0;
 }

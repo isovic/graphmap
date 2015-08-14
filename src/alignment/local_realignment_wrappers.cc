@@ -107,7 +107,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
   return ALIGNMENT_GOOD;
 }
 
-int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment) {
+int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int alignment_type, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment) {
   typedef seqan::Dna5String TSequence;
   typedef seqan::StringSet<TSequence> TStringSet;
   typedef seqan::Gaps<TSequence, seqan::ArrayGaps> TGaps;
@@ -139,8 +139,10 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
   *ret_start_offset = gapsPattern._clippingBeginPos;
   *ret_end_offset = count;
 
-  alignment.insert(alignment.begin(), (*ret_start_offset), (char) EDLIB_D);
-  *ret_start_offset = 0;
+  if (alignment_type == ALIGNMENT_TYPE_NW || alignment_type == ALIGNMENT_TYPE_SHW) {
+    alignment.insert(alignment.begin(), (*ret_start_offset), (char) EDLIB_D);
+    *ret_start_offset = 0;
+  }
 
 //  // Use a stringstream to construct the cigar string.
 //  std::string cigar = "";
@@ -190,6 +192,11 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
           numChar = 0;
           continue;
       }
+  }
+
+  if (alignment_type == ALIGNMENT_TYPE_NW) {
+    alignment.insert(alignment.end(), (*ret_end_offset), (char) EDLIB_D);
+    *ret_end_offset = 0;
   }
 
 //  for (int64_t i=0; i<alignment.size(); i++) {
@@ -254,7 +261,7 @@ int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
   }
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
-  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
+  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, ALIGNMENT_TYPE_HW, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
     return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
     return ALIGNMENT_NOT_SANE;
@@ -304,7 +311,7 @@ int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
   }
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
-  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
+  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, ALIGNMENT_TYPE_NW, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
     return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
     return ALIGNMENT_NOT_SANE;
@@ -367,7 +374,7 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
   }
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
-  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
+  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, ALIGNMENT_TYPE_SHW, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
     return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
     return ALIGNMENT_NOT_SANE;
@@ -390,15 +397,6 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
 //  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Read length: %ld\n", read->get_sequence_length()), "SeqAnLocalRealignment");
 
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0) {
-//    if (read_data == NULL)
-//      return -10;
-//    if (reference_data == NULL)
-//      return -11;
-//    if (read_length <= 0)
-//      return -12;
-//    if (reference_length <= 0)
-//      return -13;
-
     return ALIGNMENT_WRONG_DATA;
   }
 
@@ -450,7 +448,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
   }
 
   int64_t start_offset = 0, end_offset = 0, seqan_edit_distance = 0;
-  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
+  if (SeqAnAlignmentToEdlibAlignmentNoCigar(align, ALIGNMENT_TYPE_HW, &start_offset, &end_offset, &seqan_edit_distance, ret_alignment) != 0)
     return ALIGNMENT_CONVERSION_PROBLEM;
   if (CheckAlignmentSaneSimple(ret_alignment))
     return ALIGNMENT_NOT_SANE;

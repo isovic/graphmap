@@ -16,7 +16,12 @@
 #include "utility/utility_general.h"
 
 
-#define INDEX_VERSION     ((int64_t) 5)
+#define INDEX_VERSION     ((int64_t) 6)
+
+#define SHAPE_TYPE_444  0
+#define SHAPE_TYPE_66    1
+
+
 
 //class IndexChunk {
 // public:
@@ -123,6 +128,7 @@ class Index {
   virtual uint64_t get_data_length_forward() const;
   virtual const std::vector<std::string>& get_headers() const;
   virtual uint64_t get_num_sequences_forward() const;
+  virtual uint64_t get_num_sequences() const;
   virtual const std::vector<uint64_t>& get_reference_lengths() const;
   virtual const std::vector<uint64_t>& get_reference_starting_pos() const;
 

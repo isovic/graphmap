@@ -28,7 +28,10 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     return 0;
   }
 
-  RegionSelection_(read->get_sequence_length() / 3, mapping_data, index, index_secondary, read, parameters);
+  int64_t bin_size = (parameters->alignment_approach == "overlapper") ?
+                      -1 :
+                      read->get_sequence_length() / 3;
+  RegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
 
   // If the read length is too short, call it unmapped.
   if (mapping_data->bins.size() <= 0 || (mapping_data->bins.size() > 0 && mapping_data->bins.front().bin_value == 0)) {
@@ -73,10 +76,30 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 //    min_allowed_bin_value = 0.0f;
   }
 
+  int64_t max_num_regions = parameters->max_num_regions;
+  if (parameters->alignment_approach == "overlapper") {
+    max_num_regions = mapping_data->bins.size();
+//    int64_t smaller_seq_length = std::min(read->get_sequence_length(), index->get_reference_lengths()[0]);
+//    min_allowed_bin_value = std::max((0.10f * mapping_data->bins.front().bin_value), 0.10f * read->get_sequence_length());
+//    min_allowed_bin_value = 0.10f * read->get_sequence_length();
+//    min_allowed_bin_value = 0.01f * read->get_sequence_length();
+    min_allowed_bin_value = std::min(0.10f * read->get_sequence_length(), 100.0f);
+  }
+
   mapping_data->num_region_iterations = 0;
 
+
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
+  for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
+    Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
+    ScoreRegistry local_score(region, i);
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+  }
+
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
+
   // Process regions one by one.
-  for (int64_t i = 0; i < mapping_data->bins.size() && i < parameters->max_num_regions; i++) {
+  for (int64_t i = 0; i < mapping_data->bins.size() && i <max_num_regions; i++) {
 //    if (parameters->alignment_algorithm == "overlapper") {
 //      if (index->get_headers()[mapping_data->bins[i].reference_id % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
 //        continue;
@@ -85,10 +108,20 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
 //  for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
     // If the ret_check value is zero, then just continue as normal.
-    int ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, threshold_step, &bin_value_threshold, mapping_data, read, parameters);
+    int ret_check = 0;
+
+    if (parameters->alignment_approach != "overlapper") {
+      ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, threshold_step, &bin_value_threshold, mapping_data, read, parameters);
+    } else {
+      if (mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value)
+        break;
+    }
 
     // Region search needs to stop.
     if (ret_check < 0) {
+
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished returned with value to break! ret_check = %d\n", ret_check), "ProcessRead");
+
       break;
 
       // Another iteration needs to be performed.
@@ -188,8 +221,12 @@ Region GraphMap::CalcRegionFromBin_(int64_t sorted_bins_index, const MappingData
 
   std::string rname = index_->get_headers()[bin_ref_id % index_->get_num_sequences_forward()];
 
-  int64_t location_start = bin_id * mapping_data->bin_size;
-  int64_t location_end = location_start + mapping_data->bin_size;
+  int64_t location_start = (mapping_data->bin_size > 0) ?
+                            bin_id * mapping_data->bin_size :
+                            0;
+  int64_t location_end = (mapping_data->bin_size > 0) ?
+                           location_start + mapping_data->bin_size :
+                           reference_length;
 
   bool is_split = false;
   int64_t split_start = 0;

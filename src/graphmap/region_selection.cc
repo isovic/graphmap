@@ -9,6 +9,7 @@
 
 
 
+/// Handles a special case when bin_size = -1 as well, in which case the references will not be split into smaller regions.
 int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, const Index* index, const Index* index_secondary, const SingleSequence* read, const ProgramParameters* parameters) {
   int64_t readlength = read->get_sequence_length();
 
@@ -38,7 +39,9 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
   // Resizing containers for each chromosome.
   for (int64_t i = 0; i < index->get_num_sequences_forward(); i++) {
     int64_t current_reference_length = index->get_reference_lengths()[i];
-    int64_t current_num_bins = ceil(((float) current_reference_length) / ((float) bin_size));
+    int64_t current_num_bins = (bin_size > 0) ?
+                                ceil(((float) current_reference_length) / ((float) bin_size)) :
+                                1;
 
     // Forward strand.
     bins_chromosome[i].resize(current_num_bins, 0);
@@ -99,11 +102,14 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
         // Find the index of the reference that was hit. This also includes the reverse sequences.
         // Reverse sequences are considered the same as any other reference sequence.
         int64_t reference_index = index->RawPositionToReferenceIndexWithReverse(y);
-        int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
+//        printf ("reference_index = %ld\n", reference_index);
+//        fflush(stdout);
         if (reference_index < 0) {
           LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, y, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
           continue;
         }
+
+        int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
 
         if (parameters->alignment_approach == "overlapper") {
           if (index->get_headers()[reference_index % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
@@ -124,7 +130,9 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
         }
 
         // Calculate the index of the bin the position belongs to.
-        int64_t position_bin = floor(((float) l_local) / ((float) bin_size));
+        int64_t position_bin = (bin_size > 0) ?
+                                 floor(((float) l_local) / ((float) bin_size)) :
+                                 0;
 
         // We mark the last update with (i + 1) and not only i to avoid the default value of zero that has been set with vector initialization.
         if (parameters->skip_multiple_kmers_per_bin == true && last_update_chromosome[reference_index][position_bin] == (i + 1)) {
@@ -217,7 +225,9 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
         }
 
         // Calculate the index of the bin the position belongs to.
-        int64_t position_bin = floor(((float) l_local) / ((float) bin_size));
+        int64_t position_bin = (bin_size > 0) ?
+                                 floor(((float) l_local) / ((float) bin_size)) :
+                                 0;
 
         // We mark the last update with (i + 1) and not only i to avoid the default value of zero that has been set with vector initialization.
         if (parameters->skip_multiple_kmers_per_bin == true && last_update_chromosome[reference_index][position_bin] == (i + 1)) {

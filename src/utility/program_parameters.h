@@ -77,6 +77,8 @@
 #define DEFAULT_MAX_EVALUE_THRESHOLD      (double) -1.0
 #define DEFAULT_MIN_MAPQ_VALUE            0
 
+#define DEFAULT_OUTPUT_FORMAT             std::string("sam")
+
 
 
 struct ProgramParameters {
@@ -143,6 +145,8 @@ struct ProgramParameters {
 
   double evalue_threshold = DEFAULT_MAX_EVALUE_THRESHOLD;
   int64_t mapq_threshold = DEFAULT_MIN_MAPQ_VALUE;
+
+  std::string outfmt = DEFAULT_OUTPUT_FORMAT;
 };
 
 int ProcessArgs(int argc, char **argv, ProgramParameters *parameters);

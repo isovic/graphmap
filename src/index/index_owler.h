@@ -1,12 +1,12 @@
 /*
- * index_spaced_hash.h
+ * index_owler.h
  *
- *  Created on: Feb 5, 2015
+ *  Created on: July 11, 2015
  *      Author: ivan
  */
 
-#ifndef INDEX_SPACED_HASH_H_
-#define INDEX_SPACED_HASH_H_
+#ifndef INDEX_OWLER_H_
+#define INDEX_OWLER_H_
 
 #include <vector>
 #include "divsufsort64.h"
@@ -16,12 +16,30 @@
 
 
 
-class IndexSpacedHash : public Index {
- public:
-  IndexSpacedHash();
-  ~IndexSpacedHash();
+struct SubIndex {
+  uint32_t key = 0;
+//  uint32_t *positions = NULL;
+//  std::vector<uint32_t> positions;
+  uint32_t position = 0;
+};
 
-  IndexSpacedHash(uint32_t shape_type);
+struct subindex_less_than_key
+{
+    inline bool operator() (const SubIndex& op1, const SubIndex& op2) {
+      if (op1.key < op2.key)
+        return true;
+      else if (op1.key == op2.key)
+        return op1.position < op2.position;
+      return false;
+    }
+};
+
+class IndexOwler : public Index {
+ public:
+  IndexOwler();
+  ~IndexOwler();
+
+  IndexOwler(uint32_t shape_type);
 
   void Clear();
   int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **entire_sa, uint64_t *start_hit, uint64_t *num_hits) const;
@@ -43,6 +61,10 @@ class IndexSpacedHash : public Index {
   void set_shape_index(char* shapeIndex);
   int64_t get_shape_index_length() const;
   void set_shape_index_length(int64_t shapeIndexLength);
+  SubIndex** get_read_subindex() const;
+  void set_read_subindex(SubIndex** readSubindex);
+  int64_t* get_subindex_counts() const;
+  void set_subindex_counts(int64_t* subindexCounts);
 
 //  int get_k() const;
 //  void set_k(int k);
@@ -60,6 +82,13 @@ class IndexSpacedHash : public Index {
   int64_t *all_kmers_;
   int64_t all_kmers_size_;
   std::vector<std::string> shapes_lookup_;
+
+//  SubIndex *read_subindex_;
+//  std::vector<std::vector<SubIndex> > read_subindex_;
+  SubIndex **read_subindex_;
+  SubIndex *all_subindexes_;
+  int64_t all_subindexes_size_;
+  int64_t *subindex_counts_;
 
   int CreateIndex_(int8_t *data, uint64_t data_length);
   int SerializeIndex_(FILE *fp_out);
