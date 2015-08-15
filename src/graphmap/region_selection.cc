@@ -55,7 +55,7 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
   mapping_data->num_seeds_over_limit = 0;
   mapping_data->num_seeds_errors = 0;
 
-  int64_t k = (int64_t) ((IndexSpacedHash *) index_)->get_shape_index_length();
+  int64_t k = (int64_t) ((IndexSpacedHashFast *) index_)->get_shape_index_length();
 
   // Filling the bins with values, so we get an occurrence map.
   for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
@@ -64,7 +64,7 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
     int64_t *hits = NULL;
 
     if (index_ != NULL) {
-      int ret_search = index->FindAllRawPositionsOfSeed(seed, k, parameters->max_num_hits, &hits, &hits_start, &num_hits);
+      int ret_search = ((IndexSpacedHashFast *) index)->FindAllRawPositionsOfSeed(seed, k, parameters->max_num_hits, &hits, &hits_start, &num_hits);
 
       // Check if there is too many hits (or too few).
       if (ret_search == 1) {
@@ -95,21 +95,28 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
       for (int64_t j = hits_start; j < (hits_start + num_hits); j++) {
         int64_t position = hits[j];
 
-        int64_t x = i;          // Coordinate on the read.
-        int64_t y = position;   // Coordinate on the reference.
-        int64_t l = y - x;      // Hough projection on the reference.
+//        int64_t absolute_position = 0, local_position = 0;
+//        int64_t reference_index = -1;
+//        int ret_val = ((IndexSpacedHashFast *) index)->RawPositionConverter2(position, readlength, &absolute_position, &local_position, NULL, &reference_index);
 
-        // Find the index of the reference that was hit. This also includes the reverse sequences.
-        // Reverse sequences are considered the same as any other reference sequence.
-        int64_t reference_index = index->RawPositionToReferenceIndexWithReverse(y);
-//        printf ("reference_index = %ld\n", reference_index);
-//        fflush(stdout);
+        int64_t reference_index = (int64_t) (position & MASK_REF_ID);
+        int64_t local_position = position >> 32; // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
+
         if (reference_index < 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, y, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "3Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
           continue;
         }
 
-        int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
+        // Find the index of the reference that was hit. This also includes the reverse sequences.
+        // Reverse sequences are considered the same as any other reference sequence.
+/////        int64_t reference_index = index->RawPositionToReferenceIndexWithReverse(position);
+/////        int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
+/////        int64_t y = position;   // Coordinate on the reference.
+/////        int64_t l = y - x;      // Hough projection on the reference.
+
+        int64_t x = i;          // Coordinate on the read.
+        int64_t y_local = local_position;
+        int64_t l_local = y_local - x;
 
         if (parameters->alignment_approach == "overlapper") {
           if (index->get_headers()[reference_index % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
@@ -118,8 +125,8 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
         }
 
         // Convert the absolute coordinates to local coordinates on the hit reference.
-        int64_t y_local = y - reference_starting_pos;
-        int64_t l_local = l - reference_starting_pos;
+/////        int64_t y_local = y - reference_starting_pos;
+/////        int64_t l_local = l - reference_starting_pos;
 
         // Compensate for sequence overhangs.
         if (l_local < 0 && parameters->is_reference_circular == false) {
@@ -162,7 +169,7 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
     }
 
     if (index_secondary != NULL) {
-      int ret_search = index_secondary->FindAllRawPositionsOfSeed(seed, k, parameters->max_num_hits, &hits, &hits_start, &num_hits);
+      int ret_search = ((IndexSpacedHashFast *) index_secondary)->FindAllRawPositionsOfSeed(seed, k, parameters->max_num_hits, &hits, &hits_start, &num_hits);
 
       // Check if there is too many hits (or too few).
       if (ret_search == 1) {
@@ -193,18 +200,27 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
       for (int64_t j = hits_start; j < (hits_start + num_hits); j++) {
         int64_t position = hits[j];
 
-        int64_t x = i;          // Coordinate on the read.
-        int64_t y = position;   // Coordinate on the reference.
-        int64_t l = y - x;      // Hough projection on the reference.
+//        int64_t absolute_position = 0, local_position = 0;
+//        int64_t reference_index = -1;
+//        int ret_val = ((IndexSpacedHashFast *) index)->RawPositionConverter2(position, readlength, &absolute_position, &local_position, NULL, &reference_index);
 
-        // Find the index of the reference that was hit. This also includes the reverse sequences.
-        // Reverse sequences are considered the same as any other reference sequence.
-        int64_t reference_index = index_secondary->RawPositionToReferenceIndexWithReverse(y);
-        int64_t reference_starting_pos = index_secondary->get_reference_starting_pos()[reference_index];
+        int64_t reference_index = (int64_t) (position & MASK_REF_ID);
+        int64_t local_position = position >> 32; // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
+
         if (reference_index < 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, y, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
+          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "3Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
           continue;
         }
+        // Find the index of the reference that was hit. This also includes the reverse sequences.
+        // Reverse sequences are considered the same as any other reference sequence.
+/////        int64_t reference_index = index->RawPositionToReferenceIndexWithReverse(position);
+/////        int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
+/////        int64_t y = position;   // Coordinate on the reference.
+/////        int64_t l = y - x;      // Hough projection on the reference.
+
+        int64_t x = i;          // Coordinate on the read.
+        int64_t y_local = local_position;
+        int64_t l_local = y_local - x;
 
         if (parameters->alignment_approach == "overlapper") {
           if (index->get_headers()[reference_index % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
@@ -213,8 +229,8 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
         }
 
         // Convert the absolute coordinates to local coordinates on the hit reference.
-        int64_t y_local = y - reference_starting_pos;
-        int64_t l_local = l - reference_starting_pos;
+/////        int64_t y_local = y - reference_starting_pos;
+/////        int64_t l_local = l - reference_starting_pos;
 
         // Compensate for sequence overhangs.
         if (l_local < 0 && parameters->is_reference_circular == false) {

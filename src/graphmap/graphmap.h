@@ -22,6 +22,7 @@
 //#include "index/index_spaced_sa.h"
 #include "index/index_hash.h"
 #include "index/index_spaced_hash.h"
+#include "index/index_spaced_hash_fast.h"
 #include "sequences/single_sequence.h"
 #include "sequences/sequence_file.h"
 //#include "containers/vertex_data.h"

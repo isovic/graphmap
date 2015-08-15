@@ -904,6 +904,43 @@ int64_t Index::RawPositionConverter(int64_t raw_position, int64_t query_length, 
   return reference_index;
 }
 
+int64_t Index::RawPositionConverterWithRefId(int64_t raw_position, int64_t reference_index, int64_t query_length, int64_t *ret_absolute_position, int64_t *ret_relative_position, SeqOrientation *ret_orientation, int64_t *ret_reference_index_with_reverse) const {
+  if (raw_position < 0 || raw_position >= data_length_)
+    return -2;
+
+  if (reference_index < 0) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
+    return reference_index;
+  }
+
+  int64_t relative_pos = (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
+  SeqOrientation orientation = kForward;
+
+  if (ret_reference_index_with_reverse != NULL)
+    *ret_reference_index_with_reverse = reference_index;
+
+  if (((uint64_t) reference_index) >= num_sequences_forward_) {
+    // Relative position has to be changed, because, from the outside, it is expected that we have reverse-complemented the seed and not the reference sequence.
+//    relative_pos = reference_lengths_[(uint64_t) reference_index] - relative_pos - query_length - 1 - reference_index;      // The '-1' is to compensate for the '!' character added at the end of every sequence in the data array.
+    relative_pos = reference_lengths_[(uint64_t) reference_index] - relative_pos - query_length - 1;
+
+    // Unlike BWA, we haven't reversed the order of sequences when their reverse complements were added to the index. That is why we only need to subtract the number of forward sequences, and not do (2*num_forward_sequences - gene_idx - 1).
+    reference_index = reference_index - ((int64_t) num_sequences_forward_);
+    orientation = kReverse;
+  }
+
+  if (ret_absolute_position != NULL)
+    *ret_absolute_position = raw_position;
+
+  if (ret_relative_position != NULL)
+    *ret_relative_position = relative_pos;
+
+  if (ret_orientation != NULL)
+    *ret_orientation = orientation;
+
+  return reference_index;
+}
+
 int64_t Index::RawPositionToReferenceIndexWithReverse(int64_t raw_position) const {
   int64_t low = 0;
   int64_t high = reference_starting_pos_.size() - 1;

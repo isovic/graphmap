@@ -16,7 +16,7 @@
 #include "utility/utility_general.h"
 
 
-#define INDEX_VERSION     ((int64_t) 6)
+#define INDEX_VERSION     ((int64_t) 7)
 
 #define SHAPE_TYPE_444  0
 #define SHAPE_TYPE_66    1
@@ -113,6 +113,7 @@ class Index {
   // @param ret_reference_index_with_reverse this is only for testing purposes. The meaning of this value is the following. The index is created from the original sequences (forward), followed with their reverse. This parameter does not return the same value necessarily as the ret_reference_index parameter, but the absolute index value. For example, if there is 5 reference sequences, then there are 10 sequences in the index (forward + reverse). Parameter ret_reference_index returns a value in range [0, 5> every time, while this parameter returns a value between [0, 10>.
   // @return returns a value lesser than 0 if something went wrong, otherwise it returns the index of the sequence to which the hit belongs to.
   virtual int64_t RawPositionConverter(int64_t raw_position, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
+  virtual int64_t RawPositionConverterWithRefId(int64_t raw_position, int64_t reference_index, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
   virtual int64_t RawPositionToReferenceIndexWithReverse(int64_t raw_position) const;
 
   virtual int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *start_hit, uint64_t *num_hits) const = 0;

@@ -6,6 +6,7 @@
  */
 
 #include "alignment/local_realignment.h"
+#include "index/index_spaced_hash_fast.h"
 
 
 
@@ -414,8 +415,13 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   }
 
   if (orientation == kForward) {
-    index->RawPositionConverter(alignment_position_start, 0, NULL, &best_aligning_position, NULL);
+    (index)->RawPositionConverter(alignment_position_start, 0, NULL, &best_aligning_position, NULL);
+//    printf ("Tu sam 1!\n");
+//    printf ("best_aligning_position = %ld\n", best_aligning_position);
+//    fflush(stdout);
   } else {
+//    printf ("Tu sam 2!\n");
+//    fflush(stdout);
     index->RawPositionConverter(alignment_position_end, 0, NULL, &best_aligning_position, NULL);
     if (perform_reverse_complement == true) {
 //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
@@ -841,7 +847,8 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 4.\n"), "CheckAlignmentSane");
     return 4;
   }
-  if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) && (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
+  if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
+      (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
 //    printf ("CheckAlignmentSane returned false! return 5.\n");
 //    fflush(stdout);
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 5.\n"), "CheckAlignmentSane");
