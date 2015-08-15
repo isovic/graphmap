@@ -415,14 +415,14 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   }
 
   if (orientation == kForward) {
-    (index)->RawPositionConverter(alignment_position_start, 0, NULL, &best_aligning_position, NULL);
+    (index)->RawPositionConverterWithRefId(alignment_position_start, reference_id, 0, NULL, &best_aligning_position, NULL);
 //    printf ("Tu sam 1!\n");
 //    printf ("best_aligning_position = %ld\n", best_aligning_position);
 //    fflush(stdout);
   } else {
 //    printf ("Tu sam 2!\n");
 //    fflush(stdout);
-    index->RawPositionConverter(alignment_position_end, 0, NULL, &best_aligning_position, NULL);
+    index->RawPositionConverterWithRefId(alignment_position_end, reference_id, 0, NULL, &best_aligning_position, NULL);
     if (perform_reverse_complement == true) {
 //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
 //      read->ReverseComplement();
@@ -586,9 +586,9 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 //    *ret_AS_left_part = RescoreAlignment((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
 
     if (orientation == kForward) {
-      index->RawPositionConverter(left_alignment_start, 0, NULL, &best_aligning_position_left_part, NULL);
+      index->RawPositionConverterWithRefId(left_alignment_start, reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
     } else {
-      index->RawPositionConverter(left_alignment_end, 0, NULL, &best_aligning_position_left_part, NULL);
+      index->RawPositionConverterWithRefId(left_alignment_end, reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
       if (perform_reverse_complement == true) {
         *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
       }
@@ -603,9 +603,9 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 //    *ret_AS_right_part = RescoreAlignment((unsigned char *) &(alignment_right_part[0]), alignment_right_part.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
 
     if (orientation == kForward) {
-      index->RawPositionConverter(right_alignment_start, 0, NULL, &best_aligning_position_right_part, NULL);
+      index->RawPositionConverterWithRefId(right_alignment_start, reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
     } else {
-      index->RawPositionConverter(right_alignment_end, 0, NULL, &best_aligning_position_right_part, NULL);
+      index->RawPositionConverterWithRefId(right_alignment_end, reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
       if (perform_reverse_complement == true) {
         *ret_cigar_right_part = ReverseCigarString((*ret_cigar_right_part));
       }

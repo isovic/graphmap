@@ -31,7 +31,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   int64_t bin_size = (parameters->alignment_approach == "overlapper") ?
                       -1 :
                       read->get_sequence_length() / 3;
-  RegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
+  ExperimentalRegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
 
   // If the read length is too short, call it unmapped.
   if (mapping_data->bins.size() <= 0 || (mapping_data->bins.size() > 0 && mapping_data->bins.front().bin_value == 0)) {

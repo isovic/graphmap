@@ -84,6 +84,7 @@ class GraphMap {
   void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
 
   int RegionSelection_(int64_t bin_size, MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
+  int ExperimentalRegionSelection_(int64_t bin_size, MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
   int GraphMap_(ScoreRegistry *local_score, Index *index_read, MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
   int ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, Index *index_read, const Index* index, const Index* index_secondary, const SingleSequence* read, const ProgramParameters* parameters);
   int PostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);

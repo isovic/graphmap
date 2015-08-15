@@ -779,9 +779,9 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     *ret_cigar_right_part = "";
 
     if (orientation == kForward) {
-      index->RawPositionConverter(alignment_position_start, 0, NULL, &best_aligning_position, NULL);
+      index->RawPositionConverterWithRefId(alignment_position_start, absolute_reference_id, 0, NULL, &best_aligning_position, NULL);
     } else {
-      index->RawPositionConverter(alignment_position_end, 0, NULL, &best_aligning_position, NULL);
+      index->RawPositionConverterWithRefId(alignment_position_end, absolute_reference_id, 0, NULL, &best_aligning_position, NULL);
       if (perform_reverse_complement == true) {
   //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
   //      read->ReverseComplement();
@@ -870,9 +870,9 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   //    *ret_AS_left_part = RescoreAlignment((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
 
       if (orientation == kForward) {
-        index->RawPositionConverter(left_alignment_start, 0, NULL, &best_aligning_position_left_part, NULL);
+        index->RawPositionConverterWithRefId(left_alignment_start, absolute_reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
       } else {
-        index->RawPositionConverter(left_alignment_end, 0, NULL, &best_aligning_position_left_part, NULL);
+        index->RawPositionConverterWithRefId(left_alignment_end, absolute_reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
         if (perform_reverse_complement == true) {
           *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
         }
@@ -887,9 +887,9 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   //    *ret_AS_right_part = RescoreAlignment((unsigned char *) &(alignment_right_part[0]), alignment_right_part.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
 
       if (orientation == kForward) {
-        index->RawPositionConverter(right_alignment_start, 0, NULL, &best_aligning_position_right_part, NULL);
+        index->RawPositionConverterWithRefId(right_alignment_start, absolute_reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
       } else {
-        index->RawPositionConverter(right_alignment_end, 0, NULL, &best_aligning_position_right_part, NULL);
+        index->RawPositionConverterWithRefId(right_alignment_end, absolute_reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
         if (perform_reverse_complement == true) {
           *ret_cigar_right_part = ReverseCigarString((*ret_cigar_right_part));
         }
