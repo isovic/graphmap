@@ -14,6 +14,44 @@
 
 #include "index/index_spaced_hash_fast.h"
 
+CompiledSeed::CompiledSeed(std::string m_shape) {
+  Generate(m_shape);
+}
+
+void CompiledSeed::Generate(std::string m_shape) {
+  int32_t mask_shift = 0, zero_start = 0, zero_end = 0;
+  uint64_t mask = 0;
+
+  shape = m_shape;
+  mask_ops.clear();
+
+  for (int32_t i = 0; i <= shape.size(); i++) {
+    if (i == shape.size() || (i > 0 && shape[i] == '0' && shape[i - 1] == '1')) {
+      mask_shift = (zero_end - zero_start) * 2;
+      if (mask != 0) {
+        mask_ops.push_back(MaskOperation(mask, mask_shift));
+      }
+
+      mask = 0;
+      zero_start = i;
+    } else if (i > 0 && shape[i] == '1' && shape[i - 1] == '0') {
+      zero_end = i;
+    }
+
+    if (shape[i] == '1') {
+      mask |= (0x0000000000000003 << (i * 2));
+    }
+  }
+}
+
+uint64_t CompiledSeed::Apply(uint64_t full_seed) {
+  uint64_t ret = 0x0;
+  for (int32_t i = 0; i < mask_ops.size(); i++) {
+    ret |= ((full_seed & mask_ops[i].mask) >> (mask_ops[i].shift));
+  }
+  return ret;
+}
+
 IndexSpacedHashFast::IndexSpacedHashFast() {
   data_ = NULL;
   kmer_hash_array_ = NULL;
@@ -94,58 +132,13 @@ void IndexSpacedHashFast::Clear() {
     delete[] data_;
   data_ = NULL;
 
-//  k_ = 15;
-//  k_ = 12;
-////  k_ = 18;
-////  k_ = 15;
-////  k_ = 13;
-////  k_ = 10;
-////  k_ = 8;
-//  k_ = 14;
-////  k_ = 16;
-////  k_ = 10;
-
-//  kmer_hash_.clear();
-
   num_kmers_ = 0;
   all_kmers_size_ = 0;
 }
 
-//int64_t IndexSpacedHashFast::GenerateHashKey(int8_t *seed, uint64_t seed_length) {
-//  int64_t ret = 0;
-//  int64_t current_accepted_base = 0;
-//
-//  return GenerateHashKeySplit(seed, seed_length, 1, 2);
-//}
-//
-//int64_t IndexSpacedHashFast::GenerateHashKeySplit(int8_t *seed, uint64_t seed_length, int num_split_spaces, int max_num_split_spaces) {
-//  int64_t ret = 0;
-//  int64_t current_accepted_base = 0;
-//
-//  int64_t num_consecutive_bases = (seed_length - max_num_split_spaces) / 2;
-//
-//  for (uint64_t current_base = 0; current_base < num_consecutive_bases; current_base++) {
-//    if (!kIsBase[seed[current_base]])
-//      return -1;
-//    ret |= (kBaseToBwa[seed[current_base]] << (current_accepted_base * 2));
-//    current_accepted_base += 1;
-//  }
-//
-//  for (uint64_t current_base = 0; current_base < num_consecutive_bases; current_base++) {
-//    if (!kIsBase[seed[num_consecutive_bases + num_split_spaces + current_base]])
-//      return -1;
-//    ret |= (kBaseToBwa[seed[num_consecutive_bases + num_split_spaces + current_base]] << (current_accepted_base * 2));
-//    current_accepted_base += 1;
-//  }
-//
-//  return ret;
-//}
-
 int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const {
   uint64_t ret = 0;
   uint64_t current_accepted_base = 0;
-
-//  int64_t num_consecutive_bases = (seed_length - max_num_split_spaces) / 2;
 
   for (uint64_t current_base = 0; current_base < shape_length; current_base++) {
     if (shape[current_base] != '1')
@@ -160,35 +153,6 @@ int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *
 
   return ((int64_t) ret);
 }
-
-//void IndexSpacedHashFast::CountKmers(int8_t *sequence_data, int64_t sequence_length, int k, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) {  // std::vector<int64_t> &ret_kmer_counts) {
-//  int64_t hash_key = -1;
-//
-////  ret_kmer_counts.resize(std::pow(2, (2 * k)));
-//  int64_t num_kmers = CalcNumHashKeys();
-//  int64_t *kmer_counts = (int64_t *) calloc(sizeof(int64_t), num_kmers);
-//
-//  for (uint64_t i = 0; i < (sequence_length - k + 1); i++) {
-//    int8_t *seed_start = &(sequence_data[i]);
-//    hash_key = GenerateHashKey(seed_start, k);
-//
-//    if (hash_key < 0)
-//      continue;
-//    kmer_counts[hash_key] += 1;
-//  }
-//
-//  *ret_kmer_counts = kmer_counts;
-//  *ret_num_kmers = num_kmers;
-//}
-//
-//int64_t IndexSpacedHashFast::CalcNumHashKeys() {
-//  // Every third base from the kmer is left out.
-////  int64_t num_sparse_kmers = (int64_t) ceil(std::pow(2.0f, (2.0f * (2.0f * (float) k_) / 3.0f)));
-////  int64_t num_sparse_kmers = (int64_t) ceil(std::pow(2.0f, (2.0f * (k_ - 1.0f))));
-//  int64_t num_sparse_kmers = (int64_t) ceil(std::pow(2.0f, (2.0f * (shape_index_length_ - 2))));
-//
-//  return num_sparse_kmers;
-//}
 
 void IndexSpacedHashFast::CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const {  // std::vector<int64_t> &ret_kmer_counts) {
   int64_t hash_key = -1;
@@ -213,7 +177,7 @@ void IndexSpacedHashFast::CountKmersFromShape(int8_t *sequence_data, int64_t seq
 int64_t IndexSpacedHashFast::CalcNumHashKeysFromShape(const char *shape, int64_t shape_length) const {
   int64_t num_accepted_bases = 0;
 
-  for (int64_t i=0; i<shape_length; i++) {
+  for (int64_t i = 0; i < shape_length; i++) {
     if (shape[i] != '1')
       continue;
     num_accepted_bases += 1;
@@ -224,222 +188,17 @@ int64_t IndexSpacedHashFast::CalcNumHashKeysFromShape(const char *shape, int64_t
   return num_sparse_kmers;
 }
 
-//int IndexSpacedHashFast::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) {  //, std::vector<int64_t> &return_positions) {
-////  printf ("Tu sam 1!\n");
-////  fflush(stdout);
-//
-//  seed_length = k_;
-//  *ret_hits = NULL;
-//  *ret_start_hit = 0;
-//  *ret_num_hits = 0;
-//  int64_t num_all_hits = 0;
-//
-////  printf ("Tu sam 1.1!\n");
-////  fflush(stdout);
-//
-//
-//  int64_t hash_key_mismatch = GenerateHashKeySplit(seed, k_, 1, 2);
-//
-////  printf ("Tu sam 1.2!\n");
-////  fflush(stdout);
-//
-//  int64_t hash_key_insertion = GenerateHashKeySplit(seed, k_, 2, 2);
-//
-////  printf ("Tu sam 1.3!\n");
-////  fflush(stdout);
-//
-//  int64_t hash_key_deletion = GenerateHashKeySplit(seed, k_, 0, 2);
-//
-////  printf ("Tu sam 1.4!\n");
-////  fflush(stdout);
-//
-//  if (hash_key_mismatch < 0 && hash_key_insertion < 0 && hash_key_deletion < 0) {
-//    *ret_hits = NULL;
-//    *ret_start_hit = 0;
-//    *ret_num_hits = 0;
-////    printf ("return 3\n");
-////    fflush(stdout);
-//    return 3;
-//  }
-//
-////  if (hash_key > kmer_hash_.size()) {
-////    printf ("%s = %ld\n", GetSubstring((char *) seed, seed_length).c_str(), hash_key);
-////    fflush(stdout);
-////  }
-//
-////  printf ("Tu sam 1.5!\n");
-////  fflush(stdout);
-////
-////  if (hash_key_mismatch > kmer_hash_.size()) {
-////    printf ("hash_key_mismatch > kmer_hash_.size(), hash_key_mismatch = %ld, kmer_hash_.size() = %ld\n", hash_key_mismatch, kmer_hash_.size());
-////    fflush(stdout);
-////  }
-////  if (hash_key_insertion > kmer_hash_.size()) {
-////    printf ("hash_key_insertion > kmer_hash_.size(), hash_key_insertion = %ld, kmer_hash_.size() = %ld\n", hash_key_insertion, kmer_hash_.size());
-////    fflush(stdout);
-////  }
-////  if (hash_key_deletion > kmer_hash_.size()) {
-////    printf ("hash_key_deletion > kmer_hash_.size(), hash_key_deletion = %ld, kmer_hash_.size() = %ld\n", hash_key_deletion, kmer_hash_.size());
-////    fflush(stdout);
-////  }
-//
-////  num_all_hits = kmer_hash_[hash_key_mismatch].size() + kmer_hash_[hash_key_insertion].size() + kmer_hash_[hash_key_deletion].size();
-//  if (hash_key_mismatch >= 0) {
-//    num_all_hits += kmer_counts_[hash_key_mismatch];
-////    printf ("kmer_hash_[hash_key_mismatch].size() = %ld\thash_key_mismatch = %ld\n", kmer_hash_[hash_key_mismatch].size(), hash_key_mismatch);
-//  }
-//  if (hash_key_insertion >= 0) {
-//    num_all_hits += kmer_counts_[hash_key_insertion];
-////    printf ("kmer_hash_[hash_key_insertion].size() = %ld\thash_key_insertion = %ld\n", kmer_hash_[hash_key_insertion].size(), hash_key_insertion);
-//  }
-//  if (hash_key_deletion >= 0) {
-//    num_all_hits += kmer_counts_[hash_key_deletion];
-////    printf ("kmer_hash_[hash_key_deletion].size() = %ld\thash_key_deletion = %ld\n", kmer_hash_[hash_key_deletion].size(), hash_key_deletion);
-//  }
-//
-////  printf ("\n");
-//
-//  int64_t *all_hits = new int64_t[num_all_hits + 1];
-//
-////  printf ("num_all_hits = %ld\n", num_all_hits);
-////  fflush(stdout);
-//
-//  int64_t current_data_ptr = 0;
-//  if (hash_key_mismatch >= 0 && kmer_counts_[hash_key_mismatch] > 0) {
-//    memmove(&(all_hits[current_data_ptr]), &(kmer_hash_array_[hash_key_mismatch][0]), kmer_counts_[hash_key_mismatch] * sizeof(int64_t));
-//    current_data_ptr += kmer_counts_[hash_key_mismatch];
-//
-////    for (int i=0; i<kmer_hash_[hash_key_mismatch].size(); i++) {
-////      printf ("%ld == %ld, num_all_hits = %ld, kmer_hash_[hash_key_mismatch].size() = %ld\n", kmer_hash_[hash_key_mismatch][i], all_hits[i], num_all_hits, kmer_hash_[hash_key_mismatch].size());
-////    }
-//  }
-//  if (hash_key_insertion >= 0 && kmer_counts_[hash_key_insertion] > 0) {
-//    memmove(&(all_hits[current_data_ptr]), &(kmer_hash_array_[hash_key_insertion][0]), kmer_counts_[hash_key_insertion] * sizeof(int64_t));
-//    current_data_ptr += kmer_counts_[hash_key_insertion];
-//  }
-//  if (hash_key_deletion >= 0 && kmer_counts_[hash_key_deletion] > 0) {
-//    memmove(&(all_hits[current_data_ptr]), &(kmer_hash_array_[hash_key_deletion][0]), kmer_counts_[hash_key_deletion] * sizeof(int64_t));
-//    current_data_ptr += kmer_counts_[hash_key_deletion];
-//  }
-//
-//  std::sort(all_hits, all_hits + num_all_hits);
-////  printf ("Tu sam 2!\n");
-////  fflush(stdout);
-//
-//  *ret_hits = all_hits;
-//  *ret_start_hit = 0;
-//  *ret_num_hits = current_data_ptr;
-//
-////  printf ("Tu sam 3!\n");
-////  fflush(stdout);
-//
-//  if (num_all_hits == 0) {
-//    return 1;
-//  }
-//
-////  printf ("Tu sam 4!\n");
-////  fflush(stdout);
-//
-//  if ((max_num_of_hits > 0 && num_all_hits > ((int64_t) max_num_of_hits))) {
-//    return 2;
-//  }
-//
-////  printf ("Tu sam 5!\n");
-////  fflush(stdout);
-//
-//  return 0;
-//}
-
-//int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
-//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Creating spaced hash index.\n"), "CreateIndex_");
-//
-//  if (kmer_hash_array_)
-//    free(kmer_hash_array_);
-//  kmer_hash_array_ = NULL;
-//  if (all_kmers_)
-//    free(all_kmers_);
-//  all_kmers_ = NULL;
-//  if (kmer_counts_)
-//    free(kmer_counts_);
-//  kmer_counts_ = NULL;
-//
-//  int64_t num_kmers = 0;
-//  CountKmers(data_, data_length_, k_, &kmer_counts_, &num_kmers);
-//  int64_t *kmer_countdown = (int64_t *) malloc(sizeof(int64_t) * num_kmers);
-//  memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
-//  num_kmers_ = num_kmers;
-//
-//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
-//
-//  int64_t total_num_kmers = 0;
-//  for (uint64_t i = 0; i < num_kmers; i++) {
-////    kmer_hash_[i].reserve(kmer_counts[i]);
-////    kmer_hash_array_[i] = (int64_t *) malloc(sizeof(int64_t) * kmer_counts_[i]);
-//    kmer_countdown[i] -= 1;
-//    total_num_kmers += kmer_counts_[i];
-////    printf ("kmer_counts_[%ld] = %ld,\ttotal_num_kmers = %ld\n", i, kmer_counts_[i], total_num_kmers);
-////    fflush(stdout);
-//  }
-//
-////  kmer_hash_.clear();
-////  kmer_hash_.resize(num_kmers);
-//  kmer_hash_array_ = (int64_t **) malloc(sizeof(int64_t *) * num_kmers);
-//  all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * total_num_kmers);
-//  all_kmers_size_ = total_num_kmers;
-//
-//  int64_t kmer_hash_ptr = 0;
-//  for (uint64_t i = 0; i < num_kmers; i++) {
-//    if (kmer_counts_[i] > 0)
-//      kmer_hash_array_[i] = (all_kmers_ + kmer_hash_ptr);
-//    else
-//      kmer_hash_array_[i] = NULL;
-//    kmer_hash_ptr += kmer_counts_[i];
-//  }
-//
-//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
-//
-//  int64_t hash_key = -1;
-//
-//  for (uint64_t i = 0; i < (data_length_ - k_ + 1); i++) {
-//    int8_t *seed_start = &(data_[i]);
-//    hash_key = GenerateHashKey(seed_start, k_);
-//
-////    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("%s = %ld = %X\n", GetSubstring((char *) seed_start, k_).c_str(), hash_key, hash_key), "[]");
-//
-//    if (hash_key < 0)
-//      continue;
-//
-//    kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = ((int64_t) i);
-//    kmer_countdown[hash_key] -= 1;
-//  }
-//
-//  if (kmer_countdown)
-//    free(kmer_countdown);
-//  kmer_countdown = NULL;
-//
-//  ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
-//
-//  return 0;
-//}
-
-int IndexSpacedHashFast::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const {  //, std::vector<int64_t> &return_positions) {
-//  printf ("Tu sam 1!\n");
-//  fflush(stdout);
+int IndexSpacedHashFast::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const {
 
   seed_length = shape_index_length_;
   *ret_hits = NULL;
   *ret_start_hit = 0;
   *ret_num_hits = 0;
 
-//  printf ("Tu sam 1.1!\n");
-//  fflush(stdout);
-
-
-
   int64_t current_data_ptr = 0;
   int64_t *all_hits = NULL;
 
-  for (int64_t i=0; i<shapes_lookup_.size(); i++) {
+  for (int64_t i = 0; i < shapes_lookup_.size(); i++) {
     int64_t hash_key = GenerateHashKeyFromShape(seed, shapes_lookup_[i].c_str(), shapes_lookup_[i].size());
 
     if (hash_key >= 0 && hash_key < num_kmers_ && kmer_counts_[hash_key] > 0) {
@@ -523,11 +282,15 @@ int64_t IndexSpacedHashFast::RawPositionConverter2(int64_t raw_position, int64_t
 
   int64_t reference_index = (int64_t) (raw_position & MASK_REF_ID);
   if (reference_index < 0) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "1Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_ERROR,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_UNEXPECTED_VALUE,
+                                                                                             "1Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
     return reference_index;
   }
 
-  int64_t relative_pos = raw_position >> 32; // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
+  int64_t relative_pos = raw_position >> 32;  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
   int64_t abs_pos = relative_pos + reference_starting_pos_[(uint64_t) reference_index];
   SeqOrientation orientation = kForward;
 
@@ -550,13 +313,13 @@ int64_t IndexSpacedHashFast::RawPositionConverter2(int64_t raw_position, int64_t
   return reference_index;
 }
 
-int IndexSpacedHashFast::FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const {  //, std::vector<int64_t> &return_positions) {
+int IndexSpacedHashFast::FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const {
   int64_t *all_hits = NULL;
   int64_t num_hits = 0;
 
   if (hash_key >= 0 && hash_key < num_kmers_ && kmer_counts_[hash_key] > 0) {
     all_hits = kmer_hash_array_[hash_key];
-    num_hits =  kmer_counts_[hash_key];
+    num_hits = kmer_counts_[hash_key];
   }
 
   *ret_hits = all_hits;
@@ -575,7 +338,9 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t 
 }
 
 int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Creating spaced hash index.\n"), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("Creating spaced hash index.\n"), "CreateIndex_");
 
   if (kmer_hash_array_)
     free(kmer_hash_array_);
@@ -587,7 +352,9 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     free(kmer_counts_);
   kmer_counts_ = NULL;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
 
   int64_t num_kmers = 0;
   CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, &kmer_counts_, &num_kmers);
@@ -595,21 +362,16 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
   num_kmers_ = num_kmers;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
 
   int64_t total_num_kmers = 0;
   for (uint64_t i = 0; i < num_kmers; i++) {
-//    kmer_hash_[i].reserve(kmer_counts[i]);
-//    kmer_hash_array_[i] = (int64_t *) malloc(sizeof(int64_t) * kmer_counts_[i]);
-//    kmer_countdown[i] -= 1;
     kmer_countdown[i] = 0;
     total_num_kmers += kmer_counts_[i];
-//    printf ("kmer_counts_[%ld] = %ld,\ttotal_num_kmers = %ld\n", i, kmer_counts_[i], total_num_kmers);
-//    fflush(stdout);
   }
 
-//  kmer_hash_.clear();
-//  kmer_hash_.resize(num_kmers);
   kmer_hash_array_ = (int64_t **) malloc(sizeof(int64_t *) * num_kmers);
   all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * total_num_kmers);
   all_kmers_size_ = total_num_kmers;
@@ -623,7 +385,9 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     kmer_hash_ptr += kmer_counts_[i];
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("Index memory allocated.\n"), "CreateIndex_");
 
   int64_t hash_key = -1;
 
@@ -641,13 +405,11 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     if (hash_key < 0)
       continue;
 
-//    int64_t coded_position = (int64_t) (((uint64_t) i) & ((uint64_t) 0xFFFFFFFF)) | (((uint64_t) current_ref_id) << 32);
     uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
     uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
     int64_t coded_position = (int64_t) (local_pos << 32) | ref_id;
 
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
-//    kmer_countdown[hash_key] -= 1;
     kmer_countdown[hash_key] += 1;
   }
 
@@ -655,12 +417,12 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     free(kmer_countdown);
   kmer_countdown = NULL;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
 
   return 0;
 }
-
-
 
 int IndexSpacedHashFast::SerializeIndex_(FILE* fp_out) {
   int64_t vector_length = 0;
@@ -672,13 +434,6 @@ int IndexSpacedHashFast::SerializeIndex_(FILE* fp_out) {
   fwrite(kmer_counts_, sizeof(int64_t), num_kmers_, fp_out);
   fwrite(&all_kmers_size_, sizeof(int64_t), 1, fp_out);
   fwrite(all_kmers_, sizeof(int64_t), all_kmers_size_, fp_out);
-
-//
-//  for (int64_t i=0; i<num_kmers_; i++) {
-//    vector_length = kmer_counts_[i];
-//    if (vector_length > 0)
-//      fwrite(&(kmer_hash_array_[i][0]), sizeof(int64_t), vector_length, fp_out);
-//  }
 
   return 0;
 }
@@ -706,14 +461,6 @@ void IndexSpacedHashFast::set_shape_index_length(int64_t shapeIndexLength) {
   shape_index_length_ = shapeIndexLength;
 }
 
-//int IndexSpacedHashFast::get_k() const {
-//  return k_;
-//}
-//
-//void IndexSpacedHashFast::set_k(int k) {
-//  k_ = k;
-//}
-
 int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
   if (shape_index_)
     free(shape_index_);
@@ -731,31 +478,42 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
 
   int64_t vector_length = 0;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("\t- k_...\n"), "DeserializeIndex_");
   if (fread(&shape_index_length_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_FATAL,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_FILE_READ_DATA,
+                                                                                             "Occured when reading variable shape_index_length_."));
     return 1;
   }
 
-  shape_index_ = (char *) malloc (sizeof(char) * (shape_index_length_ + 1));
+  shape_index_ = (char *) malloc(sizeof(char) * (shape_index_length_ + 1));
   if (fread(shape_index_, sizeof(char), shape_index_length_, fp_in) != shape_index_length_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_."));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_FATAL,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_FILE_READ_DATA,
+                                                                                             "Occured when reading variable shape_index_."));
     return 1;
   }
   shape_index_[shape_index_length_] = '\0';
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "DeserializeIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("\t- index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "DeserializeIndex_");
 
-//  printf ("shapes_lookup_.size() = %ld\n", shapes_lookup_.size());
-//  for (int64_t i=0; i<shapes_lookup_.size(); i++)
-//    printf ("shapes_lookup[%d] = %s\n", i, shapes_lookup_[i].c_str());
-//  fflush(stdout);
-
-
-
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_kmers_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("\t- num_kmers_...\n"), "DeserializeIndex_");
   if (fread(&num_kmers_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_kmers_."));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_FATAL,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_FILE_READ_DATA,
+                                                                                             "Occured when reading variable num_kmers_."));
     return 1;
   }
 
@@ -765,19 +523,33 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
 
   kmer_counts_ = (int64_t *) malloc(sizeof(int64_t) * num_kmers_);
   if (fread(kmer_counts_, sizeof(int64_t), num_kmers_, fp_in) != num_kmers_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable kmer_counts_.\n"));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_FATAL,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_FILE_READ_DATA,
+                                                                                             "Occured when reading variable kmer_counts_.\n"));
     return 3;
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().VerboseLog(
+  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
+                                      true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
   if (fread(&all_kmers_size_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers_size_.\n"));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_FATAL,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_FILE_READ_DATA,
+                                                                                             "Occured when reading variable all_kmers_size_.\n"));
     return 1;
   }
 
   all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * all_kmers_size_);
   if (fread(all_kmers_, sizeof(int64_t), all_kmers_size_, fp_in) != all_kmers_size_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers.\n"));
+    LogSystem::GetInstance().Log(
+    SEVERITY_INT_FATAL,
+                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
+                                 ERR_FILE_READ_DATA,
+                                                                                             "Occured when reading variable all_kmers.\n"));
     return 3;
   }
 
@@ -846,7 +618,6 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
 //  shapes_lookup_temp.push_back("111100111101111");
 //  shapes_lookup_temp.push_back("1111001111001111");
 
-
 //  std::string shape_temp =     "111101111101111";
 //  shapes_lookup_temp.push_back("1111111111111");
 //  shapes_lookup_temp.push_back("11111111101111");
@@ -885,15 +656,14 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
 
   if (shape_type == SHAPE_TYPE_444) {
     shape_for_indexing = "11110111101111";
-    shapes_for_search = {"111111111111",   "1111111101111",    "11111111001111",
-                         "1111011111111",  "11110111101111",   "111101111001111",
-                         "11110011111111", "111100111101111",  "1111001111001111"};
+    shapes_for_search = {"111111111111", "1111111101111", "11111111001111",
+      "1111011111111", "11110111101111", "111101111001111",
+      "11110011111111", "111100111101111", "1111001111001111"};
   } else {  // SHAPE_TYPE_66
     shape_for_indexing = "1111110111111";
     shapes_for_search = {"111111111111", "1111110111111", "11111100111111"};
 
   }
-
 
   if (shape_for_indexing.size() == 0 || shapes_for_search.size() == 0) {
     return 1;
@@ -906,10 +676,13 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
 
   shapes_lookup_ = shapes_for_search;
 
+  compiled_seeds_.clear();
+  for (int32_t i=0; i<shapes_for_search.size(); i++) {
+    compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
+  }
+
   return 0;
 }
-
-
 
 // Example usage:
 //std::string shape_for_indexing_66 = "1111110111111";
@@ -929,6 +702,100 @@ int IndexSpacedHashFast::InitShapes(std::string shape_for_indexing, std::vector<
   shape_index_[shape_index_length_] = '\0';
 
   shapes_lookup_ = shapes_for_search;
+
+  compiled_seeds_.clear();
+  for (int32_t i=0; i<shapes_for_search.size(); i++) {
+    compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
+  }
+
+  return 0;
+}
+
+
+
+int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int64_t kmer_step, std::vector<int64_t> &ret_hash_keys, std::vector<int64_t> &ret_key_counts) {
+  int64_t read_length = read->get_sequence_length();
+
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  int64_t k = 0;
+  for (int32_t i=0; i<shape_index_length_; i++) {
+    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
+
+  /// Calculate all the hash keys.
+  std::vector<unsigned __int128> hash_keys_with_pos;
+  hash_keys_with_pos.clear();
+  hash_keys_with_pos.reserve(read_length * shapes_lookup_.size());
+  if (read->get_data_format() == kDataFormatAscii) {
+    for (uint64_t i = 0; i < (read_length - k + 1); i += kmer_step) {  // i++) {
+      int8_t *seed = (int8_t *) &(read->get_data()[i]);
+
+      for (int64_t j = 0; j < shapes_lookup_.size(); j++) {
+        uint64_t hash_key = (uint64_t) GenerateHashKeyFromShape(seed, shapes_lookup_[j].c_str(), shapes_lookup_[j].size());
+
+        if (hash_key < 0 || hash_key >= num_kmers_) {
+          continue;
+        }
+
+        unsigned __int128 hash_key_with_pos = (((unsigned __int128) hash_key) << 64) | i;
+        hash_keys_with_pos.push_back(hash_key_with_pos);
+      }
+    }
+  } else if (read->get_data_format() == kDataFormat2BitPacked2) {
+    /// This case not implemented yet. This should be much faster than the above option.
+  }
+
+  /// Find unique hash keys.
+  std::sort(hash_keys_with_pos.begin(), hash_keys_with_pos.end());
+  hash_keys_with_pos.erase(std::unique(hash_keys_with_pos.begin(), hash_keys_with_pos.end()), hash_keys_with_pos.end());
+
+  if (hash_keys_with_pos.size() == 0)
+    return 1;
+
+  /// Clear the output containers.
+  ret_hash_keys.clear();
+  ret_hash_keys.reserve(hash_keys_with_pos.size());
+  ret_key_counts.clear();
+  ret_key_counts.reserve(hash_keys_with_pos.size());
+
+  /// A key can be repeated multiple times throughout the read (repeats in the sequence + tandem repeats and multiple gapped spaced seeds for same position on the read).
+  /// In this case, truncate all keys into one, and keep the counts to be used for region selection.
+  int64_t hash_key = 0, next_hash_key = 0, last_hash_key = 0;
+  int64_t key_count = 0;
+  hash_key = (int64_t) (hash_keys_with_pos[0] >> 64);
+  for (int64_t i=1; i<(hash_keys_with_pos.size()); i++) {
+//    printf ("[%ld] %X %ld\n", i, (int64_t) (ret_coded_hash_keys[i] >> 64), (int64_t) (ret_coded_hash_keys[i] & 0x00000000FFFFFFFF));
+//    fflush(stdout);
+    int64_t current_hash_key = (int64_t) (hash_keys_with_pos[i] >> 64);
+    if (current_hash_key == hash_key) {
+      key_count += 1;
+    } else {
+      ret_hash_keys.push_back(hash_key);
+      ret_key_counts.push_back((key_count + 1));
+      key_count = 0;
+      hash_key = current_hash_key;
+    }
+  }
+  /// Handle the last hash key.
+  ret_hash_keys.push_back(hash_key);
+  ret_key_counts.push_back((key_count + 1));
+
+  /// Debugging.
+//  for (int64_t i=1; i<(ret_hash_keys.size()); i++) {
+//    printf ("[%ld] %X %ld\n", i, ret_hash_keys[i], ret_key_counts[i]);
+//    fflush(stdout);
+//  }
+//  exit(1);
+
+  return 0;
+}
+
+int IndexSpacedHashFast::LookUpHashKeys(const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<int64_t> &ret_hits) {
+  for (int64_t i=0; i<hash_keys.size(); i++) {
+    int64_t hash_key = hash_keys[i];
+    int64_t *hits = kmer_hash_array_[hash_key];
+    int64_t num_hits = kmer_counts_[hash_key];
+  }
 
   return 0;
 }

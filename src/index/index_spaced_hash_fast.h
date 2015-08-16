@@ -19,6 +19,27 @@
 
 
 
+class MaskOperation {
+ public:
+  uint64_t mask;
+  int32_t shift;
+
+  MaskOperation(uint64_t m_mask, int32_t m_shift) {
+    mask = m_mask;
+    shift = m_shift;
+  }
+};
+
+class CompiledSeed {
+ public:
+  std::vector<MaskOperation> mask_ops;
+  std::string shape;
+
+  CompiledSeed(std::string m_shape);
+  void Generate(std::string m_shape);
+  uint64_t Apply(uint64_t full_seed);
+};
+
 class IndexSpacedHashFast : public Index {
  public:
   IndexSpacedHashFast();
@@ -52,6 +73,9 @@ class IndexSpacedHashFast : public Index {
 //  int64_t RawPositionConverter(int64_t raw_position, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
   int64_t RawPositionConverter2(int64_t raw_position, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
 
+  int CalcAllKeysFromSequence(const SingleSequence *read, int64_t kmer_step, std::vector<int64_t> &ret_hash_keys, std::vector<int64_t> &ret_key_counts);
+  int LookUpHashKeys(const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<int64_t> &ret_hits);
+
 //  int get_k() const;
 //  void set_k(int k);
 //  const std::vector<std::vector<int64_t> >& get_kmer_hash() const;
@@ -68,6 +92,8 @@ class IndexSpacedHashFast : public Index {
   int64_t *all_kmers_;
   int64_t all_kmers_size_;
   std::vector<std::string> shapes_lookup_;
+
+  std::vector<CompiledSeed> compiled_seeds_;
 
   int CreateIndex_(int8_t *data, uint64_t data_length);
   int SerializeIndex_(FILE *fp_out);

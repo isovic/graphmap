@@ -14,8 +14,6 @@
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 
-
-
 int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
@@ -28,9 +26,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     return 0;
   }
 
-  int64_t bin_size = (parameters->alignment_approach == "overlapper") ?
-                      -1 :
-                      read->get_sequence_length() / 3;
+  int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : read->get_sequence_length() / 3;
   ExperimentalRegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
 
   // If the read length is too short, call it unmapped.
@@ -44,7 +40,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   }
 
   // Create the index for the current read. This index is used in graph construction.
-  Index *index_read=NULL;
+  Index *index_read = NULL;
   if (parameters->k_graph < 10) {
     index_read = new IndexHash();
     ((IndexHash *) index_read)->set_k(parameters->k_graph);
@@ -88,7 +84,6 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
   mapping_data->num_region_iterations = 0;
 
-
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
   for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
@@ -99,7 +94,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
 
   // Process regions one by one.
-  for (int64_t i = 0; i < mapping_data->bins.size() && i <max_num_regions; i++) {
+  for (int64_t i = 0; i < mapping_data->bins.size() && i < max_num_regions; i++) {
 //    if (parameters->alignment_algorithm == "overlapper") {
 //      if (index->get_headers()[mapping_data->bins[i].reference_id % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
 //        continue;
@@ -135,13 +130,13 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 //        return 0;
 //      }
     }
-  // for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
+    // for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
 
-  //   if (mapping_data->bins[i].bin_value < min_allowed_bin_value)
-  //     break;
-  //   if (i >= parameters->max_num_regions && ((i > 0 && mapping_data->bins[i].bin_value != mapping_data->bins[i-1].bin_value) || i == 0))
-  //     break;
-    
+    //   if (mapping_data->bins[i].bin_value < min_allowed_bin_value)
+    //     break;
+    //   if (i >= parameters->max_num_regions && ((i > 0 && mapping_data->bins[i].bin_value != mapping_data->bins[i-1].bin_value) || i == 0))
+    //     break;
+
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
 
@@ -221,12 +216,8 @@ Region GraphMap::CalcRegionFromBin_(int64_t sorted_bins_index, const MappingData
 
   std::string rname = index_->get_headers()[bin_ref_id % index_->get_num_sequences_forward()];
 
-  int64_t location_start = (mapping_data->bin_size > 0) ?
-                            bin_id * mapping_data->bin_size :
-                            0;
-  int64_t location_end = (mapping_data->bin_size > 0) ?
-                           location_start + mapping_data->bin_size :
-                           reference_length;
+  int64_t location_start = (mapping_data->bin_size > 0) ? bin_id * mapping_data->bin_size : 0;
+  int64_t location_end = (mapping_data->bin_size > 0) ? location_start + mapping_data->bin_size : reference_length;
 
   bool is_split = false;
   int64_t split_start = 0;
@@ -353,9 +344,6 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
 
   return 0;
 }
-
-
-
 
 int GraphMap::EvaluateMappings_(bool evaluate_edit_distance, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
   if (mapping_data->intermediate_mappings.size() == 0)
@@ -549,8 +537,6 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     }
   }
 
-
-
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
@@ -731,9 +717,9 @@ std::string GraphMap::GenerateUnmappedSamLine_(MappingData *mapping_data, int64_
   }
 
   std::stringstream ss_optional1;
-  ss_optional1 << "NM:i:" << -1 << "\t"; // Specified by SAM format.
+  ss_optional1 << "NM:i:" << -1 << "\t";  // Specified by SAM format.
   ss_optional1 << "AS:i:" << -((int64_t) read->get_sequence_length()) << "\t";
-  ss_optional1 << "H0:i:" << 0 << "\t"; // Specified by SAM format.
+  ss_optional1 << "H0:i:" << 0 << "\t";  // Specified by SAM format.
   ss_optional1 << "ZE:f:" << std::numeric_limits<float>::infinity() << "\t";
   ss_optional1 << "ZF:f:" << 0.0f << "\t";
   ss_optional1 << "ZQ:i:" << read->get_sequence_length() << "\t";

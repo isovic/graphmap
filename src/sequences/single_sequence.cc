@@ -328,7 +328,7 @@ void SingleSequence::Verbose(FILE *fp) const {
 
 int SingleSequence::ConvertDataFormat(DataFormat new_data_format) {
   if (data_format_ == new_data_format) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_PARAMS, "Targeted data format is the same as current. No changes will be made."));
+//    LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_PARAMS, "Targeted data format is the same as current. No changes will be made."));
     return 0;
   }
 
