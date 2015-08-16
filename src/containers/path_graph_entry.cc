@@ -441,6 +441,10 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const InfoAlignment &a
     X3_ss << "__num_eq_ops=" << alignment_info.num_eq_ops << "__num_x_ops=" << alignment_info.num_x_ops << "__num_i_ops=" << alignment_info.num_i_ops << "__num_d_ops=" << alignment_info.num_d_ops << "__nonclippedlen=" << alignment_info.nonclipped_length << "__match_rate=" << FormatString("%.2f", match_rate) << "__mismatch_rate=" << FormatString("%.2f", mismatch_rate);
 
     ss << "\tX3:Z:" << X3_ss.str();
+
+    std::stringstream X4_ss;
+    X4_ss << "Timings(sec)__regionselection=" << alignment_info.stats_time_region_selection << "__mapping=" << alignment_info.stats_time_mapping << "__alignment=" << alignment_info.stats_time_alignment;
+    ss << "\tX4:Z:" << X4_ss.str();
   }
 
   return ss.str();

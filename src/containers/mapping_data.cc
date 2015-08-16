@@ -31,6 +31,10 @@ MappingData::MappingData() {
   num_region_iterations = 0;
   mapping_quality = 0;
   metagen_alignment_score = 0;
+
+  stats_time_region_selection = 0.0;
+  stats_time_mapping = 0.0;
+  stats_time_alignment = 0.0;
 }
 
 MappingData::~MappingData() {

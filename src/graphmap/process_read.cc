@@ -5,6 +5,7 @@
  *      Author: isovic
  */
 
+#include <ctime>
 #include <limits>
 #include <algorithm>
 #include "graphmap/graphmap.h"
@@ -26,9 +27,15 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     return 0;
   }
 
+  clock_t begin_clock = clock();
   int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : read->get_sequence_length() / 3;
   ExperimentalRegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
+  clock_t end_clock = clock();
+  double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->stats_time_region_selection = elapsed_secs;
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Region selection elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
 
+  begin_clock = clock();
   // If the read length is too short, call it unmapped.
   if (mapping_data->bins.size() <= 0 || (mapping_data->bins.size() > 0 && mapping_data->bins.front().bin_value == 0)) {
     std::stringstream ss;
@@ -183,7 +190,19 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   index_read = NULL;
   mapping_data->vertices.Clear();
 
+  end_clock = clock();
+  elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->stats_time_mapping = elapsed_secs;
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Read mapping elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
+
+  begin_clock = clock();
+
   GenerateAlignments_(mapping_data, index, read, parameters, evalue_params);
+
+  end_clock = clock();
+  elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->stats_time_alignment = elapsed_secs;
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ GenerateAlignments elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
 
   // Just verbose.
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
@@ -443,7 +462,12 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     double evalue_left_part = 0, evalue_right_part = 0;
     int64_t nonclipped_length_left_part = 0, nonclipped_length_right_part = 0;
     // TODO: Promijeniti interface ove funkcije da ne vraca edit distance kao povratnu vrijednost, nego preko parametra, a da povratna vrijednost bude samo status o uspjehu.
+
+    clock_t begin_clock = clock();
     int edit_distance = HybridRealignment(read, index_, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
+    clock_t end_clock = clock();
+    double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
 
     CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index_->get_data_length_forward(), evalue_params, &evalue_left_part);
     CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index_->get_data_length_forward(), evalue_params, &evalue_right_part);
@@ -499,6 +523,10 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_i_ops = num_i_ops;
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().num_d_ops = num_d_ops;
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().nonclipped_length = nonclipped_length_left_part;
+
+    mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().stats_time_region_selection = mapping_data->stats_time_region_selection;
+    mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().stats_time_mapping = mapping_data->stats_time_mapping;
+    mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().stats_time_alignment = elapsed_secs;
 
     if (parameters->evalue_threshold >= ((double) 0.0) && mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().evalue > parameters->evalue_threshold) {
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;

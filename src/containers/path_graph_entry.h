@@ -98,6 +98,10 @@ typedef struct InfoAlignment {
 
   std::string unmapped_reason = "Not processed.";
 
+  double stats_time_region_selection = 0.0;
+  double stats_time_mapping = 0.0;
+  double stats_time_alignment = 0.0;
+
 } InfoAlignment;
 
 class PathGraphEntry {
