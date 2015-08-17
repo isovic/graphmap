@@ -405,9 +405,13 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     if (hash_key < 0)
       continue;
 
+//    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
+//    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
+//    int64_t coded_position = (int64_t) (local_pos << 32) | ref_id;
+
     uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
     uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
-    int64_t coded_position = (int64_t) (local_pos << 32) | ref_id;
+    int64_t coded_position = (int64_t) (ref_id << 32) | local_pos;
 
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
     kmer_countdown[hash_key] += 1;
@@ -758,27 +762,38 @@ int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int
   ret_key_counts.clear();
   ret_key_counts.reserve(hash_keys_with_pos.size());
 
-  /// A key can be repeated multiple times throughout the read (repeats in the sequence + tandem repeats and multiple gapped spaced seeds for same position on the read).
-  /// In this case, truncate all keys into one, and keep the counts to be used for region selection.
-  int64_t hash_key = 0, next_hash_key = 0, last_hash_key = 0;
-  int64_t key_count = 0;
-  hash_key = (int64_t) (hash_keys_with_pos[0] >> 64);
+  /// Two options: a) not filtering multiple seeds in the read but handling each separately, or b) counting the same seeds and returning the number of repeats.
+  /// a)
+  /// This takes all keys, even the repeats in the read.
   for (int64_t i=1; i<(hash_keys_with_pos.size()); i++) {
-//    printf ("[%ld] %X %ld\n", i, (int64_t) (ret_coded_hash_keys[i] >> 64), (int64_t) (ret_coded_hash_keys[i] & 0x00000000FFFFFFFF));
-//    fflush(stdout);
-    int64_t current_hash_key = (int64_t) (hash_keys_with_pos[i] >> 64);
-    if (current_hash_key == hash_key) {
-      key_count += 1;
-    } else {
-      ret_hash_keys.push_back(hash_key);
-      ret_key_counts.push_back((key_count + 1));
-      key_count = 0;
-      hash_key = current_hash_key;
-    }
+    int64_t hash_key = (int64_t) (hash_keys_with_pos[i] >> 64);
+    int64_t pos = (int64_t) (hash_keys_with_pos[i] & MASK_32_BIT);
+    ret_hash_keys.push_back(hash_key);
+    ret_key_counts.push_back(pos);
   }
-  /// Handle the last hash key.
-  ret_hash_keys.push_back(hash_key);
-  ret_key_counts.push_back((key_count + 1));
+
+//  /// b)
+//  /// A key can be repeated multiple times throughout the read (repeats in the sequence + tandem repeats and multiple gapped spaced seeds for same position on the read).
+//  /// In this case, truncate all keys into one, and keep the counts to be used for region selection.
+//  int64_t hash_key = 0, next_hash_key = 0, last_hash_key = 0;
+//  int64_t key_count = 0;
+//  hash_key = (int64_t) (hash_keys_with_pos[0] >> 64);
+//  for (int64_t i=1; i<(hash_keys_with_pos.size()); i++) {
+////    printf ("[%ld] %X %ld\n", i, (int64_t) (ret_coded_hash_keys[i] >> 64), (int64_t) (ret_coded_hash_keys[i] & 0x00000000FFFFFFFF));
+////    fflush(stdout);
+//    int64_t current_hash_key = (int64_t) (hash_keys_with_pos[i] >> 64);
+//    if (current_hash_key == hash_key) {
+//      key_count += 1;
+//    } else {
+//      ret_hash_keys.push_back(hash_key);
+//      ret_key_counts.push_back((key_count + 1));
+//      key_count = 0;
+//      hash_key = current_hash_key;
+//    }
+//  }
+//  /// Handle the last hash key.
+//  ret_hash_keys.push_back(hash_key);
+//  ret_key_counts.push_back((key_count + 1));
 
   /// Debugging.
 //  for (int64_t i=1; i<(ret_hash_keys.size()); i++) {
@@ -790,12 +805,100 @@ int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int
   return 0;
 }
 
-int IndexSpacedHashFast::LookUpHashKeys(const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<int64_t> &ret_hits) {
+//int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<int64_t> &ret_hits) {
+////  std::vector<int64_t> all_hits;
+//  ret_hits.reserve(hash_keys.size() * 10);     /// Just a guess at the number of hits, to preallocate the memory.
+//
+//  float bin_size_inverse = 1.0f / ((float) bin_size);
+//
+//  for (int64_t i=0; i<hash_keys.size(); i++) {
+//    int64_t hash_key = hash_keys[i];
+//    int64_t *hits = kmer_hash_array_[hash_key];
+//    int64_t num_hits = kmer_counts_[hash_key];
+//    if (num_hits == 0)
+//      continue;
+//    printf ("%X, %ld\n", hash_keys[i], hits[0]);
+//    fflush(stdout);
+//    int64_t num_hits_before = ret_hits.size();
+//    ret_hits.insert(ret_hits.end(), hits, (hits + num_hits));
+////    ret_x.insert(ret_x.end(), num_hits, i);
+//
+//    for (int64_t j=num_hits_before; j<(num_hits_before + num_hits); j++) {
+//      ret_hits[j] = (ret_hits[j] & (MASK_64_BIT << 64)) | ((uint64_t) (ret_hits[j] - ((int64_t) (key_counts[i]))));
+//    }
+//
+////    for (int32_t j=0; j<key_counts[i]; j++) {
+////      ret_hits.insert(ret_hits.end(), hits, (hits + num_hits));
+////    }
+//  }
+//
+//  ret_hits.push_back(0x000000050000000A);
+//  int64_t x = 0xF;
+//  ret_hits[ret_hits.size()-1] = (ret_hits[ret_hits.size()-1] & (((unsigned __int128) MASK_64_BIT) << 64)) | (((int64_t) (ret_hits[ret_hits.size()-1]&((unsigned __int128) MASK_64_BIT)) - ((int64_t) (x))));
+//
+////  std::sort(ret_hits.begin(), ret_hits.end());
+//
+//  printf ("ret_hits.size() = %ld\n", ret_hits.size());
+//  fflush(stdout);
+//  for (int64_t i=0; i<ret_hits.size(); i++) {
+//    printf ("[%ld] ref = %ld, pos = %ld\n", i, int64_t(((uint64_t) ret_hits[i])>>32), (int64_t) (((float) (ret_hits[i]&0x00000000FFFFFFFF)) * bin_size_inverse));
+//    fflush(stdout);
+//  }
+//
+//  return 0;
+//}
+
+int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<SeedHit3> &ret_hits) {
+//  std::vector<int64_t> all_hits;
+  ret_hits.reserve(ret_hits.size() + hash_keys.size() * 10);     /// Just a guess at the number of hits, to preallocate the memory.
+
+  float bin_size_inverse = 1.0f / ((float) bin_size);
+
   for (int64_t i=0; i<hash_keys.size(); i++) {
+    int64_t x = key_counts[i];
     int64_t hash_key = hash_keys[i];
     int64_t *hits = kmer_hash_array_[hash_key];
     int64_t num_hits = kmer_counts_[hash_key];
+    if (num_hits == 0)
+      continue;
+
+//    printf ("hash_key = %X, ref_id = %ld, y = %ld, x = %ld\n", hash_keys[i], hits[0]>>32, hits[0]&MASK_32_BIT, x);
+//    fflush(stdout);
+
+    for (int64_t j=0; j<num_hits; j++) {
+      SeedHit3 seed_hit;
+      seed_hit.ref_id = (int32_t) (((uint64_t) hits[j]) >> 32);
+      seed_hit.y = (int32_t) (hits[j] & 0x00000000FFFFFFFF);
+      seed_hit.x = (int32_t) x;
+      ret_hits.push_back(seed_hit);
+    }
+
+//    int64_t num_hits_before = ret_hits.size();
+//    ret_hits.insert(ret_hits.end(), hits, (hits + num_hits));
+////    ret_x.insert(ret_x.end(), num_hits, i);
+//
+//    for (int64_t j=num_hits_before; j<(num_hits_before + num_hits); j++) {
+//      ret_hits[j] = (ret_hits[j] & (MASK_64_BIT << 64)) | ((uint64_t) (ret_hits[j] - ((int64_t) (key_counts[i]))));
+//    }
+//
+////    for (int32_t j=0; j<key_counts[i]; j++) {
+////      ret_hits.insert(ret_hits.end(), hits, (hits + num_hits));
+////    }
   }
+
+//  ret_hits.push_back(0x000000050000000A);
+//  int64_t x = 0xF;
+//  ret_hits[ret_hits.size()-1] = (ret_hits[ret_hits.size()-1] & (((unsigned __int128) MASK_64_BIT) << 64)) | (((int64_t) (ret_hits[ret_hits.size()-1]&((unsigned __int128) MASK_64_BIT)) - ((int64_t) (x))));
+
+//  std::sort(ret_hits.begin(), ret_hits.end(), seed_hit3_compare());
+
+//  printf ("ret_hits.size() = %ld\n", ret_hits.size());
+//  fflush(stdout);
+//  for (int64_t i=0; i<ret_hits.size(); i++) {
+////    printf ("[%ld] ref = %ld, pos = %ld\n", i, int64_t(((uint64_t) ret_hits[i])>>32), (int64_t) (((float) (ret_hits[i]&0x00000000FFFFFFFF)) * bin_size_inverse));
+//    printf ("[%ld] ref_id = %ld, y = %ld, x = %ld\n", i, ret_hits[i].ref_id, ret_hits[i].y, ret_hits[i].x);
+//    fflush(stdout);
+//  }
 
   return 0;
 }

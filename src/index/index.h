@@ -16,7 +16,7 @@
 #include "utility/utility_general.h"
 
 
-#define INDEX_VERSION     ((int64_t) 7)
+#define INDEX_VERSION     ((int64_t) 8)
 
 #define SHAPE_TYPE_444  0
 #define SHAPE_TYPE_66    1

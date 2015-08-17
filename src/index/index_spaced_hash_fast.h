@@ -9,6 +9,7 @@
 #define INDEX_SPACED_HASH_FAST_H_
 
 #include <vector>
+#include <algorithm>
 #include "divsufsort64.h"
 #include "index/index.h"
 #include "log_system/log_system.h"
@@ -16,8 +17,26 @@
 
 #define MASK_REF_ID       ((uint64_t) 0x00000000FFFFFFFF)
 #define MASK_SEED_POS     ((uint64_t) 0xFFFFFFFF00000000)
+#define MASK_32_BIT       ((uint64_t) 0x00000000FFFFFFFF)
 
 
+
+struct SeedHit3 {
+  int32_t ref_id;
+  int32_t y;
+  int32_t x;
+};
+struct seed_hit3_compare
+{
+    inline bool operator() (const SeedHit3& op1, const SeedHit3& op2) {
+      if (op1.ref_id != op2.ref_id)
+        return (op1.ref_id < op2.ref_id);
+      else if (op1.y != op2.y)
+        return (op1.y < op2.y);
+      else
+        return (op1.x < op2.x);
+    }
+};
 
 class MaskOperation {
  public:
@@ -74,7 +93,7 @@ class IndexSpacedHashFast : public Index {
   int64_t RawPositionConverter2(int64_t raw_position, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
 
   int CalcAllKeysFromSequence(const SingleSequence *read, int64_t kmer_step, std::vector<int64_t> &ret_hash_keys, std::vector<int64_t> &ret_key_counts);
-  int LookUpHashKeys(const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<int64_t> &ret_hits);
+  int LookUpHashKeys(int64_t bin_size, const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<SeedHit3> &ret_hits);
 
 //  int get_k() const;
 //  void set_k(int k);
