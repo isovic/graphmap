@@ -1048,11 +1048,11 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
         float covered_bases_ref = (ref_overlap_length > 0) ? (((float) lcskpp_indices.size() * 12) / ((float) ref_overlap_length)) : 0.0f;
 
         bool overhang_ok = true;
-//        /// Test filter - some reads might span over repeat regions with great hits, but only in the middle of those reads. Limit the allowed overhangs compared to the matching overlap length.
-//        if (A_start > (query_overlap_length * 0.33f) && (read_length - A_end) > (query_overlap_length * 0.33f))
-//          overhang_ok = false;
-//        if (B_start > (ref_overlap_length * 0.33f) && (ref_length - B_end) > (ref_overlap_length * 0.33f))
-//          overhang_ok = false;
+        /// Test filter - some reads might span over repeat regions with great hits, but only in the middle of those reads. Limit the allowed overhangs compared to the matching overlap length.
+        if (A_start > (query_overlap_length * 0.33f) && (read_length - A_end) > (query_overlap_length * 0.33f))
+          overhang_ok = false;
+        if (B_start > (ref_overlap_length * 0.33f) && (ref_length - B_end) > (ref_overlap_length * 0.33f))
+          overhang_ok = false;
 
         /// Testing filter - small overhangs can be a result of indels. Simply checking the overlap length is not enough without alignment, because we do not know how good the alignment is.
         /// For testing purposes - limit the overhang length to 2% of read length. If on both ends the overhang of a read is less than that, it will be called contained.
