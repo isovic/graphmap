@@ -61,8 +61,8 @@ IndexSpacedHashFast::IndexSpacedHashFast() {
 
   Clear();
 
-//  InitShapesPredefined(SHAPE_TYPE_444);
-  InitShapesPredefined(SHAPE_TYPE_66);
+  InitShapesPredefined(SHAPE_TYPE_444);
+//  InitShapesPredefined(SHAPE_TYPE_66);
 
   //  std::string shapes[] = {
   //                          "111110001111100",
@@ -282,11 +282,7 @@ int64_t IndexSpacedHashFast::RawPositionConverter2(int64_t raw_position, int64_t
 
   int64_t reference_index = (int64_t) (raw_position & MASK_REF_ID);
   if (reference_index < 0) {
-    LogSystem::GetInstance().Log(
-    SEVERITY_INT_ERROR,
-                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
-                                 ERR_UNEXPECTED_VALUE,
-                                                                                             "1Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "1Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
     return reference_index;
   }
 
@@ -352,9 +348,7 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     free(kmer_counts_);
   kmer_counts_ = NULL;
 
-  LogSystem::GetInstance().VerboseLog(
-  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
-                                      true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
 
   int64_t num_kmers = 0;
   CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, &kmer_counts_, &num_kmers);
@@ -362,9 +356,7 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
   num_kmers_ = num_kmers;
 
-  LogSystem::GetInstance().VerboseLog(
-  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
-                                      true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
 
   int64_t total_num_kmers = 0;
   for (uint64_t i = 0; i < num_kmers; i++) {
@@ -385,15 +377,19 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     kmer_hash_ptr += kmer_counts_[i];
   }
 
-  LogSystem::GetInstance().VerboseLog(
-  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
-                                      true, FormatString("Index memory allocated.\n"), "CreateIndex_");
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
 
   int64_t hash_key = -1;
 
   uint64_t current_ref_id = 0;
 
-  for (uint64_t i = 0; i < (data_length_ - shape_index_length_ + 1); i++) {
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  int64_t k = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
+
+  for (uint64_t i = 0; i < (data_length_ - k + 1); i++) {
     if (i >= (reference_starting_pos_[current_ref_id] + reference_lengths_[current_ref_id]))
       current_ref_id += 1;
 
@@ -408,10 +404,16 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 //    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
 //    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
 //    int64_t coded_position = (int64_t) (local_pos << 32) | ref_id;
-
-    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
+//    int64_t reference_index = RawPositionToReferenceIndexWithReverse(i);
+    int64_t local_i = ((int64_t) i) - ((int64_t) reference_starting_pos_[current_ref_id]);
+    uint64_t local_pos = ((uint64_t) local_i) & ((uint64_t) 0x00000000FFFFFFFF);
     uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
-    int64_t coded_position = (int64_t) (ref_id << 32) | local_pos;
+//    printf ("%ld\t%ld\t\tcurrent_ref_id = %ld, reference_index = %ld, i = %ld, reference_starting_pos_[reference_index] = %ld\n", ref_id, local_pos, current_ref_id, reference_index, i, reference_starting_pos_[reference_index]);
+//    fflush(stdout);
+
+//    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
+//    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
+    int64_t coded_position = (int64_t) ((ref_id << 32) | local_pos);
 
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
     kmer_countdown[hash_key] += 1;
@@ -681,7 +683,7 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
   shapes_lookup_ = shapes_for_search;
 
   compiled_seeds_.clear();
-  for (int32_t i=0; i<shapes_for_search.size(); i++) {
+  for (int32_t i = 0; i < shapes_for_search.size(); i++) {
     compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
   }
 
@@ -708,21 +710,19 @@ int IndexSpacedHashFast::InitShapes(std::string shape_for_indexing, std::vector<
   shapes_lookup_ = shapes_for_search;
 
   compiled_seeds_.clear();
-  for (int32_t i=0; i<shapes_for_search.size(); i++) {
+  for (int32_t i = 0; i < shapes_for_search.size(); i++) {
     compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
   }
 
   return 0;
 }
 
-
-
 int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int64_t kmer_step, std::vector<int64_t> &ret_hash_keys, std::vector<int64_t> &ret_key_counts) {
   int64_t read_length = read->get_sequence_length();
 
   /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
   int64_t k = 0;
-  for (int32_t i=0; i<shape_index_length_; i++) {
+  for (int32_t i = 0; i < shape_index_length_; i++) {
     k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
   }
 
@@ -765,7 +765,7 @@ int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int
   /// Two options: a) not filtering multiple seeds in the read but handling each separately, or b) counting the same seeds and returning the number of repeats.
   /// a)
   /// This takes all keys, even the repeats in the read.
-  for (int64_t i=1; i<(hash_keys_with_pos.size()); i++) {
+  for (int64_t i = 1; i < (hash_keys_with_pos.size()); i++) {
     int64_t hash_key = (int64_t) (hash_keys_with_pos[i] >> 64);
     int64_t pos = (int64_t) (hash_keys_with_pos[i] & MASK_32_BIT);
     ret_hash_keys.push_back(hash_key);
@@ -854,7 +854,7 @@ int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *
 
   float bin_size_inverse = 1.0f / ((float) bin_size);
 
-  for (int64_t i=0; i<hash_keys.size(); i++) {
+  for (int64_t i = 0; i < hash_keys.size(); i++) {
     int64_t x = key_counts[i];
     int64_t hash_key = hash_keys[i];
     int64_t *hits = kmer_hash_array_[hash_key];
@@ -865,7 +865,7 @@ int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *
 //    printf ("hash_key = %X, ref_id = %ld, y = %ld, x = %ld\n", hash_keys[i], hits[0]>>32, hits[0]&MASK_32_BIT, x);
 //    fflush(stdout);
 
-    for (int64_t j=0; j<num_hits; j++) {
+    for (int64_t j = 0; j < num_hits; j++) {
       SeedHit3 seed_hit;
       seed_hit.ref_id = (int32_t) (((uint64_t) hits[j]) >> 32);
       seed_hit.y = (int32_t) (hits[j] & 0x00000000FFFFFFFF);

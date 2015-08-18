@@ -31,7 +31,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : read->get_sequence_length() / 3;
 
 //  RegionSelection_(bin_size, mapping_data, (const IndexSpacedHash *) index, (const IndexSpacedHash *) index_secondary, read, parameters);
-  RegionSelectionSpacedHashv2_(bin_size, mapping_data, (const IndexSpacedHash *) index, (const IndexSpacedHash *) index_secondary, read, parameters);
+//  RegionSelectionSpacedHashv2_(bin_size, mapping_data, (const IndexSpacedHash *) index, (const IndexSpacedHash *) index_secondary, read, parameters);
+  RegionSelectionSpacedHashFastv2_(bin_size, mapping_data, (const IndexSpacedHashFast *) index, (const IndexSpacedHashFast *) index_secondary, read, parameters);
 //  ExperimentalRegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
 
   clock_t end_clock = clock();

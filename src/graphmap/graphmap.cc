@@ -188,8 +188,8 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   index_secondary_ = NULL;
 
 //  index_ = new IndexSA();
-  index_ = new IndexSpacedHash();
-//  index_ = new IndexSpacedHashFast();
+//  index_ = new IndexSpacedHash();
+  index_ = new IndexSpacedHashFast();
 
   if (parameters.parsimonious_mode) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
@@ -197,8 +197,8 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   } else {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
 
-    index_secondary_ = new IndexSpacedHash(SHAPE_TYPE_66);
-//    index_secondary_ = new IndexSpacedHashFast(SHAPE_TYPE_66);
+//    index_secondary_ = new IndexSpacedHash(SHAPE_TYPE_66);
+    index_secondary_ = new IndexSpacedHashFast(SHAPE_TYPE_66);
   }
 
   clock_t last_time = clock();

@@ -87,6 +87,7 @@ class GraphMap {
   int RegionSelectionSpacedHash_(int64_t bin_size, MappingData *mapping_data, const IndexSpacedHash *index, const IndexSpacedHash *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
   int RegionSelectionSpacedHashv2_(int64_t bin_size, MappingData *mapping_data, const IndexSpacedHash *index_primary, const IndexSpacedHash *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
   int ExperimentalRegionSelection_(int64_t bin_size, MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
+  int RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData *mapping_data, const IndexSpacedHashFast *index_primary, const IndexSpacedHashFast *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
 
   int GraphMap_(ScoreRegistry *local_score, Index *index_read, MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters);
   int ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, Index *index_read, const Index* index, const Index* index_secondary, const SingleSequence* read, const ProgramParameters* parameters);

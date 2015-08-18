@@ -496,61 +496,61 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
   std::string line_prefix = "===| ";
 
   #ifndef RELEASE_VERSION
-  printf ("____________________________________\n");
-  printf ("Program parameters:\n");
-  printf ("Command line: %s\n", parameters->command_line.c_str());
-  printf ("%snum_threads = %ld\n", line_prefix.c_str(), parameters->num_threads);
-//  printf ("%sk_region = %ld\n", line_prefix.c_str(), parameters->k_region);
-  printf ("%sk_graph = %ld\n", line_prefix.c_str(), parameters->k_graph);
-  printf ("%snum_links = %ld\n", line_prefix.c_str(), parameters->num_links);
-  printf ("%smin_num_anchor_bases = %ld\n", line_prefix.c_str(), parameters->min_num_anchor_bases);
-  printf ("%skmer_step = %ld\n", line_prefix.c_str(), parameters->kmer_step);
-  printf ("%salignment_algorithm = %s\n", line_prefix.c_str(), parameters->alignment_algorithm.c_str());
-  printf ("%salignment_approach = %s\n", line_prefix.c_str(), parameters->alignment_approach.c_str());
-  printf ("%smatch_score = %ld\n", line_prefix.c_str(), parameters->match_score);
-  printf ("%smismatch_penalty = %ld\n", line_prefix.c_str(), parameters->mismatch_penalty);
-  printf ("%sgap_open_penalty = %ld\n", line_prefix.c_str(), parameters->gap_open_penalty);
-  printf ("%sgap_extend_penalty = %ld\n", line_prefix.c_str(), parameters->gap_extend_penalty);
-  printf ("%sis_reference_circular = %s\n", line_prefix.c_str(), ((parameters->is_reference_circular == false) ? ("false") : ("true")));
+  fprintf (stderr, "____________________________________\n");
+  fprintf (stderr, "Program parameters:\n");
+  fprintf (stderr, "Command line: %s\n", parameters->command_line.c_str());
+  fprintf (stderr, "%snum_threads = %ld\n", line_prefix.c_str(), parameters->num_threads);
+//  fprintf (stderr, "%sk_region = %ld\n", line_prefix.c_str(), parameters->k_region);
+  fprintf (stderr, "%sk_graph = %ld\n", line_prefix.c_str(), parameters->k_graph);
+  fprintf (stderr, "%snum_links = %ld\n", line_prefix.c_str(), parameters->num_links);
+  fprintf (stderr, "%smin_num_anchor_bases = %ld\n", line_prefix.c_str(), parameters->min_num_anchor_bases);
+  fprintf (stderr, "%skmer_step = %ld\n", line_prefix.c_str(), parameters->kmer_step);
+  fprintf (stderr, "%salignment_algorithm = %s\n", line_prefix.c_str(), parameters->alignment_algorithm.c_str());
+  fprintf (stderr, "%salignment_approach = %s\n", line_prefix.c_str(), parameters->alignment_approach.c_str());
+  fprintf (stderr, "%smatch_score = %ld\n", line_prefix.c_str(), parameters->match_score);
+  fprintf (stderr, "%smismatch_penalty = %ld\n", line_prefix.c_str(), parameters->mismatch_penalty);
+  fprintf (stderr, "%sgap_open_penalty = %ld\n", line_prefix.c_str(), parameters->gap_open_penalty);
+  fprintf (stderr, "%sgap_extend_penalty = %ld\n", line_prefix.c_str(), parameters->gap_extend_penalty);
+  fprintf (stderr, "%sis_reference_circular = %s\n", line_prefix.c_str(), ((parameters->is_reference_circular == false) ? ("false") : ("true")));
 
-  printf ("%serror_rate = %f\n", line_prefix.c_str(), parameters->error_rate);
-  printf ("%sstart_read = %ld\n", line_prefix.c_str(), parameters->start_read);
-  printf ("%snum_reads_to_process = %ld\n", line_prefix.c_str(), parameters->num_reads_to_process);
-  printf ("%smax_num_hits = %ld\n", line_prefix.c_str(), parameters->max_num_hits);
-  printf ("%smax_num_regions_cutoff = %ld\n", line_prefix.c_str(), parameters->max_num_regions_cutoff);
-  printf ("%smax_num_regions = %ld\n", line_prefix.c_str(), parameters->max_num_regions);
-  printf ("%sreference_path = %s\n", line_prefix.c_str(), parameters->reference_path.c_str());
-  printf ("%sindex_reference_path = %s\n", line_prefix.c_str(), parameters->index_reference_path.c_str());
-  printf ("%sreads_path = %s\n", line_prefix.c_str(), parameters->reads_path.c_str());
-  printf ("%sout_sam_path = %s\n", line_prefix.c_str(), parameters->out_sam_path.c_str());
-  printf ("%sreads_folder = %s\n", line_prefix.c_str(), parameters->reads_folder.c_str());
-  printf ("%soutput_folder = %s\n", line_prefix.c_str(), parameters->output_folder.c_str());
-  printf ("%sverbose_level = %ld\n", line_prefix.c_str(), parameters->verbose_level);
-  printf ("%soutput_in_original_order = %s\n", line_prefix.c_str(), (parameters->output_in_original_order == true)?"true":"false");
-  printf ("%sprocess_reads_from_folder = %s\n", line_prefix.c_str(), (parameters->process_reads_from_folder == true)?"true":"false");
-  printf ("%sfilter_by_edit_distance = %s\n", line_prefix.c_str(), (parameters->filter_by_edit_distance == true)?"true":"false");
-  printf ("%sbatch_size_in_mb = %ld\n", line_prefix.c_str(), (parameters->batch_size_in_mb));
+  fprintf (stderr, "%serror_rate = %f\n", line_prefix.c_str(), parameters->error_rate);
+  fprintf (stderr, "%sstart_read = %ld\n", line_prefix.c_str(), parameters->start_read);
+  fprintf (stderr, "%snum_reads_to_process = %ld\n", line_prefix.c_str(), parameters->num_reads_to_process);
+  fprintf (stderr, "%smax_num_hits = %ld\n", line_prefix.c_str(), parameters->max_num_hits);
+  fprintf (stderr, "%smax_num_regions_cutoff = %ld\n", line_prefix.c_str(), parameters->max_num_regions_cutoff);
+  fprintf (stderr, "%smax_num_regions = %ld\n", line_prefix.c_str(), parameters->max_num_regions);
+  fprintf (stderr, "%sreference_path = %s\n", line_prefix.c_str(), parameters->reference_path.c_str());
+  fprintf (stderr, "%sindex_reference_path = %s\n", line_prefix.c_str(), parameters->index_reference_path.c_str());
+  fprintf (stderr, "%sreads_path = %s\n", line_prefix.c_str(), parameters->reads_path.c_str());
+  fprintf (stderr, "%sout_sam_path = %s\n", line_prefix.c_str(), parameters->out_sam_path.c_str());
+  fprintf (stderr, "%sreads_folder = %s\n", line_prefix.c_str(), parameters->reads_folder.c_str());
+  fprintf (stderr, "%soutput_folder = %s\n", line_prefix.c_str(), parameters->output_folder.c_str());
+  fprintf (stderr, "%sverbose_level = %ld\n", line_prefix.c_str(), parameters->verbose_level);
+  fprintf (stderr, "%soutput_in_original_order = %s\n", line_prefix.c_str(), (parameters->output_in_original_order == true)?"true":"false");
+  fprintf (stderr, "%sprocess_reads_from_folder = %s\n", line_prefix.c_str(), (parameters->process_reads_from_folder == true)?"true":"false");
+  fprintf (stderr, "%sfilter_by_edit_distance = %s\n", line_prefix.c_str(), (parameters->filter_by_edit_distance == true)?"true":"false");
+  fprintf (stderr, "%sbatch_size_in_mb = %ld\n", line_prefix.c_str(), (parameters->batch_size_in_mb));
 
-  printf ("%sdebug_read = %ld\n", line_prefix.c_str(), parameters->debug_read);
-  printf ("%sdebug_read_by_qname = %s\n", line_prefix.c_str(), parameters->debug_read_by_qname.c_str());
-  printf ("%sverbose_sam_output = %ld\n", line_prefix.c_str(), parameters->verbose_sam_output);
-  printf ("%sskip_multiple_kmers_per_bin = %s\n", line_prefix.c_str(), (parameters->skip_multiple_kmers_per_bin == true)?"true":"false");
-  printf ("%scomposite_parameters = %s\n", line_prefix.c_str(), parameters->composite_parameters.c_str());
+  fprintf (stderr, "%sdebug_read = %ld\n", line_prefix.c_str(), parameters->debug_read);
+  fprintf (stderr, "%sdebug_read_by_qname = %s\n", line_prefix.c_str(), parameters->debug_read_by_qname.c_str());
+  fprintf (stderr, "%sverbose_sam_output = %ld\n", line_prefix.c_str(), parameters->verbose_sam_output);
+  fprintf (stderr, "%sskip_multiple_kmers_per_bin = %s\n", line_prefix.c_str(), (parameters->skip_multiple_kmers_per_bin == true)?"true":"false");
+  fprintf (stderr, "%scomposite_parameters = %s\n", line_prefix.c_str(), parameters->composite_parameters.c_str());
 
-  printf ("%smargin_for_ambiguity = %f\n", line_prefix.c_str(), parameters->margin_for_ambiguity);
-  printf ("%soutput_multiple_alignments = %ld\n", line_prefix.c_str(), parameters->output_multiple_alignments);
+  fprintf (stderr, "%smargin_for_ambiguity = %f\n", line_prefix.c_str(), parameters->margin_for_ambiguity);
+  fprintf (stderr, "%soutput_multiple_alignments = %ld\n", line_prefix.c_str(), parameters->output_multiple_alignments);
 
-  printf ("%sparsimonious_mode = %s\n", line_prefix.c_str(), (parameters->parsimonious_mode == true)?"true":"false");
+  fprintf (stderr, "%sparsimonious_mode = %s\n", line_prefix.c_str(), (parameters->parsimonious_mode == true)?"true":"false");
 
-  printf ("%sevalue_threshold = %f\n", line_prefix.c_str(), parameters->evalue_threshold);
-  printf ("%smapq_threshold = %ld\n", line_prefix.c_str(), parameters->mapq_threshold);
+  fprintf (stderr, "%sevalue_threshold = %f\n", line_prefix.c_str(), parameters->evalue_threshold);
+  fprintf (stderr, "%smapq_threshold = %ld\n", line_prefix.c_str(), parameters->mapq_threshold);
 
-  printf ("%soutput_format = '%s'\n", line_prefix.c_str(), parameters->outfmt.c_str());
+  fprintf (stderr, "%soutput_format = '%s'\n", line_prefix.c_str(), parameters->outfmt.c_str());
 
-  printf ("____________________________________\n");
+  fprintf (stderr, "____________________________________\n");
   #endif
 
-  fflush(stdout);
+  fflush(stderr);
 }
 
 

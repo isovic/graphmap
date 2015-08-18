@@ -8,6 +8,7 @@ obj_test/
 obj_extcigar/
 bin/graphmap-not_release
 bin/graphmap-debug
+bin/graphmap-old_region
 .project
 .cproject
 .settings/
