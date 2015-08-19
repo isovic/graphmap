@@ -9,8 +9,13 @@ OBJ_EXTCIGAR = ./obj_extcigar
 OBJ_MAC = ./obj_mac
 SOURCE = src
 
-GCC = g++
-GCC_MAC = /opt/local/bin/g++-mp-4.8
+# ? allows override by user using env var
+GCC ?= g++
+# define variables for GCC version check here
+GCC_MAJOR_VERSION_GE_4 := $(shell expr `$(GCC) -dumpversion | cut -f1 -d.` \>= 4)
+GCC_MINOR_VERSION_GE_7 := $(shell expr `$(GCC) -dumpversion | cut -f2 -d.` \>= 7)
+GCC_MAC ?= /opt/local/bin/g++-mp-4.8
+
 
 CPP_FILES := $(wildcard $(SOURCE)/*/*.cpp) $(wildcard $(SOURCE)/*.cpp)
 CC_FILES := $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc)
@@ -36,7 +41,7 @@ LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64
 
 
 
-all: linux
+all: gcc_version_check linux
 
 
 
@@ -52,6 +57,14 @@ obj_test/%.o: %.cpp $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_NOT_RELEASE) -o $@ $<
 
+
+gcc_version_check:
+ifneq ($(GCC_MAJOR_VERSION_GE_4), 1)
+	$(warning "*** WARNING $(GCC) major version <4 ***")
+endif	
+ifneq ($(GCC_MINOR_VERSION_GE_7), 1)
+	$(warning "*** WARNING $(GCC) minor version <7 ***")
+endif
 
 
 debug: $(OBJ_FILES_FOLDER_DEBUG)
