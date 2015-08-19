@@ -14,7 +14,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-
+#include <numeric> 
 
 
 enum SeqOrientation {
@@ -76,6 +76,7 @@ enum ProcessedReadState {
 
 
 
+int fileExists(const char *fname);
 std::string GetUTCTime(std::string fmt="%a, %d %b %y %T %z");
 std::string GetLocalTime();
 void ProcessMemUsage(double& vm_usage, double& resident_set);

@@ -7,6 +7,7 @@
 
 #include "utility/program_parameters.h"
 #include "utility/argumentparser.h"
+#include "utility/utility_general.h"
 
 int ProcessArgs1(int argc, char **argv, ProgramParameters *parameters)
 {
@@ -407,6 +408,12 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
     fprintf (stderr, "\n");
     VerboseShortHelpAndExit(argc, argv);
   }
+
+
+  if (! fileExists(parameters->reference_path.c_str())) {
+      fprintf (stderr, "Reference does not exist: %s\n\n", parameters->reference_path.c_str());
+      VerboseShortHelpAndExit(argc, argv);
+   }
 
   // Check if the index path was specified, if not, generate it.
   if (parameters->index_reference_path.size() == 0)

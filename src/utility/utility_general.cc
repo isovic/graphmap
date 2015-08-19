@@ -18,6 +18,16 @@
 #include "log_system/log_system.h"
 
 
+int fileExists(const char *fname) {
+     /* from
+      * http://stackoverflow.com/questions/230062/whats-the-best-way-to-check-if-a-file-exists-in-c-cross-platform
+      */
+     if (access(fname, F_OK) != -1) {
+          return 1;
+     } else {
+          return 0;
+     }
+}
 
 std::string GetUTCTime(std::string fmt) {
   //  const char* fmt = "%a, %d %b %y %T %z";
