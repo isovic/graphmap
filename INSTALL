@@ -1,5 +1,12 @@
 1. Installation
 
+You will need a recent GCC/G++ version (>=4.7) to compile the source.
+
+To override the default compiler choice you can set GCC (or GCC_MAC on
+Mac), e.g.:
+
+    GCC=/usr/local/bin/g++ make
+
 1.1 Linux
 For a Linux release version type:
 	make

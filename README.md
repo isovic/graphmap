@@ -1,7 +1,7 @@
-## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads 
+## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
 **__Current Version: 0.21__**  
 Release date: 02 June 2015  
-Source code and precompiled binary for Linux x64 systems (built on Ubuntu 10.04 x64).
+Source code and precompiled binary for Linux x64 systems (built on Ubuntu 10.04 x64).  
 
 ### Description
 GraphMap is a novel mapper targeted at aligning long, error-prone third-generation sequencing data.  
@@ -24,7 +24,7 @@ Further details about the algorithm, comparison with other mappers and usage app
 
 **Nanopore sequencing data** of E. Coli UTI89 generated in-house and used in the paper now available on ENA:  
 [PRJEB9557](http://www.ebi.ac.uk/ena/data/view/PRJEB9557)  
-  
+
 ### Features  
 - Mapping position agnostic to alignment parameters.
 - Consistently very high sensitivity and precision across different error profiles, rates and sequencing technologies even with default parameters.
@@ -38,28 +38,30 @@ To build GraphMap from source type:
 ```
 make
 ```  
-Required libraries are prebuilt for Linux x64 systems.
+Required libraries are prebuilt for Linux x64 systems.  
 To rebuild them for other systems, type:  
 ```
 make deps
 ```  
+
+You will need a recent GCC/G++ version (>=4.7).
 
 More installation instructions can be found in the INSTALL file.
 
 
 ### Usage examples
 ```
-# Align all reads from a given FASTA/FASTQ file with default number of threads using semiglobal bit-vector alignment:
+# Align all reads from a given FASTA/FASTQ file with default number of threads using semiglobal bit-vector alignment:  
 ./graphmap -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
 # Align all reads from a given FASTA/FASTQ file using anchored alignment approach:  
 ./graphmap -a anchor -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
-# Align reads using the Gotoh for semiglobal alignment:
+# Align reads using the Gotoh for semiglobal alignment:  
 ./graphmap -a gotoh -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
-# Process reads from a circular genome:
-./graphmap -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+# Process reads from a circular genome:  
+./graphmap -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
 # Threshold the E-value of alignments to 1e-100. Alignments with E-value > 1e-100 will be called unmapped:  
 ./graphmap -z 1e-100 -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
@@ -73,21 +75,21 @@ More installation instructions can be found in the INSTALL file.
 # Align reads using more sensitive parameters for Illumina data (currently equivalent to "-a gotoh"):  
 ./graphmap -x illumina -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
-# Load all reads in one batch and align only the first 1000 reads:
-./graphmap -B 0 -n 1000 -r escherichia_coli.fa -d reads.fastq -o alignments.sam
+# Load all reads in one batch and align only the first 1000 reads:  
+./graphmap -B 0 -n 1000 -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
-# Process all reads from a given folder.
-./graphmap -r escherichia_coli.fa -D reads_folder -O alignments_folder
+# Process all reads from a given folder.  
+./graphmap -r escherichia_coli.fa -D reads_folder -O alignments_folder  
 
-# Generate only the index.
-./graphmap -I -r escherichia_coli.fa
+# Generate only the index.  
+./graphmap -I -r escherichia_coli.fa  
 
-# Run a debug version of GraphMap (build with "make debug") and verbose the SAM output to see various info about alignment:
+# Run a debug version of GraphMap (build with "make debug") and verbose the SAM output to see various info about alignment:  
 ./graphmap-debug -b 3 -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
-```
+```  
 
 ### Contact information
 
-For additional information, help and bug reports please send an email to one of the following:
+For additional information, help and bug reports please send an email to one of the following:  
 ivan.sovic@irb.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
