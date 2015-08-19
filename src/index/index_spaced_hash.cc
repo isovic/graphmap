@@ -526,7 +526,13 @@ int IndexSpacedHash::CreateIndex_(int8_t *data, uint64_t data_length) {
 
   int64_t hash_key = -1;
 
-  for (uint64_t i = 0; i < (data_length_ - shape_index_length_ + 1); i++) {
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  int64_t k = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
+
+  for (uint64_t i = 0; i < (data_length_ - k + 1); i++) {
     int8_t *seed_start = &(data_[i]);
     hash_key = GenerateHashKeyFromShape(seed_start, shape_index_, shape_index_length_);
 
