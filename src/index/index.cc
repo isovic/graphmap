@@ -455,6 +455,10 @@ int Index::Deserialize_(FILE* fp_in) {
     }
 
     char *new_header = new char[string_length + 1];
+    if (new_header == NULL) {
+      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_header."));
+      return 1;
+    }
     if (fread(new_header, sizeof(char), string_length, fp_in) != string_length) {
       LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable new_header."));
       return 7;
@@ -509,6 +513,10 @@ int Index::Deserialize_(FILE* fp_in) {
   if (data_)
     delete[] data_;
   data_ = new int8_t[data_length_ + 1];
+  if (data_ == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    return 1;
+  }
   if (fread(data_, sizeof(int8_t), data_length_, fp_in) != data_length_) {
     LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_."));
     return 14;
@@ -588,6 +596,10 @@ int Index::DeprecatedDeserialize_(FILE* fp_in) {
     }
 
     char *new_header = new char[string_length + 1];
+    if (new_header == NULL) {
+      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_header."));
+      return 1;
+    }
     if (fread(new_header, sizeof(char), string_length, fp_in) != string_length) {
       LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable new_header."));
       return 7;
@@ -642,6 +654,10 @@ int Index::DeprecatedDeserialize_(FILE* fp_in) {
   if (data_)
     delete[] data_;
   data_ = new int8_t[data_length_ + 1];
+  if (data_ == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    return 1;
+  }
   if (fread(data_, sizeof(int8_t), data_length_, fp_in) != data_length_) {
     LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_."));
     return 14;
@@ -781,6 +797,10 @@ int Index::InsertSequence_(const int8_t *sequence_data, uint64_t sequence_length
   if (data_length_ < (data_ptr_ + sequence_length + 1)) {
     // Not enough preallocated memory.
     int8_t *data = new int8_t[data_ptr_ + sequence_length + 1];
+    if (data == NULL) {
+      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data."));
+      return 1;
+    }
     // memcpy is not used because it was updated recently and requires new GLIBC symbols,
     // thus binaries won't run on older versions of systems.
     memmove(data, data_, data_length_);
