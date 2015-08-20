@@ -1024,7 +1024,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
         CalcLCSFromLocalScoresCacheFriendly2_(owler_data, ref_streak_start, i, &lcskpp_length, &raw_lcskpp_indices);
 
         std::vector<int> lcskpp_indices;
-        FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, i, 0.05f*read->get_sequence_length(), min_num_hits, owler_data, indexes, read, parameters, lcskpp_indices);
+        int num_clusters = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, i, 0.05f*read->get_sequence_length(), min_num_hits, owler_data, indexes, read, parameters, lcskpp_indices);
         //  int64_t min_cluster_length = 0;
         //  int64_t min_covered_bases = std::max(30.0f, read->get_sequence_length() * 0.02f);
 
@@ -1063,8 +1063,10 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
 
 
-        if (lcskpp_indices.size() >= 5 && query_overlap_length > 0.1f*read_len && ref_overlap_length > 0.1f*ref_len && size_diff < parameters->error_rate &&
+        if (num_clusters == 1 && lcskpp_indices.size() >= 5 && query_overlap_length > 0.1f*read_len && ref_overlap_length > 0.1f*ref_len && size_diff < parameters->error_rate &&
             (covered_bases_read > 0.30f || covered_bases_ref > 0.30f) && overhang_ok == true) { // min_num_hits) {
+
+
           if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] (start) %s, (end) %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[ref_streak_start].VerboseToString().c_str(), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len), "[]");
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- found different reference, [%ld, %ld]\n", ref_streak_start, i), "[]");
@@ -1438,7 +1440,9 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
       delete clusters[i];
   }
 
+  int num_clusters = clusters.size();
+
   clusters.clear();
 
-  return 0;
+  return num_clusters;
 }
