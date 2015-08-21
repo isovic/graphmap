@@ -53,6 +53,7 @@ def load_csv(csv_path):
 
 	x = [];
 	y = [];
+	c = [];
 	i = 0;
 	for line in lines:
 		split_line = line.split('\t');
@@ -83,10 +84,14 @@ def load_csv(csv_path):
 			continue;
 		x.append(float(split_line[0].strip()));
 		y.append(float(split_line[1].strip()));
+		if (len(split_line) > 2):
+			c.append(int(split_line[2].strip()));
+		else:
+			c.append(0);
 		i += 1;
-	return [x, y, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed];
+	return [x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed];
 
-def plot_data(fig, ax, subplot_coords, x, y, query_length, ymin, ymax, l_median, threshold_L1_under_max, plot_mode, plot_title, out_png_path=''):
+def plot_data(fig, ax, subplot_coords, x, y, c, query_length, ymin, ymax, l_median, threshold_L1_under_max, plot_mode, plot_title, out_png_path=''):
 	if USE_MATPLOTLIB == True:
 		# plt.figure();
 		# plt.clf();
@@ -112,14 +117,20 @@ def plot_data(fig, ax, subplot_coords, x, y, query_length, ymin, ymax, l_median,
 		plt.ylim(ymin, ymax);
 		plt.xticks(np.arange(0, query_length, query_length/5))
 
+		all_colors = 'bgrcmyp';
+
 		i = 0;
 		while (i < len(x)):
 			ax.plot(x[i:(i+2)], y[i:(i+2)], 'k');
 			i += 2;
 
 		# ax.plot(x, y, 'o');
-		ax.scatter(x[0::2], y[0::2], s=10, facecolor='b', lw = 0.2)
-		ax.scatter(x[1::2], y[1::2], s=10, facecolor='c', lw = 0.2)
+		# ax.scatter(x[0::2], y[0::2], s=10, facecolor='b', lw = 0.2)
+		# ax.scatter(x[1::2], y[1::2], s=10, facecolor='c', lw = 0.2)
+		colors1 = [all_colors[val%len(all_colors)] for val in c[0::2]];
+		colors2 = [all_colors[val%len(all_colors)] for val in c[1::2]];
+		ax.scatter(x[0::2], y[0::2], s=10, edgecolor=colors1, facecolor=colors1, lw = 0.2)
+		ax.scatter(x[1::2], y[1::2], s=10, edgecolor=colors2, facecolor=colors2, lw = 0.2)
 
 		if (plot_mode == 1):
 			try:
@@ -204,29 +215,29 @@ if __name__ == "__main__":
 
 		data_path = scores_path;
 		print data_path;
-		[x, y, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
+		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		ymin = min(y);
 		ymax = max(y);
 		# FindHoughLine(x, y, error_rate);
-		plot_data(fig, ax1, 221, x, y, query_length, ymin, ymax, l_median, l_maximum_allowed, 0, 'Anchors', data_path + '.png');
+		plot_data(fig, ax1, 221, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, 0, 'Anchors', data_path + '.png');
 
 		data_path = lcs_path;
 		print data_path;
-		[x, y, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
+		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		# FindHoughLine(x, y, error_rate);
-		plot_data(fig, ax2, 222, x, y, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'LCSk', data_path + '.png');
+		plot_data(fig, ax2, 222, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'LCSk', data_path + '.png');
 
 		data_path = lcsl1_path;
 		print data_path;
-		[x, y, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
+		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		# FindHoughLine(x, y, error_rate);
-		plot_data(fig, ax3, 223, x, y, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'LCSk L1 filtered', data_path + '.png');
+		plot_data(fig, ax3, 223, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'LCSk L1 filtered', data_path + '.png');
 
 		data_path = l1_path;
 		print data_path;
-		[x, y, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
+		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		# FindHoughLine(x, y, error_rate);
-		plot_data(fig, ax4, 224, x, y, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'Second LCSk after L1', data_path + '.png');
+		plot_data(fig, ax4, 224, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'Second LCSk after L1', data_path + '.png');
 
 		# data_path = boundedl1_path;
 		# print data_path;
