@@ -1,7 +1,15 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
 **__Current Version: 0.21__**  
 Release date: 02 June 2015  
-Source code and precompiled binary for Linux x64 systems (built on Ubuntu 10.04 x64).  
+
+### Quick start on Linux x64
+```
+git clone https://github.com/isovic/graphmap.git
+cd graphmap
+make
+./bin/Linux-x64/graphmap -r reference.fa -d reads.fasta -o output.sam
+
+```  
 
 ### Description
 GraphMap is a novel mapper targeted at aligning long, error-prone third-generation sequencing data.  
