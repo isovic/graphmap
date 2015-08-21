@@ -6,8 +6,9 @@ obj_linux/
 obj_mac/
 obj_test/
 obj_extcigar/
-bin/graphmap-not_release
-bin/graphmap-debug
+# bin/graphmap-not_release
+# bin/graphmap-debug
+bin/
 .project
 .cproject
 .settings/
