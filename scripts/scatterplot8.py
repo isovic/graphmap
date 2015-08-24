@@ -117,7 +117,7 @@ def plot_data(fig, ax, subplot_coords, x, y, c, query_length, ymin, ymax, l_medi
 		plt.ylim(ymin, ymax);
 		plt.xticks(np.arange(0, query_length, query_length/5))
 
-		all_colors = 'bgrcmyp';
+		all_colors = 'bgrcmyk';
 
 		i = 0;
 		while (i < len(x)):

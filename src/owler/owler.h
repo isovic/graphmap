@@ -71,7 +71,7 @@ class Owler {
   std::string OverlapToDot(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, int64_t read_id, int64_t read_length);
   bool CheckDistanceTooBig(OwlerData* owler_data, int64_t index_last, int64_t index_current, float error_rate);
   bool CheckDistanceStep(OwlerData* owler_data, int64_t index_first, int64_t index_last, int64_t index_current, float max_diff);
-  int FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids=NULL);
+  int FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t seed_length, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids=NULL);
 
   int OverlapLength(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *A_start, int64_t *A_end, int64_t *ret_query_length, int64_t *B_start, int64_t *B_end, int64_t *ret_ref_length);
   std::string OverlapMHAPVerbose(OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, int64_t ref_id, int64_t hits_start, std::vector<int> &lcskpp_indices);
@@ -99,6 +99,8 @@ class Owler {
   void CalcLCSFromLocalScoresCacheFriendly_(OwlerData* owler_data, int64_t overlap_id, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
 
   void CalcLCSFromLocalScoresCacheFriendly2_(OwlerData* owler_data, int64_t ref_hits_start, int64_t ref_hits_end, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
+
+  int CalcCoveredBases(std::vector<SeedHit2> &seed_hits, int64_t seed_length, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *ret_cov_A, int64_t *ret_cov_B);
 
   // Calculates the LCSk of the anchors using the Fenwick tree.
 //  void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
