@@ -30,7 +30,7 @@ int ConcatenateSplitRegion(const Index *index_reference, const Region &region, i
   if (region.start < region.split_start) {
     memmove(data_copy, &(index_reference->get_data()[region.split_start]), region_length_second);
     memmove((data_copy + region_length_second), &(index_reference->get_data()[region.start]), region_length_first);
-    position_of_ref_end = region.split_end - region.split_start + 1;
+    position_of_ref_end = region.split_end - region.split_start; // + 1;
     start_offset = region.split_start;
 
     // If the main region is at the end of the reference. The region is then expanded towards left and right, but on the right it zips back
