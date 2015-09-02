@@ -676,6 +676,54 @@ int Owler::CalcCoveredBases(std::vector<SeedHit2> &seed_hits, int64_t seed_lengt
   return 0;
 }
 
+OverlapResult Owler::GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
+                          int64_t read_id, int64_t read_length) {
+  OverlapResult ret;
+
+//  int64_t front_id = lcskpp_indices.front();
+//  int64_t back_id = lcskpp_indices.back();
+  int64_t front_id = lcskpp_indices.back();
+  int64_t back_id = lcskpp_indices.front();
+
+  int64_t A_start = seed_hits[hits_start + back_id].query_pos;
+  int64_t A_end = seed_hits[hits_start + front_id].query_pos + 12;
+  int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
+  int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
+
+  if (ref_reversed) {
+    int64_t temp = B_start;
+    B_start = reference_length - B_end - 1;
+    B_end = reference_length - temp - 1;
+  }
+
+  int64_t shared_minmers = lcskpp_indices.size();
+
+//  int64_t covered_bases = shared_minmers * (12 + 1);
+  int64_t cov_bases_A = 0, cov_bases_B = 0;
+  CalcCoveredBases(seed_hits, 13, lcskpp_indices, hits_start, hits_end, &cov_bases_A, &cov_bases_B);
+
+//  float jaccard_score = ((float) covered_bases) / ((float) std::min((A_end - A_start), (B_end - B_start)));
+  float jaccard_score = std::max(((float) cov_bases_A) / ((float) (A_end - A_start)), ((float) cov_bases_B) / ((float) (B_end - B_start)));
+
+  ret.read_id = read_id;
+  ret.ref_id = ref_id;
+  ret.jaccard_score = jaccard_score;
+  ret.shared_minmers = shared_minmers;
+  ret.read_is_reverse = false;
+  ret.read_start = A_start;
+  ret.read_end = A_end;
+  ret.read_length = read_length;
+  ret.ref_is_reverse = ref_reversed;
+  ret.ref_start = B_start;
+  ret.ref_end = B_end;
+  ret.ref_length = reference_length;
+
+  ret.front_id = front_id;
+  ret.back_id = back_id;
+
+  return ret;
+}
+
 std::string Owler::OverlapToMHAP(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
                           int64_t read_id, int64_t read_length) {
   std::stringstream ret;
@@ -1038,6 +1086,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
+  std::vector<OverlapResult> found_overlaps;
+
   for (int64_t i = 0; i < owler_data->seed_hits2.size(); i++) {
 //    if (i > 1000)
 //      break;
@@ -1054,9 +1104,6 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
       int64_t ref_id = owler_data->seed_hits2[i].ref_id;
       int64_t ref_len = index->get_reference_lengths()[ref_id];
 
-//      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s, read_len = %ld, ref_len = %ld\n", i, owler_data->seed_hits2[i].VerboseToString().c_str(), read_len, ref_len), "[]");
-//      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- found different reference, [%ld, %ld]\n", ref_streak_start, i), "[]");
-
       /// Check if there are enough hits on a reference to initiate the LCSk process.
       if ((i - ref_streak_start + 1) >= min_num_hits) {
         std::stringstream debug_verbose;
@@ -1069,27 +1116,9 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
         std::vector<int> lcskpp_indices;
         std::vector<int32_t> cluster_ids;
-//        int num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, i, 0.05f*read->get_sequence_length(), min_num_hits, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
-//        int num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, ref_streak_end, seed_length, min_perc_overlap_len*read->get_sequence_length(), min_perc_covered_bases, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
         int num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, ref_streak_end, seed_length, 0.01f*read->get_sequence_length(), 0.01f, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
         num_svs = 0;
 
-        //  int64_t min_cluster_length = 0;
-        //  int64_t min_covered_bases = std::max(30.0f, read->get_sequence_length() * 0.02f);
-
-//        if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-////          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len), "[]");
-////          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- found different reference, [%ld, %ld]\n", ref_streak_start, i), "[]");
-////          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\t- passed filter\n", "[]");
-////          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- LCSk performed, lcskpp_indices.size() = %ld\n", lcskpp_indices.size()), "[]");
-////          debug_verbose << FormatString("[%ld] %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len);
-////          debug_verbose << FormatString("\t- found different reference, streak_indexes[%ld, %ld]\n", ref_streak_start, i);
-////          debug_verbose << "\t- passed filter\n";
-////          debug_verbose << FormatString("\t- LCSk performed, lcskpp_indices.size() = %ld\n", lcskpp_indices.size());
-//        }
-
-//        SingleOverlap overlap(
-//        owler_data->final_overlaps.push_back(
         int64_t A_start = 0, A_end = 0, query_overlap_length = 0, B_start = 0, B_end = 0, ref_overlap_length = 0;
         OverlapLength(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, ref_streak_end, &A_start, &A_end, &query_overlap_length, &B_start, &B_end, &ref_overlap_length);
 
@@ -1097,8 +1126,6 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
         CalcCoveredBases(owler_data->seed_hits2, seed_length, lcskpp_indices, ref_streak_start, ref_streak_end, &cov_bases_read, &cov_bases_ref);
 
         float size_diff = 1.0f - ((float) std::min(query_overlap_length, ref_overlap_length)) / ((float) std::max(query_overlap_length, ref_overlap_length));
-//        float perc_covered_bases_read = (query_overlap_length > 0) ? (((float) lcskpp_indices.size() * 12) / ((float) query_overlap_length)) : 0.0f;
-//        float perc_covered_bases_ref = (ref_overlap_length > 0) ? (((float) lcskpp_indices.size() * 12) / ((float) ref_overlap_length)) : 0.0f;
         float perc_covered_bases_read = (query_overlap_length > 0) ? (((float) cov_bases_read) / ((float) query_overlap_length)) : 0.0f;
         float perc_covered_bases_ref = (ref_overlap_length > 0) ? (((float) cov_bases_ref) / ((float) ref_overlap_length)) : 0.0f;
 
@@ -1149,113 +1176,69 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- number of SV detected: %d\n", num_svs), "[]");
           }
 
-          if (parameters->outfmt == "afg") {
-            if (owler_data->overlap_lines.size() > 0)
-              owler_data->overlap_lines += "\n";
-            owler_data->overlap_lines += OverlapToAFG(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
-                                                       read_id + index->get_num_sequences(), read_length);
+          found_overlaps.push_back(GenerateOverlapResult(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
+                                                         read_id, read_length));
 
-          } else if (parameters->outfmt == "dot") {
-            if (owler_data->overlap_lines.size() > 0)
-              owler_data->overlap_lines += "\n";
-            owler_data->overlap_lines += OverlapToDot(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
-                                                       read_id, read_length);
-
-          } else {
-            if (owler_data->overlap_lines.size() > 0)
-              owler_data->overlap_lines += "\n";
-            owler_data->overlap_lines += OverlapToMHAP(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
-                                                       read_id, read_length);
-
-//            if (parameters->verbose_sam_output > 0) {
-//              owler_data->overlap_lines += OverlapMHAPVerbose(owler_data, indexes, read, parameters, owler_data->seed_hits2[i].ref_id, ref_streak_start, lcskpp_indices);
-//            }
-          }
+//          if (parameters->outfmt == "afg") {
+//            if (owler_data->overlap_lines.size() > 0)
+//              owler_data->overlap_lines += "\n";
+//            owler_data->overlap_lines += OverlapToAFG(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
+//                                                       read_id + index->get_num_sequences(), read_length);
+//
+//          } else if (parameters->outfmt == "dot") {
+//            if (owler_data->overlap_lines.size() > 0)
+//              owler_data->overlap_lines += "\n";
+//            owler_data->overlap_lines += OverlapToDot(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
+//                                                       read_id, read_length);
+//
+//          } else {
+//            if (owler_data->overlap_lines.size() > 0)
+//              owler_data->overlap_lines += "\n";
+//            owler_data->overlap_lines += OverlapToMHAP(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
+//                                                       read_id, read_length);
+//
+////            if (parameters->verbose_sam_output > 0) {
+////              owler_data->overlap_lines += OverlapMHAPVerbose(owler_data, indexes, read, parameters, owler_data->seed_hits2[i].ref_id, ref_streak_start, lcskpp_indices);
+////            }
+//          }
 
           num_output_overlaps += 1;
-
-          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-//                 LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\t- PASSED!\n", "[]");
-//                 debug_verbose << "\t- PASSED!\n";
-//                 LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, debug_verbose.str(), "[]");
-          }
         } else {
-          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-//                  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\t- failed after LCSk.\n", "[]");
-          }
+
         }
 
 
 
-#ifndef RELEASE_VERSION
-    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      std::string reference_header = index->get_headers()[(current_ref_id % num_references_fwd)];
+      #ifndef RELEASE_VERSION
+          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+            std::string reference_header = index->get_headers()[(current_ref_id % num_references_fwd)];
 
-      WriteHits(FormatString("temp/overlaps/scores-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], NULL, NULL);
-      WriteHits(FormatString("temp/overlaps/LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
-      WriteHits(FormatString("temp/overlaps/LCSL1-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
-      WriteHits(FormatString("temp/overlaps/double_LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
-
-//      std::vector<SeedHit2> filtered_seed_hits;
-//      filtered_seed_hits.resize(lcskpp_indices.size());
-//      for (int64_t j = 0; j < lcskpp_indices.size(); j++) {
-//        filtered_seed_hits[j] = owler_data->seed_hits2[lcskpp_indices[j]];
-//      }
-////      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing gapped qgrams to file.\n"), "FilterUnlikelyOverlaps");
-//      std::string out_path = FormatString("temp/overlaps/LCS-%ld.csv", current_ref_id);
-//      FILE *fp = fopen(out_path.c_str(), "w");
-//      if (fp != NULL) {
-//        fprintf (fp, "%s\t0\t%ld\t0\t%ld\t0.0\n", read->get_header(), read->get_sequence_length(), indexes[0]->get_reference_lengths()[current_ref_id]);
-//        for (int64_t j=0; j<filtered_seed_hits.size(); j++) {
-//          uint32_t seed_len = 12; // owler_data->seed_types[filtered_seed_hits[j].seed_type].length();
-//          fprintf (fp, "%ld\t%ld\n", filtered_seed_hits[j].query_pos, filtered_seed_hits[j].ref_pos);
-//          fprintf (fp, "%ld\t%ld\n", filtered_seed_hits[j].query_pos + seed_len, filtered_seed_hits[j].ref_pos + seed_len);
-//        }
-//        fclose(fp);
-//      }
-    }
-#endif
+            WriteHits(FormatString("temp/overlaps/scores-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], NULL, NULL);
+            WriteHits(FormatString("temp/overlaps/LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
+            WriteHits(FormatString("temp/overlaps/LCSL1-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
+            WriteHits(FormatString("temp/overlaps/double_LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
+          }
+      #endif
 
       cluster_ids.clear();
       lcskpp_indices.clear();
       }
-//      else {
-//        break;
-//
-//      }
 
       ref_streak_start = (i + 1);
     }
   }
 
-//  for (int64_t i = 0; i < owler_data->overlaps.size(); i++) {
-//    int32_t lcskpp_length;
-//    std::vector<int> lcskpp_indices;
-//    CalcLCSFromLocalScoresCacheFriendly_(owler_data, i, &lcskpp_length, &lcskpp_indices);
-//
-//#ifndef RELEASE_VERSION
-//    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-//    std::vector<SeedHit> filtered_seed_hits;
-//    filtered_seed_hits.resize(lcskpp_indices.size());
-//    for (int64_t j = 0; j < lcskpp_indices.size(); j++) {
-//      filtered_seed_hits[j] = owler_data->overlaps[i].seed_hits[lcskpp_indices[j]];
-//    }
-////      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing gapped qgrams to file.\n"), "FilterUnlikelyOverlaps");
-//      std::string out_path = FormatString("temp/overlaps/LCS-%ld.csv", owler_data->overlaps[i].ref_id_);
-//      FILE *fp = fopen(out_path.c_str(), "w");
-//      if (fp != NULL) {
-//        fprintf (fp, "%s\t0\t%ld\t0\t%ld\t0.0\n", read->get_header(), read->get_sequence_length(), indexes[0]->get_reference_lengths()[owler_data->overlaps[i].ref_id_]);
-//        for (int64_t j=0; j<filtered_seed_hits.size(); j++) {
-//          uint32_t seed_len = owler_data->seed_types[filtered_seed_hits[j].seed_type].length();
-//          fprintf (fp, "%ld\t%ld\n", filtered_seed_hits[j].query_pos, filtered_seed_hits[j].ref_pos);
-//          fprintf (fp, "%ld\t%ld\n", filtered_seed_hits[j].query_pos + seed_len, filtered_seed_hits[j].ref_pos + seed_len);
-//        }
-//        fclose(fp);
-//      }
-//    }
-//#endif
-//
-//  }
+  std::sort(found_overlaps.begin(), found_overlaps.end(), overlapresult_sort_key());
+
+//  std::vector<OverlapResult> final_overlaps
+  for (int64_t i=0; i<found_overlaps.size(); i++) {
+    if (i > 0 && found_overlaps[i-1].read_id == found_overlaps[i].read_id && found_overlaps[i-1].ref_id == found_overlaps[i].ref_id) {
+      continue;
+    }
+    if (owler_data->overlap_lines.size() > 0)
+      owler_data->overlap_lines += "\n";
+    owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
+  }
 
   return 0;
 }

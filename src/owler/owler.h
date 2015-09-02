@@ -38,6 +38,65 @@
 //#include "index/index_spaced_hash_fast.h"
 #include "index/index_owler.h"
 
+class OverlapResult {
+ public:
+  int64_t read_id;
+  int64_t ref_id;
+  float jaccard_score;
+  int64_t shared_minmers;
+  bool read_is_reverse;
+  int64_t read_start;
+  int64_t read_end;
+  int64_t read_length;
+  bool ref_is_reverse;
+  int64_t ref_start;
+  int64_t ref_end;
+  int64_t ref_length;
+
+  int64_t front_id;
+  int64_t back_id;
+
+  OverlapResult() {
+    read_id = ref_id = shared_minmers = read_start = read_end = read_length = ref_start = ref_end = ref_length = 0;
+    jaccard_score = 0.0f;
+    read_is_reverse = ref_is_reverse = false;
+    front_id = back_id = 0;
+  }
+
+  std::string GenerateMHAPLine() {
+    std::stringstream ret;
+    ret << read_id << " ";      /// read1_id
+    ret << ref_id << " ";      /// read2_id
+    ret << jaccard_score << " ";      /// Jaccard score
+    ret << shared_minmers << " ";        /// Shared minmers
+    ret << "0 ";        /// A is reverse
+    ret << read_start << " ";
+    ret << read_end << " ";
+    ret << read_length << " ";
+    ret << (ref_is_reverse ? 1 : 0) << " ";
+    ret << ref_start << " ";
+    ret << ref_end << " ";
+    ret << ref_length;
+    return ret.str();
+  }
+};
+
+struct overlapresult_sort_key
+{
+    inline bool operator() (const OverlapResult& op1, const OverlapResult& op2) {
+      if (op1.read_id == op2.read_id) {
+        if (op1.ref_id == op2.ref_id) {
+          return (op1.jaccard_score > op2.jaccard_score);
+        } else {
+          return (op1.ref_id < op2.ref_id);
+        }
+      } else {
+        return (op1.read_id < op2.read_id);
+      }
+      return false;
+    }
+};
+
 class Owler {
  public:
   Owler();
@@ -75,6 +134,8 @@ class Owler {
 
   int OverlapLength(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *A_start, int64_t *A_end, int64_t *ret_query_length, int64_t *B_start, int64_t *B_end, int64_t *ret_ref_length);
   std::string OverlapMHAPVerbose(OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, int64_t ref_id, int64_t hits_start, std::vector<int> &lcskpp_indices);
+
+  OverlapResult GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, int64_t read_id, int64_t read_length);
 
  private:
   SequenceFile *reference_;
