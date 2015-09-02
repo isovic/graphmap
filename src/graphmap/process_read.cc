@@ -489,17 +489,30 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       factor_query_length = 1.0f;
     float factor_readlength = std::min(((float) read->get_sequence_length()) / 2000.0f, 1.0f);
 
-    // Check if something went wrong and the read is unmapped.
+    /// Check if something went wrong and the read is unmapped.
     if (edit_distance < 0) {
       mapping_data->unmapped_reason += FormatString("__HybridRealignment_returned_with_error__ret_value=%d", edit_distance);
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
 
-      // Keep the output if alignment is insane for debug purposes.
+      /// Keep the output if alignment is insane for debug purposes.
       if (edit_distance != ALIGNMENT_NOT_SANE) {
         LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but edit_distance < 0!\n"), "GenerateAlignments_");
         continue;
       } else {
+        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
+      }
+    }
+
+    /// TODO: This needs to happen in all cases! Currently only for testing purposes for anchored alignment.
+    if (parameters->alignment_algorithm == "anchor") {
+      /// Check if something went wrong and the read is unmapped.
+      if (evalue_left_part > ((double) 1e+300) || evalue_right_part > ((double) 1e+300)) {
+        mapping_data->unmapped_reason += FormatString("__Evalue_is_too_large__evalue_left_part=%e__evalue_right_part=%e", evalue_left_part, evalue_right_part);
+        mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
+        mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
+
+        /// Keep the output if alignment is insane for debug purposes.
         LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
       }
     }

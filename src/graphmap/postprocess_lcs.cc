@@ -466,7 +466,7 @@ int GraphMap::CheckMinimumMappingConditions_(InfoMapping *mapping_data, InfoL1 *
   return 0;
 }
 
-int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequence *read, const ScoreRegistry *local_score, const std::vector<int> *indices, int64_t l_median, float maximum_allowed_deviation, bool check_median_filtering) {
+int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequence *read, const ScoreRegistry *local_score, const std::vector<int> *indices, int64_t l_median, float maximum_allowed_deviation, bool check_median_filtering, std::vector<int32_t> *cluster_ids) {
   FILE *fp = NULL;
 
   fp = fopen(file_path.c_str(), "w");
@@ -479,18 +479,31 @@ int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequen
   if (indices != NULL) {
     for (int64_t i = 0; i < indices->size(); i++) {
       if (check_median_filtering == false) {
-        fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)]);
-        fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)]);
+        if (cluster_ids == NULL) {
+          fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)]);
+          fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)]);
+        } else {
+          fprintf (fp, "%ld\t%ld\t%d\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)], cluster_ids->at(i));
+          fprintf (fp, "%ld\t%ld\t%d\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)], cluster_ids->at(i));
+        }
 
       } else {
         float distance1 = abs((float) ((local_score->get_registry_entries().reference_starts[indices->at(i)] - local_score->get_registry_entries().query_starts[indices->at(i)]) - l_median) * (sqrt(2.0f)) / 2.0f);
         if (distance1 < maximum_allowed_deviation) {
-          fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)]);
+          if (cluster_ids == NULL) {
+            fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)]);
+          } else {
+            fprintf (fp, "%ld\t%ld\t%d\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)], cluster_ids->at(i));
+          }
         }
 
         float distance2 = abs((float) ((local_score->get_registry_entries().reference_ends[indices->at(i)] - local_score->get_registry_entries().query_ends[indices->at(i)]) - l_median) * (sqrt(2.0f)) / 2.0f);
         if (distance2 < maximum_allowed_deviation) {
-          fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)]);
+          if (cluster_ids == NULL) {
+            fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)]);
+          } else {
+            fprintf (fp, "%ld\t%ld\t%d\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)], cluster_ids->at(i));
+          }
         }
       }
     }
