@@ -1148,9 +1148,32 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 //        if ((B_start > (query_overlap_length * max_overhang_percent) || (read_length - B_end) > (query_overlap_length * max_overhang_percent)) &&
 //            A_start <= (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) <= (ref_overlap_length * max_overhang_percent))
 //          overhang_ok = false;
-        if ((A_start > (query_overlap_length * max_overhang_percent) && B_start > (ref_overlap_length * max_overhang_percent) && (read_length - A_end) <= (query_overlap_length * max_overhang_percent) && (ref_length - B_end) <= (ref_overlap_length * max_overhang_percent)) ||
-            (A_start <= (query_overlap_length * max_overhang_percent) && B_start <= (ref_overlap_length * max_overhang_percent) && (read_length - A_end) > (query_overlap_length * max_overhang_percent) && (ref_length - B_end) > (ref_overlap_length * max_overhang_percent)))
+//        if ((A_start > (query_overlap_length * max_overhang_percent) &&
+//                B_start > (ref_overlap_length * max_overhang_percent) &&
+//                (read_length - A_end) <= (query_overlap_length * max_overhang_percent) &&
+//                (ref_length - B_end) <= (ref_overlap_length * max_overhang_percent)) ||
+//            (A_start <= (query_overlap_length * max_overhang_percent) &&
+//                B_start <= (ref_overlap_length * max_overhang_percent) &&
+//                (read_length - A_end) > (query_overlap_length * max_overhang_percent) &&
+//                (ref_length - B_end) > (ref_overlap_length * max_overhang_percent)))
+//          overhang_ok = false;
+
+//        int64_t max_query_overhang = query_overlap_length * max_overhang_percent;
+//        int64_t max_ref_overhang = ref_overlap_length * max_overhang_percent;
+//        if (((A_start < max_query_overhang || B_start < max_ref_overhang) &&
+//              (read_length - A_end) > max_query_overhang && (ref_length - B_end) > max_ref_overhang) ||
+//            (((read_length - A_end) <= max_query_overhang || (ref_length - B_end) > max_ref_overhang) &&
+//              (A_start >= max_query_overhang && B_start >= max_ref_overhang)))
+//          overhang_ok = false;
+
+        int64_t dist_start = std::min(A_start, B_start);
+        int64_t dist_end = std::min((read_length - A_end), (ref_length - B_end));
+        int64_t max_overhang = std::max((query_overlap_length * max_overhang_percent), ref_overlap_length * max_overhang_percent);
+        if (dist_start > max_overhang || dist_end > max_overhang)
           overhang_ok = false;
+
+
+
 
         /// Testing filter - small overhangs can be a result of indels. Simply checking the overlap length is not enough without alignment, because we do not know how good the alignment is.
         /// For testing purposes - limit the overhang length to 2% of read length. If on both ends the overhang of a read is less than that, it will be called contained.
