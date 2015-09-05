@@ -145,9 +145,9 @@ def plot_data(fig, ax, subplot_coords, x, y, c, query_length, ymin, ymax, l_medi
 		# plt.ylabel('Region coordinates');
 
 		if (subplot_coords == 223 or subplot_coords == 224):
-			ax.set_xlabel('Read coordinates');
+			ax.set_xlabel('Query coordinates');
 		if (subplot_coords == 221 or subplot_coords == 223):
-			ax.set_ylabel('Region coordinates');
+			ax.set_ylabel('Reference coordinates');
 		# sns.despine(offset=10, trim=True);
 		# plt.setp([a.get_xticklabels() for a in fig.axes[:]], visible=False)
 		# if (subplot_coords == 221 or subplot_coords == 222):
@@ -214,7 +214,7 @@ if __name__ == "__main__":
 		# plt.setp([axarr[1].get_yticklabels(), axarr[3].get_yticklabels()], visible=False)
 
 		data_path = scores_path;
-		print data_path;
+		sys.stderr.write('Reading: %s\n' % data_path);
 		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		ymin = min(y);
 		ymax = max(y);
@@ -222,19 +222,19 @@ if __name__ == "__main__":
 		plot_data(fig, ax1, 221, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, 0, 'Anchors', data_path + '.png');
 
 		data_path = lcs_path;
-		print data_path;
+		sys.stderr.write('Reading: %s\n' % data_path);
 		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		# FindHoughLine(x, y, error_rate);
 		plot_data(fig, ax2, 222, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'LCSk', data_path + '.png');
 
 		data_path = lcsl1_path;
-		print data_path;
+		sys.stderr.write('Reading: %s\n' % data_path);
 		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		# FindHoughLine(x, y, error_rate);
 		plot_data(fig, ax3, 223, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'LCSk L1 filtered', data_path + '.png');
 
 		data_path = l1_path;
-		print data_path;
+		sys.stderr.write('Reading: %s\n' % data_path);
 		[x, y, c, query_header, query_id, query_length, l1_used, l_median, l_maximum_allowed] = load_csv(data_path + '.csv');
 		# FindHoughLine(x, y, error_rate);
 		plot_data(fig, ax4, 224, x, y, c, query_length, ymin, ymax, l_median, l_maximum_allowed, l1_used, 'Second LCSk after L1', data_path + '.png');
@@ -248,8 +248,10 @@ if __name__ == "__main__":
 		out_png_path = '%s/all-%d-qid_%d.png' % (results_path, local_scores_id, query_id);
 		if (out_png_path != ''):
 			if (HIGH_DPI_PLOT == False):
+				sys.stderr.write('Writing image to file: %s\n\n' % out_png_path);
 				plt.savefig(out_png_path, bbox_inches='tight'); # , dpi=1000);
 			else:
+				sys.stderr.write('Writing image to file: %s\n\n' % out_png_path);
 				plt.savefig(out_png_path, bbox_inches='tight', dpi=1000);
 
 # scripts/test-scatterplot3.py temp/local_scores/LCS-315.csv temp/local_scores/LCS-314.csv
