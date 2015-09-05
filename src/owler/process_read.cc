@@ -1066,7 +1066,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 //  int64_t min_num_hits = std::min(50.0f, 0.10f * read->get_sequence_length());
 //  int64_t min_num_hits = std::max(50.0f, 0.05f * read->get_sequence_length());
   int64_t min_num_hits = std::min(10.0f, 0.05f * read->get_sequence_length());
-  float max_overhang_percent = 0.10f; // 0.33f;
+//  float max_overhang_percent = 0.10f; // 0.33f;
+  float max_overhang_percent = 0.33f;
   float min_perc_covered_bases = 0.10f;
   float min_perc_overlap_len = 0.10f;
   int64_t seed_length = 13;
