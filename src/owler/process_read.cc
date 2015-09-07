@@ -1593,3 +1593,177 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
 //  return num_clusters;
   return ret_val;
 }
+
+int Owler::FilterAnchorBreakpointsExperimental(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t seed_length, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
+  std::vector<ClusterAndIndices *> clusters;
+  ClusterAndIndices *new_cluster = NULL;
+  int64_t last_nonskipped_i = lcskpp_indices.size() + 1;
+  for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
+    /// Skip anchors which might be too erroneous.
+    int64_t current_lcskp_index = lcskpp_indices.at(i) + ref_hits_start;
+    if (CheckDistanceTooBig(owler_data, current_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f) == true)
+      continue;
+
+    if (last_nonskipped_i > lcskpp_indices.size()) {
+
+    } else {
+      /// This is going to work, because last_nonskipped_i will be set the second iteration of the loop. The value of i starts counting from int64_t i=(lcskpp_indices.size() - 1).
+      int64_t previous_lcskp_index = lcskpp_indices.at(last_nonskipped_i) + ref_hits_start;
+
+      bool wrong_to_previous1 = CheckDistanceTooBig(owler_data, previous_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f);
+      bool wrong_to_previous2 = (new_cluster->lcskpp_indices.size() < 2) ? false :
+                                (CheckDistanceTooBig(owler_data, new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-2] + ref_hits_start, current_lcskp_index, parameters->error_rate / 2.0f));
+      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front(), previous_lcskp_index, current_lcskp_index, 1.5f);
+
+      if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || wrong_by_distance == true) {
+        /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit nesither to the previous point, nor to the point before that.
+        if (new_cluster != NULL) {
+          int64_t cov_bases_read = 0, cov_bases_ref = 0;
+          CalcCoveredBases(owler_data->seed_hits2, seed_length, new_cluster->lcskpp_indices, ref_hits_start, ref_hits_end, &cov_bases_read, &cov_bases_ref);
+          new_cluster->coverage = std::max(cov_bases_read, cov_bases_ref);
+
+          int64_t min_covered_bases = (new_cluster->query.end - new_cluster->query.start + 1) * min_cluster_coverage;
+
+          if ((new_cluster->query.end - new_cluster->query.start + 1) >= min_cluster_length && new_cluster->coverage >= min_covered_bases) {
+            clusters.push_back(new_cluster);
+          } else {
+            delete new_cluster;
+          }
+          new_cluster = NULL;
+        }
+      } else if (wrong_to_previous1 == true && wrong_to_previous2 == false) {
+        /// In this case, the previous point was an outlier, because the new point fits better to the one before the previous one. Overwrite the previous entry in new_cluster.
+        new_cluster->query.end = owler_data->seed_hits2[current_lcskp_index].query_pos + 12 - 1;
+        new_cluster->ref.end = owler_data->seed_hits2[current_lcskp_index].ref_pos + 12 - 1;
+
+        /// This should not change, as we remove 12 bases and add 12 bases.
+        new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-1] = current_lcskp_index - ref_hits_start;
+
+        if (new_cluster->lcskpp_indices.size() == 1) {
+          new_cluster->query.start = owler_data->seed_hits2[current_lcskp_index].query_pos;
+          new_cluster->ref.start = owler_data->seed_hits2[current_lcskp_index].ref_pos;
+        }
+        last_nonskipped_i = i;
+
+        continue;
+      }
+    }
+
+    if (new_cluster == NULL) {
+      new_cluster = new ClusterAndIndices;
+      new_cluster->query.start = owler_data->seed_hits2[current_lcskp_index].query_pos;
+      new_cluster->ref.start = owler_data->seed_hits2[current_lcskp_index].ref_pos;
+    }
+
+    new_cluster->query.end = owler_data->seed_hits2[current_lcskp_index].query_pos + 12 - 1;
+    new_cluster->ref.end = owler_data->seed_hits2[current_lcskp_index].ref_pos + 12 - 1;
+    new_cluster->num_anchors += 1;
+    new_cluster->lcskpp_indices.push_back(current_lcskp_index - ref_hits_start);
+
+    last_nonskipped_i = i;
+  }
+  if (new_cluster != NULL) {
+    int64_t cov_bases_read = 0, cov_bases_ref = 0;
+    CalcCoveredBases(owler_data->seed_hits2, seed_length, new_cluster->lcskpp_indices, ref_hits_start, ref_hits_end, &cov_bases_read, &cov_bases_ref);
+    new_cluster->coverage = std::max(cov_bases_read, cov_bases_ref);
+
+    int64_t min_covered_bases = (new_cluster->query.end - new_cluster->query.start + 1) * min_cluster_coverage;
+
+    if ((new_cluster->query.end - new_cluster->query.start + 1) >= min_cluster_length && new_cluster->coverage >= min_covered_bases) {
+      clusters.push_back(new_cluster);
+    } else {
+      delete new_cluster;
+    }
+    new_cluster = NULL;
+  }
+
+  if (ret_cluster_ids) {
+    ret_cluster_ids->clear();
+  }
+
+
+
+
+
+
+  //////////////////////
+  /// Filter shady anchors by thresholding the coverage by some statistics on the clusters.
+  /// Concretely, for each cluster the percentage of covered bases is calculated. Using the median and the standard deviation
+  /// we set the threshold for the minimum number of covered bases in a cluster.
+  /// If below this threshold, the cluster is dismissed.
+  std::vector<float> cluster_coverages;
+  for (int64_t i=0; i<clusters.size(); i++) {
+    int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start + 1;
+    int64_t covered_bases = clusters[i]->coverage;
+    cluster_coverages.push_back(((float) covered_bases) / ((float) cluster_length));
+  }
+  std::sort(cluster_coverages.begin(), cluster_coverages.end());
+  float median = 0.0f;
+  int64_t num_clusters = cluster_coverages.size();
+  if (num_clusters > 0) {
+    median = ((num_clusters % 2) == 0) ? ((cluster_coverages[num_clusters/2] + cluster_coverages[num_clusters/2+1]) / 2.0f) :
+                                         cluster_coverages[(int64_t) floor(((float) num_clusters) / 2.0f)];
+  }
+  float mean = 0.0f;
+  for (int64_t i=0; i<cluster_coverages.size(); i++) {
+    mean += cluster_coverages[i];
+  }
+  if (cluster_coverages.size() > 0)
+    mean /= cluster_coverages.size();
+  float std = 0.0f, std_med = 0.0f;
+  for (int64_t i=0; i<cluster_coverages.size(); i++) {
+    std += (cluster_coverages[i] - mean) * (cluster_coverages[i] - mean);
+    std_med += (cluster_coverages[i] - median) * (cluster_coverages[i] - median);
+  }
+  if (cluster_coverages.size() > 1) {
+    std /= (cluster_coverages.size() - 1);
+    std_med /= (cluster_coverages.size() - 1);
+  }
+  std = sqrt(std);
+  std_med = sqrt(std_med);
+  float min_relative_cluster_coverage = median - std_med - 0.001;  /// The 0.001 is subtracted to avoid the numerical error.
+
+  std::vector<ClusterAndIndices *> filtered_clusters;
+  for (int64_t i=0; i<clusters.size(); i++) {
+      int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start + 1;
+      int64_t covered_bases = clusters[i]->coverage;
+      float cluster_coverage = ((float) covered_bases) / ((float) cluster_length);
+
+      if (cluster_coverage >= min_relative_cluster_coverage) {
+        filtered_clusters.push_back(clusters[i]);
+      } else {
+        delete clusters[i];
+      }
+  }
+
+
+
+  int ret_val = 0;
+  /// Check if the leftover clusters are linear and that only outlier anchors are filtered. This is important for overlapping.
+  for (int64_t i=1; i<filtered_clusters.size(); i++) {
+    int64_t current_lcskp_index = filtered_clusters[i]->lcskpp_indices.front() + ref_hits_start;
+    int64_t previous_lcskp_index = filtered_clusters[i-1]->lcskpp_indices.back() + ref_hits_start;
+    bool wrong_to_previous1 = CheckDistanceTooBig(owler_data, previous_lcskp_index, current_lcskp_index, parameters->error_rate);
+    if (wrong_to_previous1 == true) {
+      ret_val += 1;
+    }
+  }
+
+  ret_filtered_lcskpp_indices.clear();
+  for (int64_t i=0; i<filtered_clusters.size(); i++) {
+    ret_filtered_lcskpp_indices.insert(ret_filtered_lcskpp_indices.end(), filtered_clusters[i]->lcskpp_indices.begin(), filtered_clusters[i]->lcskpp_indices.end());
+    /// Create indices for debugging purposes (so we can differentiate clusters).
+    if (ret_cluster_ids) {
+      std::vector<int32_t> cluster_indices(filtered_clusters[i]->lcskpp_indices.size(), i);
+      ret_cluster_ids->insert(ret_cluster_ids->end(), cluster_indices.begin(), cluster_indices.end());
+    }
+    if (filtered_clusters[i])
+      delete filtered_clusters[i];
+  }
+
+
+  clusters.clear();
+  filtered_clusters.clear();
+
+  return ret_val;
+}
