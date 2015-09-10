@@ -53,7 +53,7 @@ class SeedHit2 {
 
   std::string VerboseToString() {
     std::stringstream ss;
-    ss << "ref_id = " << ref_id << ", q_pos" << query_pos << ", r_pos" << ref_pos;
+    ss << "ref_id = " << ref_id << ", q_pos = " << query_pos << ", r_pos = " << ref_pos;
     return ss.str();
   }
 

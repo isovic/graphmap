@@ -598,11 +598,12 @@ int Owler::CollectSeedHitsExperimentalSubseededIndex(OwlerData* owler_data, std:
       /// Reverse sequences are considered the same as any other reference sequence.
       int64_t reference_index = position & 0x00000000FFFFFFFF;
       int64_t position_local = position >> 32;
+      int64_t reference_index_fwd = reference_index % index->get_num_sequences_forward();
 
       /////////////////////
       ///// This handles self-overlapping, and only compares the read to uper-half of the matrix.
       /////////////////////
-      if ((reference_index % index->get_num_sequences_forward()) <= read_id)
+      if ((reference_index_fwd) <= read_id)
         continue;
 
       int64_t reference_length = index->get_reference_lengths()[reference_index];
@@ -614,7 +615,7 @@ int Owler::CollectSeedHitsExperimentalSubseededIndex(OwlerData* owler_data, std:
         continue;
       }
       /// Don't count self hits
-      if (index->get_headers()[reference_index % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
+      if (index->get_headers()[reference_index_fwd] == ((std::string) read->get_header())) {
         continue;
       }
       /// Count unique hits for a pair of reads.

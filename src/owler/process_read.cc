@@ -654,17 +654,43 @@ void WriteHits(std::string out_path, std::vector<SeedHit2> &seed_hits, int64_t h
 int Owler::CalcCoveredBases(std::vector<SeedHit2> &seed_hits, int64_t seed_length, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *ret_cov_A, int64_t *ret_cov_B) {
   int64_t cov_bases = 0, cov_bases_A = 0, cov_bases_B = 0;
 
+//  for (int64_t i = 0; i < lcskpp_indices.size(); i++) {
+//    int64_t A_start = seed_hits[hits_start + lcskpp_indices[i]].query_pos;
+//    int64_t B_start = seed_hits[hits_start + lcskpp_indices[i]].ref_pos;
+//    printf ("[%ld] [A_start, B_start] = [%ld, %ld]\n", i, A_start, B_start);
+//    fflush(stdout);
+//  }
+//  printf ("\n");
+//  fflush(stdout);
+
   /// End coordinates will be inclusive, as well as start coordinates.
   int64_t A_end_prev = -1;
   int64_t B_end_prev = -1;
   for (int64_t i = 0; i < lcskpp_indices.size(); i++) {
-    int64_t A_start = seed_hits[hits_start + i].query_pos;
+//  for (int64_t i=(lcskpp_indices.size()-1); i>=0; i--) {
+    int64_t A_start = seed_hits[hits_start + lcskpp_indices[i]].query_pos;
     int64_t A_end = A_start + seed_length - 1;
-    int64_t B_start = seed_hits[hits_start + i].ref_pos;
+    int64_t B_start = seed_hits[hits_start + lcskpp_indices[i]].ref_pos;
     int64_t B_end = B_start + seed_length - 1;
 
     cov_bases_A += std::min((A_end - A_end_prev), seed_length);
     cov_bases_B += std::min((B_end - B_end_prev), seed_length);
+//    if (A_end_prev == -1 && B_end_prev == -1) {
+//      cov_bases_A += seed_length;
+//      cov_bases_B += seed_length;
+//    } else {
+//      cov_bases_A += std::min((A_end - A_end_prev), seed_length);
+//      cov_bases_B += std::min((B_end - B_end_prev), seed_length);
+//    }
+
+//    if (std::min((A_end - A_end_prev), seed_length) < 0) {
+//      printf ("i = %ld, std::min((A_end - A_end_prev), seed_length) = %ld < 0, A_end = %ld, A_end_prev = %ld, B_end = %ld, B_end_prev = %ld, seed_length = %ld\n", i, std::min((A_end - A_end_prev), seed_length), A_end, A_end_prev, B_end, B_end_prev, seed_length);
+//      fflush(stdout);
+//    }
+
+    if (cov_bases_A < 0 || cov_bases_B < 0) {
+      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("ERROR: Number of covered bases should not be less than 0! i = %ld, std::min((A_end - A_end_prev), seed_length) = %ld < 0, A_end = %ld, A_end_prev = %ld, B_end = %ld, B_end_prev = %ld, seed_length = %ld\n", i, std::min((A_end - A_end_prev), seed_length), A_end, A_end_prev, B_end, B_end_prev, seed_length), "CalcCoveredBases");
+    }
 
     A_end_prev = A_end;
     B_end_prev = B_end;
@@ -700,6 +726,8 @@ OverlapResult Owler::GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std
 
 //  int64_t covered_bases = shared_minmers * (12 + 1);
   int64_t cov_bases_A = 0, cov_bases_B = 0;
+
+//  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases.\n", "GenerateOverlapResult");
   CalcCoveredBases(seed_hits, 13, lcskpp_indices, hits_start, hits_end, &cov_bases_A, &cov_bases_B);
 
 //  float jaccard_score = ((float) covered_bases) / ((float) std::min((A_end - A_start), (B_end - B_start)));
@@ -748,6 +776,7 @@ std::string Owler::OverlapToMHAP(std::vector<SeedHit2> &seed_hits, std::vector<i
 
 //  int64_t covered_bases = shared_minmers * (12 + 1);
   int64_t cov_bases_A = 0, cov_bases_B = 0;
+//  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases.\n", "OverlapToMHAP");
   CalcCoveredBases(seed_hits, 13, lcskpp_indices, hits_start, hits_end, &cov_bases_A, &cov_bases_B);
 
 //  float jaccard_score = ((float) covered_bases) / ((float) std::min((A_end - A_start), (B_end - B_start)));
@@ -1126,6 +1155,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
         OverlapLength(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, ref_streak_end, &A_start, &A_end, &query_overlap_length, &B_start, &B_end, &ref_overlap_length);
 
         int64_t cov_bases_read = 0, cov_bases_ref = 0;
+//        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases.\n", "ApplyLCS2");
         CalcCoveredBases(owler_data->seed_hits2, seed_length, lcskpp_indices, ref_streak_start, ref_streak_end, &cov_bases_read, &cov_bases_ref);
 
         float size_diff = 1.0f - ((float) std::min(query_overlap_length, ref_overlap_length)) / ((float) std::max(query_overlap_length, ref_overlap_length));
@@ -1142,8 +1172,22 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
         // Not perfect, because one read can start in the middle of another but still have a large chunk at the beginning uncovered.
         if (A_start > (query_overlap_length * max_overhang_percent) && (read_length - A_end) > (query_overlap_length * max_overhang_percent) &&
-            B_start > (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) > (ref_overlap_length * max_overhang_percent))
+            B_start > (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) > (ref_overlap_length * max_overhang_percent)) {
           overhang_ok = false;
+
+//          printf ("A_start > (query_overlap_length * max_overhang_percent) = %d, A_start = %ld, (query_overlap_length * max_overhang_percent) = %f\n", (A_start > (query_overlap_length * max_overhang_percent)), A_start, (query_overlap_length * max_overhang_percent));
+//          printf ("A_start = %ld\n", A_start);
+//          printf ("(query_overlap_length * max_overhang_percent) = %f\n", (query_overlap_length * max_overhang_percent));
+//          printf ("(read_length - A_end) = %ld\n", (read_length - A_end));
+//          printf ("(query_overlap_length * max_overhang_percent) = %f\n", (query_overlap_length * max_overhang_percent));
+//
+//          printf ("B_start = %ld\n", B_start);
+//          printf ("(ref_overlap_length * max_overhang_percent) = %f\n", (ref_overlap_length * max_overhang_percent));
+//          printf ("(ref_length - B_end) = %ld\n", (ref_length - B_end));
+//          printf ("(ref_overlap_length * max_overhang_percent) = %f\n", (ref_overlap_length * max_overhang_percent));
+//
+//          fflush(stdout);
+        }
 
 //        if ((A_start > (query_overlap_length * max_overhang_percent) || (read_length - A_end) > (query_overlap_length * max_overhang_percent)) &&
 //            B_start <= (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) <= (ref_overlap_length * max_overhang_percent))
@@ -1172,8 +1216,14 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
         int64_t dist_start = std::min(A_start, B_start);
         int64_t dist_end = std::min((read_length - A_end), (ref_length - B_end));
         int64_t max_overhang = std::max((query_overlap_length * max_overhang_percent), ref_overlap_length * max_overhang_percent);
-        if (dist_start > max_overhang || dist_end > max_overhang)
+        if (dist_start > max_overhang || dist_end > max_overhang) {
           overhang_ok = false;
+//          printf ("dist_start = %ld\n", dist_start);
+//          printf ("max_overhang = %ld\n", max_overhang);
+//          printf ("dist_end = %ld\n", dist_end);
+//          printf ("max_overhang = %ld\n", max_overhang);
+//          fflush(stdout);
+        }
 
 
 
@@ -1188,11 +1238,15 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
 
         if (num_svs == 0 && lcskpp_indices.size() >= 5 && query_overlap_length > min_perc_overlap_len*read_len && ref_overlap_length > min_perc_overlap_len*ref_len && size_diff < parameters->error_rate &&
-            (perc_covered_bases_read > min_perc_covered_bases || perc_covered_bases_ref > min_perc_covered_bases) && overhang_ok == true) { // min_num_hits) {
+            (perc_covered_bases_read > min_perc_covered_bases || perc_covered_bases_ref > min_perc_covered_bases) &&
+            overhang_ok == true) { // min_num_hits) {
 
 
           if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] (start) %s, (end) %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[ref_streak_start].VerboseToString().c_str(), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len), "[]");
+            int64_t first_lcskpp_id = ref_streak_start + lcskpp_indices.back();
+            int64_t last_lcskpp_id = ref_streak_start + lcskpp_indices.front();
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] /good/ start -> %s, end -> %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[ref_streak_start].VerboseToString().c_str(), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len), "[]");
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- start -> %s, (end) %s\n", owler_data->seed_hits2[first_lcskpp_id].VerboseToString().c_str(), owler_data->seed_hits2[last_lcskpp_id].VerboseToString().c_str()), "[]");
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- found different reference, [%ld, %ld]\n", ref_streak_start, i), "[]");
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\t- passed filter\n", "[]");
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- LCSk performed, lcskpp_indices.size() = %ld\n", lcskpp_indices.size()), "[]");
@@ -1230,7 +1284,19 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
           num_output_overlaps += 1;
         } else {
+          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+                                                FormatString("[%ld] /bad/ (num_output_overlaps) current_ref_id=%ld, ref_id_fwd=%ld, overhang_ok = %d, num_svs = %d, lcskpp_indices.size() = %ld, qlen = %ld, rlen = %ld\n\t° query_overlap_length = %ld, min_perc_overlap_len*read_len = %ld\n\t° ref_overlap_length = %ld, min_perc_overlap_len*ref_len = %ld\n\t° size_diff = %f, perc_covered_bases_read = %f, perc_covered_bases_ref = %f, min_perc_covered_bases = %f\n\t° cov_bases_read = %ld, cov_bases_ref = %ld\n",
+                                                             (num_output_overlaps + 1), current_ref_id, (current_ref_id % num_references_fwd), overhang_ok, num_svs, lcskpp_indices.size(), read_length, ref_len, query_overlap_length, (int64_t) min_perc_overlap_len*read_len, ref_overlap_length, (int64_t) min_perc_overlap_len*ref_len, size_diff, perc_covered_bases_read, perc_covered_bases_ref, min_perc_covered_bases, cov_bases_read, cov_bases_ref), "[]");
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+                                                FormatString("\t° A_start = %ld, A_end = %ld\n", A_start, A_end),"[]");
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+                                                FormatString("\t° B_start = %ld, B_end = %ld\n", B_start, B_end),"[]");
+            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+                                                FormatString("\t° dist_start = %ld, dist_end = %ld, max_overhang = %ld\n", dist_start, dist_end, max_overhang),"[]");
 
+//                                                             , lcskpp_indices.size() >= 5 && query_overlap_length > min_perc_overlap_len*read_len && ref_overlap_length > min_perc_overlap_len*ref_len && size_diff < parameters->error_rate, (perc_covered_bases_read > min_perc_covered_bases || perc_covered_bases_ref > min_perc_covered_bases)), "[]");
+          }
         }
 
 
@@ -1240,7 +1306,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
             std::string reference_header = index->get_headers()[(current_ref_id % num_references_fwd)];
 
             WriteHits(FormatString("temp/overlaps/scores-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], NULL, NULL);
-            WriteHits(FormatString("temp/overlaps/LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
+            WriteHits(FormatString("temp/overlaps/LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &raw_lcskpp_indices, NULL);
             WriteHits(FormatString("temp/overlaps/LCSL1-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
             WriteHits(FormatString("temp/overlaps/double_LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
           }
@@ -1465,6 +1531,8 @@ bool Owler::CheckDistanceStep(OwlerData* owler_data, int64_t index_first, int64_
 int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t seed_length, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 //  int64_t min_cluster_length = 0;
 //  int64_t min_covered_bases = std::max(30.0f, read->get_sequence_length() * 0.02f);
+//  printf ("lcskpp_indices.size() = %ld\n", lcskpp_indices.size());
+//  fflush(stdout);
 
   std::vector<ClusterAndIndices *> clusters;
   ClusterAndIndices *new_cluster = NULL;
@@ -1472,8 +1540,9 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
   for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
     /// Skip anchors which might be too erroneous.
     int64_t current_lcskp_index = lcskpp_indices.at(i) + ref_hits_start;
-    if (CheckDistanceTooBig(owler_data, current_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f) == true)
+    if (CheckDistanceTooBig(owler_data, current_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f) == true) {
       continue;
+    }
 
     if (last_nonskipped_i > lcskpp_indices.size()) {
 
@@ -1484,12 +1553,14 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
       bool wrong_to_previous1 = CheckDistanceTooBig(owler_data, previous_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f);
       bool wrong_to_previous2 = (new_cluster->lcskpp_indices.size() < 2) ? false :
                                 (CheckDistanceTooBig(owler_data, new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-2] + ref_hits_start, current_lcskp_index, parameters->error_rate / 2.0f));
-      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front(), previous_lcskp_index, current_lcskp_index, 1.5f);
+      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front() + ref_hits_start, previous_lcskp_index, current_lcskp_index, 1.5f);
 
-      if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || wrong_by_distance == true) {
+      if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || (new_cluster->lcskpp_indices.size() > 1 && wrong_by_distance == true)) {
+//      if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || (wrong_by_distance == true)) {
         /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit nesither to the previous point, nor to the point before that.
         if (new_cluster != NULL) {
           int64_t cov_bases_read = 0, cov_bases_ref = 0;
+//          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases (1).\n", "FilterAnchorBreakpoints");
           CalcCoveredBases(owler_data->seed_hits2, seed_length, new_cluster->lcskpp_indices, ref_hits_start, ref_hits_end, &cov_bases_read, &cov_bases_ref);
           new_cluster->coverage = std::max(cov_bases_read, cov_bases_ref);
 
@@ -1498,6 +1569,9 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
           if ((new_cluster->query.end - new_cluster->query.start + 1) >= min_cluster_length && new_cluster->coverage >= min_covered_bases) {
             clusters.push_back(new_cluster);
           } else {
+//            printf ("Tu sam 1! (new_cluster->query.end - new_cluster->query.start + 1) = %ld, min_cluster_length = %ld, new_cluster->coverage = %ld, min_covered_bases = %ld, (new_cluster->query.end - new_cluster->query.start + 1) = %ld\n", (new_cluster->query.end - new_cluster->query.start + 1), min_cluster_length, new_cluster->coverage, min_covered_bases, (new_cluster->query.end - new_cluster->query.start + 1));
+//            printf ("wrong_to_previous1 = %d, wrong_to_previous2 = %d, wrong_by_distance = %d\n", wrong_to_previous1, wrong_to_previous2, wrong_by_distance);
+//            fflush(stdout);
             delete new_cluster;
           }
           new_cluster = NULL;
@@ -1539,6 +1613,7 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
   }
   if (new_cluster != NULL) {
     int64_t cov_bases_read = 0, cov_bases_ref = 0;
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases (2).\n", "FilterAnchorBreakpoints");
     CalcCoveredBases(owler_data->seed_hits2, seed_length, new_cluster->lcskpp_indices, ref_hits_start, ref_hits_end, &cov_bases_read, &cov_bases_ref);
     new_cluster->coverage = std::max(cov_bases_read, cov_bases_ref);
 
@@ -1556,6 +1631,9 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
     ret_cluster_ids->clear();
   }
 
+//  printf ("clusters.size() = %ld\n", clusters.size());
+//  fflush(stdout);
+
   int ret_val = 0;
   /// Check if the leftover clusters are linear and that only outlier anchors are filtered. This is important for overlapping.
   for (int64_t i=1; i<clusters.size(); i++) {
@@ -1570,6 +1648,7 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
 
   ret_filtered_lcskpp_indices.clear();
 //  std::vector<int> cluster_indices;
+
   for (int64_t i=0; i<clusters.size(); i++) {
 //    int64_t cluster_length = clusters[i]->query.end - clusters[i]->query.start + 1;
 //    if (cluster_length >= min_cluster_length && clusters[i]->coverage >= min_covered_bases) {
@@ -1619,6 +1698,7 @@ int Owler::FilterAnchorBreakpointsExperimental(const std::vector<int> &lcskpp_in
         /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit nesither to the previous point, nor to the point before that.
         if (new_cluster != NULL) {
           int64_t cov_bases_read = 0, cov_bases_ref = 0;
+//          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases (1).\n", "FilterAnchorBreakpointsExperimental");
           CalcCoveredBases(owler_data->seed_hits2, seed_length, new_cluster->lcskpp_indices, ref_hits_start, ref_hits_end, &cov_bases_read, &cov_bases_ref);
           new_cluster->coverage = std::max(cov_bases_read, cov_bases_ref);
 
@@ -1664,6 +1744,7 @@ int Owler::FilterAnchorBreakpointsExperimental(const std::vector<int> &lcskpp_in
   }
   if (new_cluster != NULL) {
     int64_t cov_bases_read = 0, cov_bases_ref = 0;
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases (2).\n", "FilterAnchorBreakpointsExperimental");
     CalcCoveredBases(owler_data->seed_hits2, seed_length, new_cluster->lcskpp_indices, ref_hits_start, ref_hits_end, &cov_bases_read, &cov_bases_ref);
     new_cluster->coverage = std::max(cov_bases_read, cov_bases_ref);
 
