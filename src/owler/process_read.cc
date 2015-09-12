@@ -1088,6 +1088,11 @@ std::string Owler::OverlapMHAPVerbose(OwlerData* owler_data, std::vector<Index*>
   return ss.str();
 }
 
+int CalcNonOverlapLength(int64_t A_start, int64_t A_end, int64_t A_len, int64_t B_start, int64_t B_end, int64_t B_len, int64_t *ret_overlap_len, int64_t *ret_nonoverlap_len_start, int64_t *ret_nonoverlap_len_end) {
+  int64_t overlap_len = sqrt((float) ((A_end - A_start)*(A_end - A_start) + (B_end - B_start)*(B_end - B_start)) );
+  return 0;
+}
+
 int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   std::sort(owler_data->seed_hits2.begin(), owler_data->seed_hits2.end(), seedhits2_refid_less_than_key());
 //  int64_t min_num_hits = std::min(100.0f, 0.10f * read->get_sequence_length());
@@ -1099,6 +1104,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 //  float min_perc_covered_bases = 0.10f;
 //  float min_perc_overlap_len = 0.10f;
   float max_overhang_percent = 0.33f;
+//  float max_overhang_percent = 0.10f;
   float min_perc_covered_bases = 0.10f;
   float min_perc_overlap_len = 0.0f;
   int64_t seed_length = 13;
@@ -1171,23 +1177,23 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 //          overhang_ok = false;
 
         // Not perfect, because one read can start in the middle of another but still have a large chunk at the beginning uncovered.
-        if (A_start > (query_overlap_length * max_overhang_percent) && (read_length - A_end) > (query_overlap_length * max_overhang_percent) &&
-            B_start > (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) > (ref_overlap_length * max_overhang_percent)) {
-          overhang_ok = false;
-
-//          printf ("A_start > (query_overlap_length * max_overhang_percent) = %d, A_start = %ld, (query_overlap_length * max_overhang_percent) = %f\n", (A_start > (query_overlap_length * max_overhang_percent)), A_start, (query_overlap_length * max_overhang_percent));
-//          printf ("A_start = %ld\n", A_start);
-//          printf ("(query_overlap_length * max_overhang_percent) = %f\n", (query_overlap_length * max_overhang_percent));
-//          printf ("(read_length - A_end) = %ld\n", (read_length - A_end));
-//          printf ("(query_overlap_length * max_overhang_percent) = %f\n", (query_overlap_length * max_overhang_percent));
+//        if (A_start > (query_overlap_length * max_overhang_percent) && (read_length - A_end) > (query_overlap_length * max_overhang_percent) &&
+//            B_start > (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) > (ref_overlap_length * max_overhang_percent)) {
+//          overhang_ok = false;
 //
-//          printf ("B_start = %ld\n", B_start);
-//          printf ("(ref_overlap_length * max_overhang_percent) = %f\n", (ref_overlap_length * max_overhang_percent));
-//          printf ("(ref_length - B_end) = %ld\n", (ref_length - B_end));
-//          printf ("(ref_overlap_length * max_overhang_percent) = %f\n", (ref_overlap_length * max_overhang_percent));
-//
-//          fflush(stdout);
-        }
+////          printf ("A_start > (query_overlap_length * max_overhang_percent) = %d, A_start = %ld, (query_overlap_length * max_overhang_percent) = %f\n", (A_start > (query_overlap_length * max_overhang_percent)), A_start, (query_overlap_length * max_overhang_percent));
+////          printf ("A_start = %ld\n", A_start);
+////          printf ("(query_overlap_length * max_overhang_percent) = %f\n", (query_overlap_length * max_overhang_percent));
+////          printf ("(read_length - A_end) = %ld\n", (read_length - A_end));
+////          printf ("(query_overlap_length * max_overhang_percent) = %f\n", (query_overlap_length * max_overhang_percent));
+////
+////          printf ("B_start = %ld\n", B_start);
+////          printf ("(ref_overlap_length * max_overhang_percent) = %f\n", (ref_overlap_length * max_overhang_percent));
+////          printf ("(ref_length - B_end) = %ld\n", (ref_length - B_end));
+////          printf ("(ref_overlap_length * max_overhang_percent) = %f\n", (ref_overlap_length * max_overhang_percent));
+////
+////          fflush(stdout);
+//        }
 
 //        if ((A_start > (query_overlap_length * max_overhang_percent) || (read_length - A_end) > (query_overlap_length * max_overhang_percent)) &&
 //            B_start <= (ref_overlap_length * max_overhang_percent) && (ref_length - B_end) <= (ref_overlap_length * max_overhang_percent))
@@ -1213,17 +1219,26 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 //              (A_start >= max_query_overhang && B_start >= max_ref_overhang)))
 //          overhang_ok = false;
 
-        int64_t dist_start = std::min(A_start, B_start);
-        int64_t dist_end = std::min((read_length - A_end), (ref_length - B_end));
-        int64_t max_overhang = std::max((query_overlap_length * max_overhang_percent), ref_overlap_length * max_overhang_percent);
-        if (dist_start > max_overhang || dist_end > max_overhang) {
+//        int64_t dist_start = std::min(A_start, B_start);
+//        int64_t dist_end = std::min((read_length - A_end), (ref_length - B_end));
+//        int64_t max_overhang = std::max((query_overlap_length * max_overhang_percent), ref_overlap_length * max_overhang_percent);
+//        if (dist_start > max_overhang || dist_end > max_overhang) {
+//          overhang_ok = false;
+////          printf ("dist_start = %ld\n", dist_start);
+////          printf ("max_overhang = %ld\n", max_overhang);
+////          printf ("dist_end = %ld\n", dist_end);
+////          printf ("max_overhang = %ld\n", max_overhang);
+////          fflush(stdout);
+//        }
+
+        int64_t max_overhang_A = query_overlap_length * max_overhang_percent;
+        int64_t max_overhang_B = ref_overlap_length * max_overhang_percent;
+        if ((A_start > max_overhang_A && B_start > max_overhang_B) ||
+            ((read_length - A_end) > max_overhang_A && (ref_length - B_end) > max_overhang_B)) {
           overhang_ok = false;
-//          printf ("dist_start = %ld\n", dist_start);
-//          printf ("max_overhang = %ld\n", max_overhang);
-//          printf ("dist_end = %ld\n", dist_end);
-//          printf ("max_overhang = %ld\n", max_overhang);
-//          fflush(stdout);
         }
+
+
 
 
 
@@ -1292,8 +1307,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
                                                 FormatString("\t° A_start = %ld, A_end = %ld\n", A_start, A_end),"[]");
             LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
                                                 FormatString("\t° B_start = %ld, B_end = %ld\n", B_start, B_end),"[]");
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
-                                                FormatString("\t° dist_start = %ld, dist_end = %ld, max_overhang = %ld\n", dist_start, dist_end, max_overhang),"[]");
+//            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+//                                                FormatString("\t° dist_start = %ld, dist_end = %ld, max_overhang = %ld\n", dist_start, dist_end, max_overhang),"[]");
 
 //                                                             , lcskpp_indices.size() >= 5 && query_overlap_length > min_perc_overlap_len*read_len && ref_overlap_length > min_perc_overlap_len*ref_len && size_diff < parameters->error_rate, (perc_covered_bases_read > min_perc_covered_bases || perc_covered_bases_ref > min_perc_covered_bases)), "[]");
           }
@@ -1553,7 +1568,8 @@ int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64
       bool wrong_to_previous1 = CheckDistanceTooBig(owler_data, previous_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f);
       bool wrong_to_previous2 = (new_cluster->lcskpp_indices.size() < 2) ? false :
                                 (CheckDistanceTooBig(owler_data, new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-2] + ref_hits_start, current_lcskp_index, parameters->error_rate / 2.0f));
-      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front() + ref_hits_start, previous_lcskp_index, current_lcskp_index, 1.5f);
+//      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front() + ref_hits_start, previous_lcskp_index, current_lcskp_index, 1.5f);
+      bool wrong_by_distance = false;
 
       if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || (new_cluster->lcskpp_indices.size() > 1 && wrong_by_distance == true)) {
 //      if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || (wrong_by_distance == true)) {
@@ -1692,7 +1708,8 @@ int Owler::FilterAnchorBreakpointsExperimental(const std::vector<int> &lcskpp_in
       bool wrong_to_previous1 = CheckDistanceTooBig(owler_data, previous_lcskp_index, current_lcskp_index, parameters->error_rate / 2.0f);
       bool wrong_to_previous2 = (new_cluster->lcskpp_indices.size() < 2) ? false :
                                 (CheckDistanceTooBig(owler_data, new_cluster->lcskpp_indices[new_cluster->lcskpp_indices.size()-2] + ref_hits_start, current_lcskp_index, parameters->error_rate / 2.0f));
-      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front(), previous_lcskp_index, current_lcskp_index, 1.5f);
+//      bool wrong_by_distance = CheckDistanceStep(owler_data, new_cluster->lcskpp_indices.front(), previous_lcskp_index, current_lcskp_index, 1.5f);
+      bool wrong_by_distance = false;
 
       if ((wrong_to_previous1 == true && wrong_to_previous2 == true) || wrong_by_distance == true) {
         /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit nesither to the previous point, nor to the point before that.
