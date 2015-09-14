@@ -337,12 +337,13 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   float sigma_L2 = 0.0f, confidence_L1 = 0.0f;
   int64_t k = 0, l = 0;
   // Actual L1 calculation.
-  int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
+  // int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
+
   // Sanity check.
-  if (ret_L1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
-    return 1;
-  }
+  // if (ret_L1) {
+  //   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
+  //   return 1;
+  // }
   float allowed_L1_deviation = 3.0f * confidence_L1;
 
   #ifndef RELEASE_VERSION
@@ -354,10 +355,10 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
     }
   #endif
 
-  lcskpp_indices.clear();
+  // lcskpp_indices.clear();
 
-  // Call the LCSk again, only on the bricks within the L1 bounded window.
-  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), true, l, allowed_L1_deviation, &lcskpp_length, &lcskpp_indices);
+  // // Call the LCSk again, only on the bricks within the L1 bounded window.
+  // CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), true, l, allowed_L1_deviation, &lcskpp_length, &lcskpp_indices);
 
   // Count the number of covered bases, and find the first and last element of the LCSk.
   int64_t indexfirst = -1;
@@ -386,7 +387,10 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
     return 1;
   }
 
-  ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
+  k = 1;
+  l = local_score->get_registry_entries().reference_starts[indexfirst] - local_score->get_registry_entries().query_starts[indexfirst];
+
+  // ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
 
 
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
@@ -420,14 +424,14 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   l1_info.l1_k = 1.0f;
   l1_info.l1_lmin = l - l_diff;
   l1_info.l1_lmax = l + l_diff;
-  l1_info.l1_confidence_abs = confidence_L1;
-  l1_info.l1_std = sigma_L2;
-  l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
-  l1_info.l1_rough_end = l1_info.l1_k * read->get_sequence_length() + l1_info.l1_lmax;
-  if (l1_info.l1_rough_start < index->get_reference_starting_pos()[local_score->get_region().reference_id])
-    l1_info.l1_rough_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
-  if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
-    l1_info.l1_rough_end = (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
+  // l1_info.l1_confidence_abs = confidence_L1;
+  // l1_info.l1_std = sigma_L2;
+  // l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
+  // l1_info.l1_rough_end = l1_info.l1_k * read->get_sequence_length() + l1_info.l1_lmax;
+  // if (l1_info.l1_rough_start < index->get_reference_starting_pos()[local_score->get_region().reference_id])
+  //   l1_info.l1_rough_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
+  // if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
+  //   l1_info.l1_rough_end = (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
 
   CheckMinimumMappingConditions_(&mapping_info, &l1_info, index, read, parameters);
 
