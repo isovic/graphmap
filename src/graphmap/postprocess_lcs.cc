@@ -342,13 +342,13 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   float sigma_L2 = 0.0f, confidence_L1 = 0.0f;
   int64_t k = 0, l = 0;
   // Actual L1 calculation.
-  // int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
+  int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
 
   // Sanity check.
-  // if (ret_L1) {
-  //   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
-  //   return 1;
-  // }
+  if (ret_L1) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
+    return 1;
+  }
   float allowed_L1_deviation = 3.0f * confidence_L1;
 
   #ifndef RELEASE_VERSION
