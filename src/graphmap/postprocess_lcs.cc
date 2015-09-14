@@ -324,7 +324,12 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   #endif
 
 //  CalcLCSFromLocalScores2(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
-  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
+  // CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
+  lcskpp_indices.resize(local_score->get_registry_entries().num_vertices);
+  for (int64_t i=0; i<local_score->get_registry_entries().num_vertices; i++) {
+    lcskpp_indices[i] = (local_score->get_registry_entries().num_vertices - i -1);
+  }
+  lcskpp_length = read->get_sequence_length();
 
   if (lcskpp_length == 0) {
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "PostProcessRegionWithLCS_");
@@ -387,8 +392,8 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
     return 1;
   }
 
-  k = 1;
-  l = local_score->get_registry_entries().reference_starts[indexfirst] - local_score->get_registry_entries().query_starts[indexfirst];
+  // k = 1;
+  // l = local_score->get_registry_entries().reference_starts[indexfirst] - local_score->get_registry_entries().query_starts[indexfirst];
 
   // ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
 
