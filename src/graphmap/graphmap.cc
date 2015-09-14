@@ -188,7 +188,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   index_secondary_ = NULL;
 
 //  index_ = new IndexSA();
-  index_ = new IndexSpacedHash(SHAPE_TYPE_FULL_13);
+  index_ = new IndexSpacedHash(SHAPE_TYPE_66);
 
   // if (parameters.parsimonious_mode) {
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
