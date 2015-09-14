@@ -16,6 +16,7 @@
 
 #define SHAPE_TYPE_444  0
 #define SHAPE_TYPE_66    1
+#define SHAPE_TYPE_FULL_13    2
 
 
 

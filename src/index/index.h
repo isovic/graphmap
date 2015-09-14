@@ -16,7 +16,7 @@
 #include "utility/utility_general.h"
 
 
-#define INDEX_VERSION     ((int64_t) 5)
+#define INDEX_VERSION     ((int64_t) -1)
 
 //class IndexChunk {
 // public:

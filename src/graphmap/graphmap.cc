@@ -188,16 +188,16 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   index_secondary_ = NULL;
 
 //  index_ = new IndexSA();
-  index_ = new IndexSpacedHash();
+  index_ = new IndexSpacedHash(SHAPE_TYPE_FULL_13);
 
-  if (parameters.parsimonious_mode) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
+  // if (parameters.parsimonious_mode) {
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
 
-  } else {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
+  // } else {
+  //   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
 
-    index_secondary_ = new IndexSpacedHash(SHAPE_TYPE_66);
-  }
+  //   index_secondary_ = new IndexSpacedHash(SHAPE_TYPE_66);
+  // }
 
   clock_t last_time = clock();
 
@@ -219,17 +219,17 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
 
 
-    if (parameters.parsimonious_mode == false ) {
-      fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
-      if (fp == NULL) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
-      } else {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
-        fclose (fp);
-      }
-  //    index_secondary_->GenerateFromFile(parameters.reference_path);
-      ret_index_loaded = index_secondary_->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("sec"), (parameters.verbose_level > 0));
-    }
+  //   if (parameters.parsimonious_mode == false ) {
+  //     fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
+  //     if (fp == NULL) {
+  //       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
+  //     } else {
+  //       LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
+  //       fclose (fp);
+  //     }
+  // //    index_secondary_->GenerateFromFile(parameters.reference_path);
+  //     ret_index_loaded = index_secondary_->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("sec"), (parameters.verbose_level > 0));
+  //   }
 
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index loaded in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
 
@@ -239,11 +239,11 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     index_->GenerateFromFile(parameters.reference_path);
     index_->StoreToFile(parameters.index_reference_path);
 
-    if (parameters.parsimonious_mode == false) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
-      index_secondary_->GenerateFromFile(parameters.reference_path);
-      index_secondary_->StoreToFile(parameters.index_reference_path + std::string("sec"));
-    }
+    // if (parameters.parsimonious_mode == false) {
+    //   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
+    //   index_secondary_->GenerateFromFile(parameters.reference_path);
+    //   index_secondary_->StoreToFile(parameters.index_reference_path + std::string("sec"));
+    // }
 
     ret_index_loaded = 0;
 

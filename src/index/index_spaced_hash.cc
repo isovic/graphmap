@@ -814,6 +814,10 @@ int IndexSpacedHash::InitShapesPredefined(uint32_t shape_type) {
     shapes_for_search = {"111111111111",   "1111111101111",    "11111111001111",
                          "1111011111111",  "11110111101111",   "111101111001111",
                          "11110011111111", "111100111101111",  "1111001111001111"};
+  } else if (shape_type == SHAPE_TYPE_FULL_13) {
+    shape_for_indexing = "1111111111111";
+    shapes_for_search = {"1111111111111"};
+
   } else {  // SHAPE_TYPE_66
     shape_for_indexing = "1111110111111";
     shapes_for_search = {"111111111111", "1111110111111", "11111100111111"};
