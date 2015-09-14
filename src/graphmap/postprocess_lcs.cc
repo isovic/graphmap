@@ -392,8 +392,8 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
     return 1;
   }
 
-  // k = 1;
-  // l = local_score->get_registry_entries().reference_starts[indexfirst] - local_score->get_registry_entries().query_starts[indexfirst];
+  k = 1;
+  l = local_score->get_registry_entries().reference_starts[indexfirst] - local_score->get_registry_entries().query_starts[indexfirst];
 
   // ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
 
