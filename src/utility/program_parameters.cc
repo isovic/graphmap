@@ -116,7 +116,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   bool output_specified_by_file = false;
   bool output_specified_by_folder = false;
 
-  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:w:L:")) != -1) {
+  while ((c = getopt (argc, argv, "k:l:e:s:n:y:Y:t:r:i:d:o:b:v:g:hx:a:uq:D:O:B:IG:E:M:X:CF:ZS:PA:z:c:w:L:T:")) != -1) {
     switch (c) {
 //      case 'j':
 //        sscanf (optarg, "%ld", &(parameters->k_region));
@@ -363,6 +363,9 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         break;
       case 'M':
         sscanf (optarg, "%ld", &(parameters->match_score));
+        break;
+      case 'T':
+        sscanf (optarg, "%ld", &(parameters->match_extend_score));
         break;
       case 'X':
         sscanf (optarg, "%ld", &(parameters->mismatch_penalty));

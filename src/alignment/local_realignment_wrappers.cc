@@ -581,6 +581,219 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
   return ALIGNMENT_GOOD;
 }
 
+int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
+                   const int8_t *reference_data, int64_t reference_length,
+                   int64_t band_width, int64_t match_score, int64_t match_extend_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
+                   int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
+
+//  mismatch_penalty = abs(mismatch_penalty);
+  gap_open_penalty = abs(gap_open_penalty);
+  gap_extend_penalty = abs(gap_extend_penalty);
+
+  if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
+    return ALIGNMENT_WRONG_DATA;
+
+  uint8_t *converted_data = new uint8_t[read_length];
+  if (converted_data == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
+    return 1;
+  }
+  for (int64_t i=0; i<read_length; i++) {
+    converted_data[i] = kBaseToBwaUnsigned[read_data[i]];
+  }
+
+  uint8_t *converted_ref = new uint8_t[reference_length];
+  if (converted_ref == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
+    return 1;
+  }
+  for (int64_t i=0; i<reference_length; i++) {
+    converted_ref[i] = kBaseToBwaUnsigned[reference_data[i]];
+  }
+
+  int db_length = 1;
+  uint8_t* db[1] = {converted_ref};
+  int32_t db_seq_lengths[] = {((int32_t) reference_length)};
+  OpalSearchResult* results[db_length];
+  for (int i = 0; i < db_length; i++) {
+      results[i] = new OpalSearchResult;
+      opalInitSearchResult(results[i]);
+  }
+
+  printf ("match_score = %ld\n", match_score);
+  printf ("match_extend_score = %ld\n", match_extend_score);
+  printf ("mismatch_penalty = %ld\n", mismatch_penalty);
+  printf ("gap_open_penalty = %ld\n", gap_open_penalty);
+  printf ("gap_extend_penalty = %ld\n", gap_extend_penalty);
+  printf ("Read:\n");
+  for (int64_t i=0; i<read_length; i++) {
+    printf ("%d", converted_data[i]);
+  }
+  printf ("\n\n");
+  printf ("Reference:\n");
+  for (int64_t i=0; i<reference_length; i++) {
+    printf ("%d", converted_ref[i]);
+  }
+  printf("\n");
+  fflush(stdout);
+
+  int alphabet_length = 5;
+  int scoreMatrix[25] = {
+      (int) match_score,      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) match_score,      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) mismatch_penalty, (int) match_score,      (int) mismatch_penalty, (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) match_score,      (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty
+  };
+
+  int resultCode = resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
+                                                    gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
+                                                    OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_SIMPLE);
+//  int resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
+//                                      gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
+//                                      OPAL_MODE_SW, OPAL_OVERFLOW_BUCKETS);
+
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Finished running Opal.\n", "OpalNWWrapper");
+
+  if (resultCode == OPAL_ERR_OVERFLOW) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
+    return 2;
+  }
+  if (resultCode == OPAL_ERR_NO_SIMD_SUPPORT) {
+      LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
+      return 3;
+  }
+
+  if (results[0]->alignment == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
+    return 4;
+  }
+
+  if (results[0]->startLocationQuery > 0) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query start location is > 0!", "OpalNWWrapper");
+  }
+
+  if (results[0]->endLocationQuery > 0) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query end location is > 0!", "OpalNWWrapper");
+  }
+
+  *ret_alignment_position_start = results[0]->startLocationTarget;
+  *ret_alignment_position_end = results[0]->endLocationTarget;
+  *ret_edit_distance = (int64_t) results[0]->score;
+  ret_alignment.assign(results[0]->alignment, (results[0]->alignment + results[0]->alignmentLength));
+
+  /// Convert Opal alignment codes to EDLIB alignment codes.
+  const uint8_t alignment_lookup[] = {EDLIB_EQUAL, EDLIB_D, EDLIB_I, EDLIB_X};
+  for (int64_t i=0; i<ret_alignment.size(); i++) {
+    ret_alignment[i] = alignment_lookup[ret_alignment[i]];
+  }
+
+  printf ("Alignment:\n");
+  for (int64_t i=0; i<ret_alignment.size(); i++) {
+    printf ("%d", ret_alignment[i]);
+  }
+  printf ("\n\n");
+  fflush(stdout);
+
+  if (converted_data)
+    delete[] converted_data;
+  if (converted_ref)
+    delete[] converted_ref;
+
+  return ALIGNMENT_GOOD;
+}
+
+int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
+                   const int8_t *reference_data, int64_t reference_length,
+                   int64_t band_width, int64_t match_score, int64_t match_extend_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
+                   int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
+
+  if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
+    return ALIGNMENT_WRONG_DATA;
+
+  uint8_t *converted_data = new uint8_t[read_length];
+  if (converted_data == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
+    return 1;
+  }
+  for (int64_t i=0; i<read_length; i++) {
+    converted_data[i] = kBaseToBwaUnsigned[read_data[i]];
+  }
+
+  uint8_t *converted_ref = new uint8_t[reference_length];
+  if (converted_ref == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
+    return 1;
+  }
+  for (int64_t i=0; i<reference_length; i++) {
+    converted_ref[i] = kBaseToBwaUnsigned[reference_data[i]];
+  }
+
+  int db_length = 1;
+  uint8_t* db[1] = {converted_ref};
+  int32_t db_seq_lengths[] = {((int32_t) reference_length)};
+  OpalSearchResult* results[db_length];
+  for (int i = 0; i < db_length; i++) {
+      results[i] = new OpalSearchResult;
+      opalInitSearchResult(results[i]);
+  }
+
+  int alphabet_length = 5;
+  int scoreMatrix[25] = {
+      (int) match_score,      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) match_score,      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) mismatch_penalty, (int) match_score,      (int) mismatch_penalty, (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) match_score,      (int) mismatch_penalty,
+      (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty
+  };
+
+  int resultCode = resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
+                                                    gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
+                                                    OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_BUCKETS);
+
+  if (resultCode == OPAL_ERR_OVERFLOW) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
+    return 2;
+  }
+  if (resultCode == OPAL_ERR_NO_SIMD_SUPPORT) {
+      LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
+      return 3;
+  }
+
+  if (results[0]->alignment == NULL) {
+    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
+    return 4;
+  }
+
+  if (results[0]->startLocationQuery > 0) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query start location is > 0!", "ProcessRead");
+  }
+
+  if (results[0]->endLocationQuery > 0) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query end location is > 0!", "ProcessRead");
+  }
+
+  *ret_alignment_position_start = results[0]->startLocationTarget;
+  *ret_alignment_position_end = results[0]->endLocationTarget;
+  *ret_edit_distance = (int64_t) results[0]->score;
+  ret_alignment.assign(results[0]->alignment, (results[0]->alignment + results[0]->alignmentLength));
+
+  /// Convert Opal alignment codes to EDLIB alignment codes.
+  const uint8_t alignment_lookup[] = {EDLIB_EQUAL, EDLIB_D, EDLIB_I, EDLIB_X};
+  for (int64_t i=0; i<ret_alignment.size(); i++) {
+    ret_alignment[i] = alignment_lookup[ret_alignment[i]];
+  }
+
+  if (converted_data)
+    delete[] converted_data;
+  if (converted_ref)
+    delete[] converted_ref;
+
+  return ALIGNMENT_GOOD;
+}
+
 int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
                    int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
