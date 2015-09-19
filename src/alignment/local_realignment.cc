@@ -371,6 +371,14 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
     l1_reference_end = reference_start + reference_length - 1;
   int64_t reference_data_length = l1_reference_end - l1_reference_start + 1;
 
+#ifndef RELEASE_VERSION
+  if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                             FormatString("\nl1_reference_start = %ld\nl1_reference_end = %ld\nreference_data_length = %ld\nreference_start = %ld\nreference_length = %ld\nabsolute_reference_id = %ld\norientation = %ld\n\n",
+                                                          l1_reference_start, l1_reference_end, reference_data_length, reference_start, reference_length, absolute_reference_id, ((orientation == kForward) ? "forward" : "reverse")), "LocalRealignmentLinear");
+  }
+#endif
+
   int64_t alignment_position_start = 0, alignment_position_end = 0, edit_distance = 0;
   std::vector<unsigned char> alignment;
   int ret_code = AlignmentFunction(read->get_data(), read->get_sequence_length(),
@@ -398,7 +406,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
                                                (unsigned char *) &(alignment[0]), alignment.size(),
                                                (0), MYERS_MODE_NW);
     LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
+                                             FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "LocalRealignmentLinear");
   }
 #endif
 
