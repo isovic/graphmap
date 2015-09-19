@@ -179,11 +179,11 @@ int64_t IndexOwler::GenerateHashKeyFromShape(int8_t *seed, const char *shape, in
 //  int64_t num_consecutive_bases = (seed_length - max_num_split_spaces) / 2;
 
   for (uint64_t current_base = 0; current_base < shape_length; current_base++) {
-    if (shape[current_base] != '1')
-      continue;
-
     if (!kIsBase[seed[current_base]])
       return -1;
+
+    if (shape[current_base] != '1')
+      continue;
 
     ret |= (((uint64_t) kBaseToBwa[seed[current_base]]) << ((current_accepted_base << 1)));
     current_accepted_base += 1;
@@ -633,6 +633,11 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
     uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
     uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
     int64_t coded_position = (int64_t) (local_pos << 32) | ref_id;
+
+//    if (local_pos > reference_lengths_[current_ref_id]) {
+//      printf ("Tu sam 1! i = %ld, local_pos = %ld, current_ref_id = %ld, reference_lengths_[current_ref_id] = %ld\n", i, local_pos, current_ref_id, reference_lengths_[current_ref_id]);
+//      fflush(stdout);
+//    }
 
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
 //    kmer_countdown[hash_key] -= 1;

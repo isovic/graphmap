@@ -1369,6 +1369,11 @@ static void findAlignment(
 
     //printf("lengths: %d %d\n", queryLength, targetLength);
 
+    // I define negative infinity like this, so it does not underflow.
+    // The worst case is when NEG_INF field is is E or F and then gap is opened and then extended.
+    // It should not get more negative more than that because some H will be bigger then this.
+    const int NEG_INF = INT_MIN + gapOpen + gapExt;
+
     std::pair<int, int> bandBorders = calculateBandBorders(
         scoreLimit, mode, queryLength, targetLength, gapOpen, gapExt,
         arrayMax(scoreMatrix, alphabetLength * alphabetLength) + matchExt);
@@ -1379,10 +1384,9 @@ static void findAlignment(
 
     Cell** matrix = new Cell*[targetLength];  // NOTE: First index is column, second is row.
     Cell* initialColumn = new Cell[queryLength];
-    const int LOWER_SCORE_BOUND = INT_MIN + std::max(gapOpen, gapExt);
     for (int r = 0; r < queryLength; r++) {
         initialColumn[r].H = -1 * gapOpen - r * gapExt;
-        initialColumn[r].E = initialColumn[r].D = LOWER_SCORE_BOUND;
+        initialColumn[r].E = initialColumn[r].D = NEG_INF;
     }
 
     Cell* prevColumn = initialColumn;
@@ -1395,14 +1399,15 @@ static void findAlignment(
         // First and last row in band for this column.
         int rBandStart = std::max(0, c - bandBorders.second);
         int rBandEnd = std::min(queryLength - 1, c + bandBorders.first);
+        //printf("\ncolumn %d, band start %d, end %d\n", c, rBandStart, rBandEnd);
 
         int uF, uH, ulH, ulD;
         if (rBandStart == 0) {
-            uF = ulD = LOWER_SCORE_BOUND;
+            uF = ulD = NEG_INF;
             uH = -1 * gapOpen - c * gapExt;
             ulH = c == 0 ? 0 : uH + gapExt;
         } else {
-            uH = uF = LOWER_SCORE_BOUND;  // Out of band, so set to -inf.
+            uH = uF = NEG_INF;  // Out of band, so set to -inf.
             ulH = prevColumn[rBandStart - 1].H;
             ulD = prevColumn[rBandStart - 1].D;
         }
@@ -1414,12 +1419,15 @@ static void findAlignment(
             int B = (r > 0 && c > 0 && (query[r] == target[c]) && (query[r - 1] == target[c - 1])) ? matchExt : 0;
             int D = std::max(ulH, ulD + B) + score;
             H = std::max(E, std::max(F, D));
+
             /*
             printf("E: %d ", E);
             printf("F: %d ", F);
+            printf("D: %d ", D);
             printf("score: %d ", score);
             printf("ulH: %d ", ulH);
             printf("H: %d ", H);
+            printf("\n");
             */
 
             // If mode is SW, track max score of all cells.
@@ -1442,10 +1450,10 @@ static void findAlignment(
 
         // Set all cells that are out of band to -inf.
         for (int r = 0; r < rBandStart; r++) {
-            matrix[c][r].E = matrix[c][r].H = matrix[c][r].F = matrix[c][r].D = LOWER_SCORE_BOUND;
+            matrix[c][r].E = matrix[c][r].H = matrix[c][r].F = matrix[c][r].D = NEG_INF;
         }
         for (int r = rBandEnd + 1; r < queryLength; r++) {
-            matrix[c][r].E = matrix[c][r].H = matrix[c][r].F = matrix[c][r].D = LOWER_SCORE_BOUND;
+            matrix[c][r].E = matrix[c][r].H = matrix[c][r].F = matrix[c][r].D = NEG_INF;
         }
 
         if (mode == OPAL_MODE_HW || mode == OPAL_MODE_OV) {

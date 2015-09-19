@@ -621,22 +621,22 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
       opalInitSearchResult(results[i]);
   }
 
-  printf ("match_score = %ld\n", match_score);
-  printf ("match_extend_score = %ld\n", match_extend_score);
-  printf ("mismatch_penalty = %ld\n", mismatch_penalty);
-  printf ("gap_open_penalty = %ld\n", gap_open_penalty);
-  printf ("gap_extend_penalty = %ld\n", gap_extend_penalty);
-  printf ("Read:\n");
-  for (int64_t i=0; i<read_length; i++) {
-    printf ("%d", converted_data[i]);
-  }
-  printf ("\n\n");
-  printf ("Reference:\n");
-  for (int64_t i=0; i<reference_length; i++) {
-    printf ("%d", converted_ref[i]);
-  }
-  printf("\n");
-  fflush(stdout);
+//  printf ("match_score = %ld\n", match_score);
+//  printf ("match_extend_score = %ld\n", match_extend_score);
+//  printf ("mismatch_penalty = %ld\n", mismatch_penalty);
+//  printf ("gap_open_penalty = %ld\n", gap_open_penalty);
+//  printf ("gap_extend_penalty = %ld\n", gap_extend_penalty);
+//  printf ("Read:\n");
+//  for (int64_t i=0; i<read_length; i++) {
+//    printf ("%d", converted_data[i]);
+//  }
+//  printf ("\n\n");
+//  printf ("Reference:\n");
+//  for (int64_t i=0; i<reference_length; i++) {
+//    printf ("%d", converted_ref[i]);
+//  }
+//  printf("\n");
+//  fflush(stdout);
 
   int alphabet_length = 5;
   int scoreMatrix[25] = {
@@ -670,13 +670,13 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
     return 4;
   }
 
-  if (results[0]->startLocationQuery > 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query start location is > 0!", "OpalNWWrapper");
-  }
-
-  if (results[0]->endLocationQuery > 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query end location is > 0!", "OpalNWWrapper");
-  }
+//  if (results[0]->endLocationQuery > 0) {
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is > 0! results[0]->endLocationQuery = %d, read_length = %ld\n", results[0]->endLocationQuery, read_length), "ProcessRead");
+//  }
+//
+//  if (results[0]->endLocationQuery < read_length) {
+//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is < read_length! results[0]->endLocationQuery = %d, read_length = %ld\n", results[0]->endLocationQuery, read_length), "ProcessRead");
+//  }
 
   *ret_alignment_position_start = results[0]->startLocationTarget;
   *ret_alignment_position_end = results[0]->endLocationTarget;
@@ -684,17 +684,17 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   ret_alignment.assign(results[0]->alignment, (results[0]->alignment + results[0]->alignmentLength));
 
   /// Convert Opal alignment codes to EDLIB alignment codes.
-  const uint8_t alignment_lookup[] = {EDLIB_EQUAL, EDLIB_D, EDLIB_I, EDLIB_X};
-  for (int64_t i=0; i<ret_alignment.size(); i++) {
-    ret_alignment[i] = alignment_lookup[ret_alignment[i]];
-  }
+//  const uint8_t alignment_lookup[] = {EDLIB_EQUAL, EDLIB_D, EDLIB_I, EDLIB_X};
+//  for (int64_t i=0; i<ret_alignment.size(); i++) {
+//    ret_alignment[i] = alignment_lookup[ret_alignment[i]];
+//  }
 
-  printf ("Alignment:\n");
-  for (int64_t i=0; i<ret_alignment.size(); i++) {
-    printf ("%d", ret_alignment[i]);
-  }
-  printf ("\n\n");
-  fflush(stdout);
+//  printf ("Alignment:\n");
+//  for (int64_t i=0; i<ret_alignment.size(); i++) {
+//    printf ("%d", ret_alignment[i]);
+//  }
+//  printf ("\n\n");
+//  fflush(stdout);
 
   if (converted_data)
     delete[] converted_data;
@@ -772,7 +772,11 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
   }
 
   if (results[0]->endLocationQuery > 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query end location is > 0!", "ProcessRead");
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is > 0! results[0]->endLocationQuery = %d", results[0]->endLocationQuery), "ProcessRead");
+  }
+
+  if (results[0]->endLocationQuery < read_length) {
+    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is < read_length! results[0]->endLocationQuery = %d", results[0]->endLocationQuery), "ProcessRead");
   }
 
   *ret_alignment_position_start = results[0]->startLocationTarget;

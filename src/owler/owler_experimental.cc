@@ -573,6 +573,13 @@ int Owler::CollectSeedHitsExperimentalSubseededIndex(OwlerData* owler_data, std:
   owler_data->Init((SingleSequence*) read, indexes);
   SubIndex *read_subindex = (SubIndex *) index->get_read_subindex()[read_id];
 
+//  for (int64_t i = 0; i < index->get_subindex_counts()[read_id]; i++) {
+//    int64_t key = read_subindex[i].key;
+//    uint32_t query_pos = read_subindex[i].position;
+//    printf ("key = %ld,\tquery_pos = %d\n", key, query_pos);
+//  }
+//  fflush(stdout);
+
   for (int64_t i = 0; i < index->get_subindex_counts()[read_id]; i++) {
     int64_t key = read_subindex[i].key;
     uint32_t query_pos = read_subindex[i].position;
@@ -597,7 +604,7 @@ int Owler::CollectSeedHitsExperimentalSubseededIndex(OwlerData* owler_data, std:
       /// Find the index of the reference that was hit. This also includes the reverse sequences.
       /// Reverse sequences are considered the same as any other reference sequence.
       int64_t reference_index = position & 0x00000000FFFFFFFF;
-      int64_t position_local = position >> 32;
+      int64_t position_local = (((uint64_t) position) >> 32);
       int64_t reference_index_fwd = reference_index % index->get_num_sequences_forward();
 
       /////////////////////
