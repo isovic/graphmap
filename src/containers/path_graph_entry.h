@@ -123,6 +123,8 @@ class PathGraphEntry {
   void Verbose(FILE *fp) const;
 
   std::string VerboseToString(std::string delimiter="\r") const;
+  std::string VerboseInfoToString(std::string delimiter="\t") const;
+
   float get_fpfilter() const;
   void set_fpfilter(float fpfilter);
   const InfoL1& get_l1_data() const;
