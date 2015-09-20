@@ -284,7 +284,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   for (uint64_t i = 0; i < l_array.size(); i++) {
     float distance = abs((float) (l_array[i] - l_median) * (sqrt(2.0f)) / 2.0f);
 
-    if (distance < maximum_allowed_deviation)
+    if (distance <= maximum_allowed_deviation)
       num_points_under_max_dev_threshold += 1;
   }
 
@@ -296,7 +296,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   for (uint64_t i = 0; i < l_array.size(); i++) {
     float distance = abs((float) (l_array[i] - l_median) * (sqrt(2.0f)) / 2.0f);
 
-    if (distance >= maximum_allowed_deviation)
+    if (distance > maximum_allowed_deviation)
       continue;
 
     confidence_L1 += ((float) abs(distance)) / ((float) num_points_under_max_dev_threshold);

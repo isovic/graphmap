@@ -176,7 +176,7 @@ std::string PathGraphEntry::VerboseInfoToString(std::string delimiter) const {
   ss << "\t° l1_l = " << l1_info_.l1_l << ", l1_k = " << l1_info_.l1_k << "\n";
   ss << "\t° l1_lmin = " << l1_info_.l1_lmin << ", l1_lmax = " << l1_info_.l1_lmax << "\n";
   ss << "\t° l1_confidence_abs = " << l1_info_.l1_confidence_abs << ", l1_std = " << l1_info_.l1_std << "\n";
-  ss << "\t° l1_rough_start = " << l1_info_.l1_rough_start << ", l1_rough_end << " << l1_info_.l1_rough_end;
+  ss << "\t° l1_rough_start = " << l1_info_.l1_rough_start << ", l1_rough_end = " << l1_info_.l1_rough_end;
 
   return ss.str();
 }
