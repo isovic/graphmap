@@ -420,8 +420,8 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   InfoL1 l1_info;
   l1_info.l1_l = l;
   l1_info.l1_k = 1.0f;
-  l1_info.l1_lmin = l - l_diff;
-  l1_info.l1_lmax = l + l_diff;
+  l1_info.l1_lmin = ((double) l) - ((double) l_diff);
+  l1_info.l1_lmax = ((double) l) + ((double) l_diff);
   l1_info.l1_confidence_abs = confidence_L1;
   l1_info.l1_std = sigma_L2;
   l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
@@ -446,6 +446,9 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "Adding new entry.\n", "L1-PostProcessRegionWithLCS_");
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   mapping_data->intermediate_mappings.push_back(new_entry);
+
+  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "l = %ld, ", "L1-PostProcessRegionWithLCS_");
+
 
   LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
 
@@ -489,7 +492,7 @@ int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequen
 
       } else {
         float distance1 = abs((float) ((local_score->get_registry_entries().reference_starts[indices->at(i)] - local_score->get_registry_entries().query_starts[indices->at(i)]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance1 < maximum_allowed_deviation) {
+        if (distance1 <= maximum_allowed_deviation) {
           if (cluster_ids == NULL) {
             fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)]);
           } else {
@@ -498,7 +501,7 @@ int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequen
         }
 
         float distance2 = abs((float) ((local_score->get_registry_entries().reference_ends[indices->at(i)] - local_score->get_registry_entries().query_ends[indices->at(i)]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance2 < maximum_allowed_deviation) {
+        if (distance2 <= maximum_allowed_deviation) {
           if (cluster_ids == NULL) {
             fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)]);
           } else {
@@ -516,12 +519,12 @@ int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequen
 
       } else {
         float distance1 = abs((float) ((local_score->get_registry_entries().reference_starts[i] - local_score->get_registry_entries().query_starts[i]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance1 < maximum_allowed_deviation) {
+        if (distance1 <= maximum_allowed_deviation) {
           fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[i], local_score->get_registry_entries().reference_starts[i]);
         }
 
         float distance2 = abs((float) ((local_score->get_registry_entries().reference_ends[i] - local_score->get_registry_entries().query_ends[i]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance2 < maximum_allowed_deviation) {
+        if (distance2 <= maximum_allowed_deviation) {
           fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[i], local_score->get_registry_entries().reference_ends[i]);
         }
       }
