@@ -364,7 +364,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   int64_t best_aligning_position = 0;
 
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < reference_start)
     l1_reference_start = reference_start;
   if (l1_reference_end >= (reference_start + reference_length))
@@ -481,7 +481,7 @@ int CalcEditDistanceLinear(EditDistanceFunctionType EditDistanceFunction, const 
   int64_t best_aligning_position = 0;
 
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < reference_start)
     l1_reference_start = reference_start;
   if (l1_reference_end >= (reference_start + reference_length))
@@ -532,7 +532,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
   int64_t reference_id = best_path->get_region_data().reference_id;
   SeqOrientation orientation = kForward;
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < 0)
     l1_reference_start = 0;
   if (l1_reference_end >= region_length_joined)
@@ -695,7 +695,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
   int64_t reference_id = best_path->get_region_data().reference_id;
   SeqOrientation orientation = kForward;
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < 0)
     l1_reference_start = 0;
   if (l1_reference_end >= region_length_joined)
