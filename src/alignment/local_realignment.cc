@@ -355,7 +355,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   int64_t best_aligning_position = 0;
 
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < reference_start)
     l1_reference_start = reference_start;
   if (l1_reference_end >= (reference_start + reference_length))
@@ -456,7 +456,7 @@ int CalcEditDistanceLinear(EditDistanceFunctionType EditDistanceFunction, const 
   int64_t best_aligning_position = 0;
 
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < reference_start)
     l1_reference_start = reference_start;
   if (l1_reference_end >= (reference_start + reference_length))
@@ -507,7 +507,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
   int64_t reference_id = best_path->get_region_data().reference_id;
   SeqOrientation orientation = kForward;
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < 0)
     l1_reference_start = 0;
   if (l1_reference_end >= region_length_joined)
@@ -610,7 +610,11 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
 //  CountAlignmentOperations(alignment, read->get_data(), index->get_data(), reference_id, best_aligning_position_start, orientation, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
 
+  if (CheckAlignmentSane(alignment_left_part, read, index, reference_id, best_aligning_position_left_part))
+    return -1;
 
+  if (CheckAlignmentSane(alignment_right_part, read, index, reference_id, best_aligning_position_right_part))
+    return -1;
 
 //#ifndef RELEASE_VERSION
 //  if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
@@ -670,7 +674,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
   int64_t reference_id = best_path->get_region_data().reference_id;
   SeqOrientation orientation = kForward;
   int64_t l1_reference_start = best_path->get_l1_data().l1_lmin;
-  int64_t l1_reference_end = best_path->get_l1_data().l1_k * read->get_sequence_length() + best_path->get_l1_data().l1_lmax;
+  int64_t l1_reference_end = ((int64_t) (best_path->get_l1_data().l1_k * read->get_sequence_length())) + best_path->get_l1_data().l1_lmax;
   if (l1_reference_start < 0)
     l1_reference_start = 0;
   if (l1_reference_end >= region_length_joined)

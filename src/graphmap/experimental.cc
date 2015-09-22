@@ -77,7 +77,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     if (CheckDistanceTooBig(local_score->get_registry_entries(), current_lcskp_index, current_lcskp_index, parameters) == true)
       continue;
 
-    if (last_nonskipped_i > lcskpp_indices.size()) {
+    if (new_cluster == NULL || last_nonskipped_i > lcskpp_indices.size()) {
 
 //      cluster.push_back(lcskpp_indices.at(i));
     } else {
@@ -90,8 +90,14 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
       if (wrong_to_previous1 == true && wrong_to_previous2 == true) {
         /// In this case, the new point is a general outlier to the previous LCSk, because it doesn't fit neither to the previous point, nor to the point before that.
         if (new_cluster != NULL) {
-          clusters.push_back(new_cluster);
-          new_cluster = NULL;
+	    if (clusters.size() > 0 && (new_cluster->query.start <= clusters.back()->query.end || new_cluster->ref.start <= clusters.back()->ref.end)) {
+		delete new_cluster;
+		new_cluster = NULL;
+	    } else {
+	          clusters.push_back(new_cluster);
+        	  new_cluster = NULL;
+	    }
+
         }
       } else if (wrong_to_previous1 == true && wrong_to_previous2 == false) {
         /// In this case, the previous point was an outlier, because the new point fits better to the one before the previous one. Overwrite the previous entry in new_cluster.
@@ -110,22 +116,32 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
         continue;
       }
     }
-    if (new_cluster == NULL) {
-      new_cluster = new ClusterAndIndices;
-      new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
-      new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
-    }
-    new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph - 1;
-    new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph - 1;
-    new_cluster->num_anchors += 1;
-    new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
-    new_cluster->lcskpp_indices.push_back(current_lcskp_index);
 
-    last_nonskipped_i = i;
+    if (clusters.size() == 0 || (clusters.size() > 0 && (local_score->get_registry_entries().query_starts[current_lcskp_index] > clusters.back()->query.end && local_score->get_registry_entries().reference_starts[current_lcskp_index] > clusters.back()->ref.end))) {
+      if (new_cluster == NULL) {
+        new_cluster = new ClusterAndIndices;
+        new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
+        new_cluster->ref.start = local_score->get_registry_entries().reference_starts[current_lcskp_index];
+      }
+      new_cluster->query.end = local_score->get_registry_entries().query_ends[current_lcskp_index] + parameters->k_graph - 1;
+      new_cluster->ref.end = local_score->get_registry_entries().reference_ends[current_lcskp_index] + parameters->k_graph - 1;
+      new_cluster->num_anchors += 1;
+      new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
+      new_cluster->lcskpp_indices.push_back(current_lcskp_index);
+
+      last_nonskipped_i = i;
+    }
   }
   if (new_cluster != NULL) {
-    clusters.push_back(new_cluster);
-    new_cluster = NULL;
+//    clusters.push_back(new_cluster);
+//    new_cluster = NULL;
+    if (clusters.size() > 0 && (new_cluster->query.start <= clusters.back()->query.end || new_cluster->ref.start <= clusters.back()->ref.end)) {
+      delete new_cluster;
+      new_cluster = NULL;
+    } else {
+      clusters.push_back(new_cluster);
+      new_cluster = NULL;
+    }
   }
 
 //  for (int64_t i=0; i<clusters.size(); i++) {

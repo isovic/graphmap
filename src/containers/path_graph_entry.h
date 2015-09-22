@@ -68,11 +68,11 @@ typedef struct InfoMapping {
 
 typedef struct InfoL1 {
   int64_t l1_l = 0;
-  float l1_k = 1.0f;
+  double l1_k = 1.0f;
   int64_t l1_lmin = 0;
   int64_t l1_lmax = 0;
-  float l1_confidence_abs = 0;
-  float l1_std = 0;
+  double l1_confidence_abs = 0;
+  double l1_std = 0;
   int64_t l1_rough_start = 0;
   int64_t l1_rough_end = 0;
 } InfoL1;

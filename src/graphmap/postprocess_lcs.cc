@@ -282,7 +282,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   for (uint64_t i = 0; i < l_array.size(); i++) {
     float distance = abs((float) (l_array[i] - l_median) * (sqrt(2.0f)) / 2.0f);
 
-    if (distance < maximum_allowed_deviation)
+    if (distance <= maximum_allowed_deviation)
       num_points_under_max_dev_threshold += 1;
   }
 
@@ -294,7 +294,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   for (uint64_t i = 0; i < l_array.size(); i++) {
     float distance = abs((float) (l_array[i] - l_median) * (sqrt(2.0f)) / 2.0f);
 
-    if (distance >= maximum_allowed_deviation)
+    if (distance > maximum_allowed_deviation)
       continue;
 
     confidence_L1 += ((float) abs(distance)) / ((float) num_points_under_max_dev_threshold);
@@ -332,8 +332,8 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   }
 
   // Find the L1 parameters (median line and the confidence intervals).
-  float l_diff = read->get_sequence_length() * parameters->error_rate;
-  float maximum_allowed_deviation = l_diff * sqrt(2.0f) / 2.0f;
+  double l_diff = read->get_sequence_length() * parameters->error_rate;
+  double maximum_allowed_deviation = l_diff * sqrt(2.0f) / 2.0f;
   float sigma_L2 = 0.0f, confidence_L1 = 0.0f;
   int64_t k = 0, l = 0;
   // Actual L1 calculation.
@@ -418,12 +418,12 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   InfoL1 l1_info;
   l1_info.l1_l = l;
   l1_info.l1_k = 1.0f;
-  l1_info.l1_lmin = l - l_diff;
-  l1_info.l1_lmax = l + l_diff;
+  l1_info.l1_lmin = ((double) l) - ((double) l_diff);
+  l1_info.l1_lmax = ((double) l) + ((double) l_diff);
   l1_info.l1_confidence_abs = confidence_L1;
   l1_info.l1_std = sigma_L2;
   l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
-  l1_info.l1_rough_end = l1_info.l1_k * read->get_sequence_length() + l1_info.l1_lmax;
+  l1_info.l1_rough_end = ((double) l1_info.l1_k * read->get_sequence_length()) + l1_info.l1_lmax;
   if (l1_info.l1_rough_start < index->get_reference_starting_pos()[local_score->get_region().reference_id])
     l1_info.l1_rough_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
   if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
@@ -482,12 +482,12 @@ int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequen
 
       } else {
         float distance1 = abs((float) ((local_score->get_registry_entries().reference_starts[indices->at(i)] - local_score->get_registry_entries().query_starts[indices->at(i)]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance1 < maximum_allowed_deviation) {
+        if (distance1 <= maximum_allowed_deviation) {
           fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[indices->at(i)], local_score->get_registry_entries().reference_starts[indices->at(i)]);
         }
 
         float distance2 = abs((float) ((local_score->get_registry_entries().reference_ends[indices->at(i)] - local_score->get_registry_entries().query_ends[indices->at(i)]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance2 < maximum_allowed_deviation) {
+        if (distance2 <= maximum_allowed_deviation) {
           fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[indices->at(i)], local_score->get_registry_entries().reference_ends[indices->at(i)]);
         }
       }
@@ -501,12 +501,12 @@ int GraphMap::VerboseLocalScoresToFile(std::string file_path, const SingleSequen
 
       } else {
         float distance1 = abs((float) ((local_score->get_registry_entries().reference_starts[i] - local_score->get_registry_entries().query_starts[i]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance1 < maximum_allowed_deviation) {
+        if (distance1 <= maximum_allowed_deviation) {
           fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_starts[i], local_score->get_registry_entries().reference_starts[i]);
         }
 
         float distance2 = abs((float) ((local_score->get_registry_entries().reference_ends[i] - local_score->get_registry_entries().query_ends[i]) - l_median) * (sqrt(2.0f)) / 2.0f);
-        if (distance2 < maximum_allowed_deviation) {
+        if (distance2 <= maximum_allowed_deviation) {
           fprintf (fp, "%ld\t%ld\n", local_score->get_registry_entries().query_ends[i], local_score->get_registry_entries().reference_ends[i]);
         }
       }
