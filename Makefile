@@ -32,9 +32,9 @@ LIB_DIRS = -L"/usr/local/lib" -L"libs/libdivsufsort-2.0.1/build/lib"
 CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
 INCLUDE = -I"./src/" -I"/usr/include/" -I"libs/libdivsufsort-2.0.1/build/include" -I"libs/seqan-library-1.4.2/include"
 
-CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread
-CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread
-CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread
+CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
+CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
+CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
 CC_FLAGS_NOT_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
 LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
 LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64

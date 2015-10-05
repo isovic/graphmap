@@ -635,6 +635,12 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
 //  CountAlignmentOperations(alignment, read->get_data(), index->get_data(), reference_id, best_aligning_position_start, orientation, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
 
+  if (CheckAlignmentSane(alignment_left_part, read, index, reference_id, best_aligning_position_left_part))
+    return -1;
+
+  if (CheckAlignmentSane(alignment_right_part, read, index, reference_id, best_aligning_position_right_part))
+    return -1;
+
 
 
 //#ifndef RELEASE_VERSION
