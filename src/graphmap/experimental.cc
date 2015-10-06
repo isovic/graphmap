@@ -58,7 +58,7 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
     if (CheckDistanceTooBig(local_score->get_registry_entries(), current_lcskp_index, current_lcskp_index, parameters) == true)
       continue;
 
-    if (last_nonskipped_i > lcskpp_indices.size()) {
+    if (new_cluster == NULL || last_nonskipped_i > lcskpp_indices.size()) {
 
     } else {
       /// This is going to work, because last_nonskipped_i will be set the second iteration of the loop. The value of i starts counting from int64_t i=(lcskpp_indices.size() - 1).
@@ -80,6 +80,18 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
           if ((new_cluster->query.end - new_cluster->query.start + 1) >= min_cluster_length && new_cluster->coverage >= min_covered_bases) {
 
             clusters.push_back(new_cluster);
+            /// TODO: This line with a + sign was added to the master branch to dirty-fix a bug with anchored alignments. The bug was that an anchor might have overlapped a previous anchor, because of wrong endpoints
+            /// This should have been solved on the dev branch earlier than this, but for some reasons I couldn't have merged the branches, and introduced a divergence.
+            /// However, it may prove that this fix was actually useful, so I left it here just in case.
+            //  +           if (clusters.size() > 0 && (new_cluster->query.start <= clusters.back()->query.end || new_cluster->ref.start <= clusters.back()->ref.end)) {
+            //  +               delete new_cluster;
+            //  +               new_cluster = NULL;
+            //  +           } else {
+            //  +                 clusters.push_back(new_cluster);
+            //  +                 new_cluster = NULL;
+            //  +           }
+            //  +
+
           } else {
 //            printf ("[Cluster %ld]\n", ret_clusters.size());
 //            printf ("Tu sam 1!\n");
@@ -111,6 +123,11 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
         continue;
       }
     }
+
+    /// TODO: This line with a + sign was added to the master branch to dirty-fix a bug with anchored alignments. The bug was that an anchor might have overlapped a previous anchor, because of wrong endpoints
+    /// This should have been solved on the dev branch earlier than this, but for some reasons I couldn't have merged the branches, and introduced a divergence.
+    /// However, it may prove that this fix was actually useful, so I left it here just in case.
+    ///  +  if (clusters.size() == 0 || (clusters.size() > 0 && (local_score->get_registry_entries().query_starts[current_lcskp_index] > clusters.back()->query.end && local_score->get_registry_entries().reference_starts[current_lcskp_index] > c kp_index] > clusters.back()->query.end && local_score->get_registry_entries().reference_starts[current_lcskp_index] > clusters.back()->ref.end))) {
     if (new_cluster == NULL) {
       new_cluster = new ClusterAndIndices;
       new_cluster->query.start = local_score->get_registry_entries().query_starts[current_lcskp_index];
@@ -123,6 +140,8 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
     new_cluster->lcskpp_indices.push_back(current_lcskp_index);
 
     last_nonskipped_i = i;
+    ///  +  }
+
   }
   /// Push the last cluster.
   if (new_cluster != NULL) {
@@ -139,9 +158,17 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
 //      printf ("min_covered_bases = %ld\n", min_covered_bases);
 //      fflush(stdout);
 
-      clusters.push_back(new_cluster);
+//      clusters.push_back(new_cluster);
+      if (clusters.size() > 0 && (new_cluster->query.start <= clusters.back()->query.end || new_cluster->ref.start <= clusters.back()->ref.end)) {
+        delete new_cluster;
+        new_cluster = NULL;
+      } else {
+        clusters.push_back(new_cluster);
+        new_cluster = NULL;
+      }
     } else {
       delete new_cluster;
+      new_cluster = NULL;
     }
     new_cluster = NULL;
   }
