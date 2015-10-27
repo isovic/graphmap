@@ -65,8 +65,8 @@ class OverlapResult {
 
   std::string GenerateMHAPLine() {
     std::stringstream ret;
-    ret << read_id << " ";      /// read1_id
-    ret << ref_id << " ";      /// read2_id
+    ret << (read_id + 1) << " ";      /// read1_id
+    ret << (ref_id + 1) << " ";      /// read2_id
     ret << jaccard_score << " ";      /// Jaccard score
     ret << shared_minmers << " ";        /// Shared minmers
     ret << "0 ";        /// A is reverse
