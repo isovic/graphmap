@@ -92,7 +92,7 @@ class Vertices {
 
   inline int CopyValuesWithin(int64_t source_idx, int64_t dest_idx) {
     if (source_idx >= num_vertices || dest_idx >= num_vertices || source_idx < 0 || dest_idx < 0) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When CopyValuesWithin is called. source_idx = %ld, dest_idx = %ld, num_vertices = %ld\n", source_idx, dest_idx, num_vertices));
+      LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When CopyValuesWithin is called. source_idx = %ld, dest_idx = %ld, num_vertices = %ld\n", source_idx, dest_idx, num_vertices));
       return 1;
     }
 

@@ -397,7 +397,7 @@ int Owler::CollectSeedHitsExperimental(OwlerData* owler_data, std::vector<Index*
         int64_t reference_end = reference_start + reference_length;
 
         if (reference_index < 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
           continue;
         }
         /// Don't count self hits
@@ -521,7 +521,7 @@ int Owler::CollectSeedHitsExperimentalCalcSubseedsFast(OwlerData* owler_data, st
         int64_t reference_end = reference_start + reference_length;
 
         if (reference_index < 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
 //          continue;
         }
         /// Don't count self hits
@@ -618,7 +618,7 @@ int Owler::CollectSeedHitsExperimentalSubseededIndex(OwlerData* owler_data, std:
       int64_t reference_end = reference_start + reference_length;
 
       if (reference_index < 0) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
         continue;
       }
       /// Don't count self hits

@@ -16,8 +16,8 @@
 #include "utility/utility_general.h"
 
 int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
 
   // If the read length is too short, call it unmapped.
   if (read->get_sequence_length() < 80) {
@@ -38,7 +38,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   clock_t end_clock = clock();
   double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
   mapping_data->stats_time_region_selection = elapsed_secs;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Region selection elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Region selection elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
 
   begin_clock = clock();
   // If the read length is too short, call it unmapped.
@@ -96,14 +96,14 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
   mapping_data->num_region_iterations = 0;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
   for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
 
   // Process regions one by one.
   for (int64_t i = 0; i < mapping_data->bins.size() && i < max_num_regions; i++) {
@@ -127,7 +127,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     // Region search needs to stop.
     if (ret_check < 0) {
 
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished returned with value to break! ret_check = %d\n", ret_check), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished returned with value to break! ret_check = %d\n", ret_check), "ProcessRead");
 
       break;
 
@@ -153,16 +153,16 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     ScoreRegistry local_score(region, i);
 
     bool is_reverse = (region.start >= index_->get_data_length_forward());
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
 
     // Perform the GraphMap on a single region.
     GraphMap_(&local_score, index_read, mapping_data, index, index_secondary, read, parameters);
 
     // Just verbose.
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Local scores (raw, before LCSk):\n"), "ProcessRead");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("%s", local_score.VerboseToString().c_str()), "ProcessRead");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Local scores (raw, before LCSk):\n"), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("%s", local_score.VerboseToString().c_str()), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
 //    #ifndef RELEASE_VERSION
@@ -184,7 +184,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     local_score.Clear();
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("-----\n\n"), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("-----\n\n"), "ProcessRead");
     }
 
 //    CheckMinimumMappingConditions(mapping_data, parameters);
@@ -198,7 +198,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   end_clock = clock();
   elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
   mapping_data->stats_time_mapping = elapsed_secs;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Read mapping elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Read mapping elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
 
   begin_clock = clock();
 
@@ -207,12 +207,12 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   end_clock = clock();
   elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
   mapping_data->stats_time_alignment = elapsed_secs;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ GenerateAlignments elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ GenerateAlignments elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
 
   // Just verbose.
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
   }
 
   return 0;
@@ -327,16 +327,16 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
     int ret_evaluate_mappings = EvaluateMappings_(false, mapping_data, read, parameters);
 
     if (ret_evaluate_mappings == 0) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings), "RunAlignment");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping.\n\n\n"), "RunAlignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings), "RunAlignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping.\n\n\n"), "RunAlignment");
 
       return -1;
 
     } else {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings), "RunAlignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings), "RunAlignment");
 
       if (mapping_data->bins[current_region].bin_value < 2) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because bins_[i].bin_value < 1.\n\n\n"), "RunAlignment");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because bins_[i].bin_value < 1.\n\n\n"), "RunAlignment");
         return -2;
       }
 
@@ -346,7 +346,7 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
       int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, *bin_value_threshold);
 
       if (*bin_value_threshold < min_allowed_bin_value) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because bin_value_threshold < (0.25 * bins_.front().bin_value).\n\n\n"), "RunAlignment");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because bin_value_threshold < (0.25 * bins_.front().bin_value).\n\n\n"), "RunAlignment");
 //          std::cout << "\tbins_.front().bin_value = " << bins_.front().bin_value << "\n";
 //          std::cout << "\tbin_value_threshold = " << bin_value_threshold << "\n";
 //          std::cout << "\t0.25 * bins_.front().bin_value = " << 0.25 * bins_.front().bin_value << "\n";
@@ -358,7 +358,7 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
       }
 
       if (num_regions_within_threshold > parameters->max_num_regions) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because num_regions_within_threshold > parameters->max_num_regions. (num_regions_within_threshold = %ld, parameters->max_num_regions = %ld)\n\n\n", num_regions_within_threshold, parameters->max_num_regions), "RunAlignment");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because num_regions_within_threshold > parameters->max_num_regions. (num_regions_within_threshold = %ld, parameters->max_num_regions = %ld)\n\n\n", num_regions_within_threshold, parameters->max_num_regions), "RunAlignment");
         return -4;
       }
     }
@@ -436,7 +436,7 @@ int GraphMap::EvaluateMappings_(bool evaluate_edit_distance, MappingData *mappin
 
 int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
   if (mapping_data->intermediate_mappings.size() == 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
   }
 
@@ -449,7 +449,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       mapping_data->unmapped_reason += FormatString("__Unaligned_because_get_mapping_data().is_mapped==false");
       mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
 
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
       continue;
     }
 
@@ -472,7 +472,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     int edit_distance = HybridRealignment(read, index_, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
     clock_t end_clock = clock();
     double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
 
     CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index_->get_data_length_forward(), evalue_params, &evalue_left_part);
     CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index_->get_data_length_forward(), evalue_params, &evalue_right_part);
@@ -497,10 +497,10 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
 
       /// Keep the output if alignment is insane for debug purposes.
       if (edit_distance != ALIGNMENT_NOT_SANE) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but edit_distance < 0!\n"), "GenerateAlignments_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but edit_distance < 0!\n"), "GenerateAlignments_");
         continue;
       } else {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
       }
     }
 
@@ -513,15 +513,15 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
         mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;
 
         /// Keep the output if alignment is insane for debug purposes.
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
       }
     }
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("cigar_right_part.size() = %d\n", cigar_right_part.size()), "GenerateAlignments_");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("evalue_left_part = %f\n", evalue_left_part), "GenerateAlignments_");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mismatch_rate = %f\n", mismatch_rate), "GenerateAlignments_");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("match_rate = %f\n", match_rate), "GenerateAlignments_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("cigar_right_part.size() = %d\n", cigar_right_part.size()), "GenerateAlignments_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("evalue_left_part = %f\n", evalue_left_part), "GenerateAlignments_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mismatch_rate = %f\n", mismatch_rate), "GenerateAlignments_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("match_rate = %f\n", match_rate), "GenerateAlignments_");
     }
 
     mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = true;
@@ -584,11 +584,11 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
   }
 
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str()), "GenerateAlignments_");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str()), "GenerateAlignments_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
   }
 
   return 0;

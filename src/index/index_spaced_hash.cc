@@ -197,7 +197,7 @@ void IndexSpacedHash::CountKmersFromShape(int8_t *sequence_data, int64_t sequenc
   int64_t num_kmers = CalcNumHashKeysFromShape(shape, shape_length);
   int64_t *kmer_counts = (int64_t *) calloc(sizeof(int64_t), num_kmers);
   if (kmer_counts == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_counts. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * num_kmers));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_counts. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * num_kmers));
     return;
   }
 
@@ -453,7 +453,7 @@ int IndexSpacedHash::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_lengt
         all_hits = (int64_t *) realloc(all_hits, (sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key])));
 
       if (all_hits == NULL) {
-        LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating all_hits. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key])));
+        LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating all_hits. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key])));
         return 1;
       }
 
@@ -508,7 +508,7 @@ int IndexSpacedHash::FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed
 }
 
 int IndexSpacedHash::CreateIndex_(int8_t *data, uint64_t data_length) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Creating spaced hash index.\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Creating spaced hash index.\n"), "CreateIndex_");
 
   if (kmer_hash_array_)
     free(kmer_hash_array_);
@@ -520,19 +520,19 @@ int IndexSpacedHash::CreateIndex_(int8_t *data, uint64_t data_length) {
     free(kmer_counts_);
   kmer_counts_ = NULL;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
 
   int64_t num_kmers = 0;
   CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, &kmer_counts_, &num_kmers);
   int64_t *kmer_countdown = (int64_t *) malloc(sizeof(int64_t) * num_kmers);
   if (kmer_countdown == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_countdown. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * num_kmers));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_countdown. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * num_kmers));
     return 1;
   }
   memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
   num_kmers_ = num_kmers;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
 
   int64_t total_num_kmers = 0;
   for (uint64_t i = 0; i < num_kmers; i++) {
@@ -542,12 +542,12 @@ int IndexSpacedHash::CreateIndex_(int8_t *data, uint64_t data_length) {
 
   kmer_hash_array_ = (int64_t **) malloc(sizeof(int64_t *) * num_kmers);
   if (kmer_hash_array_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_hash_array_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t *) * num_kmers));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_hash_array_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t *) * num_kmers));
     return 1;
   }
   all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * total_num_kmers);
   if (all_kmers_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating all_kmers_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * total_num_kmers));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating all_kmers_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * total_num_kmers));
     return 1;
   }
   all_kmers_size_ = total_num_kmers;
@@ -561,7 +561,7 @@ int IndexSpacedHash::CreateIndex_(int8_t *data, uint64_t data_length) {
     kmer_hash_ptr += kmer_counts_[i];
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
 
   int64_t hash_key = -1;
 
@@ -589,7 +589,7 @@ int IndexSpacedHash::CreateIndex_(int8_t *data, uint64_t data_length) {
     free(kmer_countdown);
   kmer_countdown = NULL;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
 
   return 0;
 }
@@ -665,24 +665,24 @@ int IndexSpacedHash::DeserializeIndex_(FILE* fp_in) {
 
   int64_t vector_length = 0;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
   if (fread(&shape_index_length_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
     return 1;
   }
 
   shape_index_ = (char *) malloc (sizeof(char) * (shape_index_length_ + 1));
   if (shape_index_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating shape_index_. Requested size: %ld bytes.\n", (int64_t) sizeof(char) * (shape_index_length_ + 1)));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating shape_index_. Requested size: %ld bytes.\n", (int64_t) sizeof(char) * (shape_index_length_ + 1)));
     return 1;
   }
   if (fread(shape_index_, sizeof(char), shape_index_length_, fp_in) != shape_index_length_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_."));
     return 1;
   }
   shape_index_[shape_index_length_] = '\0';
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "DeserializeIndex_");
 
 //  printf ("shapes_lookup_.size() = %ld\n", shapes_lookup_.size());
 //  for (int64_t i=0; i<shapes_lookup_.size(); i++)
@@ -691,9 +691,9 @@ int IndexSpacedHash::DeserializeIndex_(FILE* fp_in) {
 
 
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_kmers_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_kmers_...\n"), "DeserializeIndex_");
   if (fread(&num_kmers_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_kmers_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_kmers_."));
     return 1;
   }
 
@@ -703,33 +703,33 @@ int IndexSpacedHash::DeserializeIndex_(FILE* fp_in) {
 
   kmer_counts_ = (int64_t *) malloc(sizeof(int64_t) * num_kmers_);
   if (kmer_counts_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_counts_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * num_kmers_));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_counts_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * num_kmers_));
     return 1;
   }
   if (fread(kmer_counts_, sizeof(int64_t), num_kmers_, fp_in) != num_kmers_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable kmer_counts_.\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable kmer_counts_.\n"));
     return 3;
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
   if (fread(&all_kmers_size_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers_size_.\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers_size_.\n"));
     return 1;
   }
 
   all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * all_kmers_size_);
   if (all_kmers_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating all_kmers_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * all_kmers_size_));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating all_kmers_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t) * all_kmers_size_));
     return 1;
   }
   if (fread(all_kmers_, sizeof(int64_t), all_kmers_size_, fp_in) != all_kmers_size_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers.\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers.\n"));
     return 3;
   }
 
   kmer_hash_array_ = (int64_t **) malloc(sizeof(int64_t *) * num_kmers_);
   if (kmer_hash_array_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_hash_array_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t *) * num_kmers_));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating kmer_hash_array_. Requested size: %ld bytes.\n", (int64_t) sizeof(int64_t *) * num_kmers_));
     return 1;
   }
   int64_t kmer_ptr = 0;
@@ -852,7 +852,7 @@ int IndexSpacedHash::InitShapesPredefined(uint32_t shape_type) {
   shape_index_length_ = shape_for_indexing.size();
   shape_index_ = (char *) malloc(sizeof(char) * (shape_index_length_ + 1));
   if (shape_index_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating shape_index_. Requested size: %ld bytes.\n", (int64_t) sizeof(char) * (shape_index_length_ + 1)));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating shape_index_. Requested size: %ld bytes.\n", (int64_t) sizeof(char) * (shape_index_length_ + 1)));
     return 1;
   }
   memmove(shape_index_, shape_for_indexing.c_str(), shape_index_length_);
@@ -880,7 +880,7 @@ int IndexSpacedHash::InitShapes(std::string shape_for_indexing, std::vector<std:
   shape_index_length_ = shape_for_indexing.size();
   shape_index_ = (char *) malloc(sizeof(char) * (shape_index_length_ + 1));
   if (shape_index_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating shape_index_. Requested size: %ld bytes.\n", (int64_t) sizeof(char) * (shape_index_length_ + 1)));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When allocating shape_index_. Requested size: %ld bytes.\n", (int64_t) sizeof(char) * (shape_index_length_ + 1)));
     return 1;
   }
   memmove(shape_index_, shape_for_indexing.c_str(), shape_index_length_);

@@ -27,28 +27,28 @@ Index::~Index() {
 }
 
 int Index::LoadFromFile(std::string index_path) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Loading index from file.\n"), "LoadFromFile");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Loading index from file.\n"), "LoadFromFile");
     Clear();
     FILE *fp = fopen(index_path.c_str(), "r");
     if (fp == NULL) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "Path: '%s'", index_path.c_str()));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "Path: '%s'", index_path.c_str()));
       return 1;
     }
     int ret_deserialize = Deserialize_(fp);
     fclose(fp);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Index loaded.\n"), "LoadFromFile");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Index loaded.\n"), "LoadFromFile");
     return ret_deserialize;
 }
 
 int Index::GenerateFromFile(std::string sequence_file_path) {
   Clear();
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file to generate index.\n"), "GenerateFromFile");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file to generate index.\n"), "GenerateFromFile");
   SequenceFile sequences(sequence_file_path);
   return GenerateFromSequenceFile(sequences);
 }
 
 int Index::GenerateFromSequenceFile(const SequenceFile& sequence_file) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Generating index from SequenceFile.\n"), "GenerateFromSequenceFile");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Generating index from SequenceFile.\n"), "GenerateFromSequenceFile");
 
   Clear();
 
@@ -65,7 +65,7 @@ int Index::GenerateFromSequenceFile(const SequenceFile& sequence_file) {
   data_ = new int8_t[mem_to_alloc];
 
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
     return 1;
   }
 
@@ -96,7 +96,7 @@ int Index::GenerateFromSingleSequence(const SingleSequence &sequence) {
   data_ = new int8_t[mem_to_alloc];
 
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
     return 1;
   }
 
@@ -127,7 +127,7 @@ int Index::GenerateFromSingleSequenceOnlyForward(const SingleSequence &sequence)
   data_ = new int8_t[mem_to_alloc];
 
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
     return 1;
   }
 
@@ -160,27 +160,27 @@ int Index::LoadOrGenerate(std::string reference_path, std::string out_index_path
     }
 
     if (verbose == true) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index needs to be rebuilt. It was generated using an older version.\n"), "LoadOrGenerate");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("ret_load_from_file = %d\n", ret_load_from_file), "LoadOrGenerate");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index needs to be rebuilt. It was generated using an older version.\n"), "LoadOrGenerate");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("ret_load_from_file = %d\n", ret_load_from_file), "LoadOrGenerate");
       fflush(stderr);
     }
   }
 
   if (verbose == true) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Started generating new index from file '%s'...\n", reference_path.c_str()), "LoadOrGenerate");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Started generating new index from file '%s'...\n", reference_path.c_str()), "LoadOrGenerate");
     fflush(stderr);
   }
 
   GenerateFromFile(reference_path);
 
   if (verbose == true) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Storing new index to file '%s'...\n", out_index_path.c_str()), "LoadOrGenerate");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Storing new index to file '%s'...\n", out_index_path.c_str()), "LoadOrGenerate");
   }
 
   StoreToFile(out_index_path);
 
   if (verbose == true) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("New index stored.\n"), "LoadOrGenerate");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("New index stored.\n"), "LoadOrGenerate");
   }
 
   return 0;
@@ -192,7 +192,7 @@ int Index::StoreToFile(std::string output_index_path) {
   FILE *fp = fopen(output_index_path.c_str(), "w");
 
   if (fp == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "Path: '%s'", output_index_path.c_str()));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "Path: '%s'", output_index_path.c_str()));
     return 1;
   }
 
@@ -212,7 +212,7 @@ int Index::InsertReverseSingleSequenceIntoData_(const SingleSequence *sequence) 
   else {
     ascii_sequence = new SingleSequence();
     if (ascii_sequence == NULL) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: ascii_sequence."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: ascii_sequence."));
       return 1;
     }
 
@@ -222,7 +222,7 @@ int Index::InsertReverseSingleSequenceIntoData_(const SingleSequence *sequence) 
   ascii_sequence->ReverseComplement();
 
   if (InsertSequence_((int8_t *) ascii_sequence->get_data(), ascii_sequence->get_sequence_length())) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Problem occurred during insertion of a new sequence to the index."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Problem occurred during insertion of a new sequence to the index."));
     return 1;
   }
 
@@ -245,7 +245,7 @@ int Index::InsertHeaders_(const SequenceFile& sequence_file) {
 
 int Index::InsertSequencesIntoData_(const SequenceFile& sequence_file) {
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Data not initialized."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Data not initialized."));
     return 1;
   }
 
@@ -258,7 +258,7 @@ int Index::InsertSequencesIntoData_(const SequenceFile& sequence_file) {
 
 int Index::InsertReverseSequencesIntoData_(const SequenceFile& sequence_file) {
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Data not initialized."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Data not initialized."));
     return 1;
   }
 
@@ -392,7 +392,7 @@ int Index::Deserialize_(FILE* fp_in) {
   char file_header[9];
 //  IndexChunk::WriteChunk(fp_out, "VERSION", sizeof(version_number), (int8_t *) &version_number);
   if (fread(file_header, sizeof(char), 8, fp_in) != 8) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable file_header."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable file_header."));
     return 1;
   }
   file_header[8] = '\0';
@@ -407,12 +407,12 @@ int Index::Deserialize_(FILE* fp_in) {
 
   int64_t temp_int = 0;
   if (fread(&temp_int, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable temp_int."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable temp_int."));
     return 2;
   }
   int64_t version_number = 0;
   if (fread(&version_number, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable version_number."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable version_number."));
     return 3;
   }
 
@@ -430,99 +430,99 @@ int Index::Deserialize_(FILE* fp_in) {
 
 
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Deserializing...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Deserializing...\n"), "Deserialize_");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_sequences and num_sequences_forward_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_sequences and num_sequences_forward_..."), "Deserialize_");
 
   if (fread(&num_sequences_, sizeof(num_sequences_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_."));
     return 4;
   }
 
   if (fread(&num_sequences_forward_, sizeof(num_sequences_forward_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_forward_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_forward_."));
     return 5;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- headers_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- headers_..."), "Deserialize_");
   headers_.clear();
   for (uint64_t i=0; i<num_sequences_forward_; i++) {
     uint64_t string_length = 0;
     if (fread(&string_length, sizeof(string_length), 1, fp_in) != 1) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable string_length."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable string_length."));
       return 6;
     }
 
     char *new_header = new char[string_length + 1];
     if (new_header == NULL) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_header."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_header."));
       return 1;
     }
     if (fread(new_header, sizeof(char), string_length, fp_in) != string_length) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable new_header."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable new_header."));
       return 7;
     }
     new_header[string_length] = '\0';
     headers_.push_back(std::string(new_header));
     delete[] new_header;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_starting_pos_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_starting_pos_..."), "Deserialize_");
   if (fread(&vector_length, sizeof(vector_length), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_.size()."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_.size()."));
     return 8;
   }
   reference_starting_pos_.resize(vector_length);
   if (fread(reference_starting_pos_.data(), sizeof(uint64_t), vector_length, fp_in) != vector_length) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_."));
     return 9;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_lengths_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_lengths_..."), "Deserialize_");
   if (fread(&vector_length, sizeof(vector_length), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
     return 10;
   }
   reference_lengths_.resize(vector_length);
   if (fread(reference_lengths_.data(), sizeof(uint64_t), vector_length, fp_in) != vector_length) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
     return 11;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
   int ret_deserialize_index = DeserializeIndex_(fp_in);
   if (ret_deserialize_index)
     return (20 + ret_deserialize_index);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_length_ and data_length_forward_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_length_ and data_length_forward_..."), "Deserialize_");
   if (fread(&data_length_, sizeof(data_length_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_."));
     return 12;
   }
   if (fread(&data_length_forward_, sizeof(data_length_forward_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_forward_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_forward_."));
     return 13;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("data_length_ = %ld, data_length_forward_ = %ld...", data_length_, data_length_forward_), "[]");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("data_length_ = %ld, data_length_forward_ = %ld...", data_length_, data_length_forward_), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_...\n"), "Deserialize_");
   if (data_)
     delete[] data_;
   data_ = new int8_t[data_length_ + 1];
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
     return 1;
   }
   if (fread(data_, sizeof(int8_t), data_length_, fp_in) != data_length_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_."));
     return 14;
   }
   data_[data_length_] = ((int8_t) '\0');
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "Deserialize_");
 
   return 0;
 }
@@ -533,7 +533,7 @@ int Index::DeprecatedDeserialize_(FILE* fp_in) {
   char file_header[9];
 //  IndexChunk::WriteChunk(fp_out, "VERSION", sizeof(version_number), (int8_t *) &version_number);
   if (fread(file_header, sizeof(char), 8, fp_in) != 8) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable file_header."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable file_header."));
     return 1;
   }
   file_header[8] = '\0';
@@ -548,12 +548,12 @@ int Index::DeprecatedDeserialize_(FILE* fp_in) {
 
   int64_t temp_int = 0;
   if (fread(&temp_int, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable temp_int."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable temp_int."));
     return 2;
   }
   int64_t version_number = 0;
   if (fread(&version_number, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable version_number."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable version_number."));
     return 3;
   }
 
@@ -571,99 +571,99 @@ int Index::DeprecatedDeserialize_(FILE* fp_in) {
 
 
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Deserializing...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Deserializing...\n"), "Deserialize_");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_sequences and num_sequences_forward_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_sequences and num_sequences_forward_..."), "Deserialize_");
 
   if (fread(&num_sequences_, sizeof(num_sequences_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_."));
     return 4;
   }
 
   if (fread(&num_sequences_forward_, sizeof(num_sequences_forward_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_forward_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_sequences_forward_."));
     return 5;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- headers_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- headers_..."), "Deserialize_");
   headers_.clear();
   for (uint64_t i=0; i<num_sequences_forward_; i++) {
     uint64_t string_length = 0;
     if (fread(&string_length, sizeof(string_length), 1, fp_in) != 1) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable string_length."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable string_length."));
       return 6;
     }
 
     char *new_header = new char[string_length + 1];
     if (new_header == NULL) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_header."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: new_header."));
       return 1;
     }
     if (fread(new_header, sizeof(char), string_length, fp_in) != string_length) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable new_header."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable new_header."));
       return 7;
     }
     new_header[string_length] = '\0';
     headers_.push_back(std::string(new_header));
     delete[] new_header;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_starting_pos_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_starting_pos_..."), "Deserialize_");
   if (fread(&vector_length, sizeof(vector_length), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_.size()."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_.size()."));
     return 8;
   }
   reference_starting_pos_.resize(vector_length);
   if (fread(reference_starting_pos_.data(), sizeof(uint64_t), vector_length, fp_in) != vector_length) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_starting_pos_."));
     return 9;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_lengths_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reference_lengths_..."), "Deserialize_");
   if (fread(&vector_length, sizeof(vector_length), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
     return 10;
   }
   reference_lengths_.resize(vector_length);
   if (fread(reference_lengths_.data(), sizeof(uint64_t), vector_length, fp_in) != vector_length) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable reference_lengths_."));
     return 11;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
   int ret_deserialize_index = DeserializeIndex_(fp_in);
   if (ret_deserialize_index)
     return (20 + ret_deserialize_index);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_length_ and data_length_forward_..."), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_length_ and data_length_forward_..."), "Deserialize_");
   if (fread(&data_length_, sizeof(data_length_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_."));
     return 12;
   }
   if (fread(&data_length_forward_, sizeof(data_length_forward_), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_forward_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_length_forward_."));
     return 13;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("data_length_ = %ld, data_length_forward_ = %ld...", data_length_, data_length_forward_), "[]");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("data_length_ = %ld, data_length_forward_ = %ld...", data_length_, data_length_forward_), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "[]");
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- data_...\n"), "Deserialize_");
   if (data_)
     delete[] data_;
   data_ = new int8_t[data_length_ + 1];
   if (data_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data_."));
     return 1;
   }
   if (fread(data_, sizeof(int8_t), data_length_, fp_in) != data_length_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable data_."));
     return 14;
   }
   data_[data_length_] = ((int8_t) '\0');
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("done.\n"), "Deserialize_");
 
   return 0;
 }
@@ -798,7 +798,7 @@ int Index::InsertSequence_(const int8_t *sequence_data, uint64_t sequence_length
     // Not enough preallocated memory.
     int8_t *data = new int8_t[data_ptr_ + sequence_length + 1];
     if (data == NULL) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data."));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: data."));
       return 1;
     }
     // memcpy is not used because it was updated recently and requires new GLIBC symbols,
@@ -840,7 +840,7 @@ int Index::InsertSingleSequenceIntoData_(const SingleSequence *sequence) {
   }
 
   if (InsertSequence_((int8_t *) ascii_sequence->get_data(), ascii_sequence->get_sequence_length())) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Problem occurred during insertion of a new sequence to the index."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Problem occurred during insertion of a new sequence to the index."));
     return 1;
   }
 
@@ -892,7 +892,7 @@ int64_t Index::RawPositionConverter(int64_t raw_position, int64_t query_length, 
 
   int64_t reference_index = RawPositionToReferenceIndexWithReverse(raw_position);
   if (reference_index < 0) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
     return reference_index;
   }
 
@@ -929,7 +929,7 @@ int64_t Index::RawPositionConverterWithRefId(int64_t raw_position, int64_t refer
     return -2;
 
   if (reference_index < 0) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. Values: reference_index = %ld, raw_position = %ld, data_length = %ld.", reference_index, raw_position, data_length_));
     return reference_index;
   }
 

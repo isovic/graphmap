@@ -272,7 +272,7 @@ std::string FormatString(const char* additional_message, ...) {
 
   if (formatted_string == NULL) {
 //    LOG(FATAL) << ErrorReporting::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Allocation of memory for variable 'formatted_string'.");
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Allocation of memory for variable 'formatted_string'."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Allocation of memory for variable 'formatted_string'."));
     return ((std::string) "");
   }
 

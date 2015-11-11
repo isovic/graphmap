@@ -51,11 +51,11 @@ void GraphMap::Run(ProgramParameters& parameters) {
 
   // Check if the index exists, and build it if it doesn't.
   BuildIndex(parameters);
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
   last_time = clock();
 
   if (parameters.calc_only_index == true) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Finished generating index. Note: only index was generated due to selected program arguments.\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Finished generating index. Note: only index was generated due to selected program arguments.\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
     return;
   }
 
@@ -83,11 +83,11 @@ void GraphMap::Run(ProgramParameters& parameters) {
 
     parameters.max_num_regions_cutoff = parameters.max_num_regions / 5;
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum allowed number of regions: max. %ld, attempt to reduce after %ld\n", parameters.max_num_regions, parameters.max_num_regions_cutoff), "Run");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum allowed number of regions: max. %ld, attempt to reduce after %ld\n", parameters.max_num_regions, parameters.max_num_regions_cutoff), "Run");
 //    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\tmax_num_regions = %ld, max_num_regions_cutoff = %ld\n", parameters.max_num_regions, parameters.max_num_regions_cutoff), "Run");
 
   } else if (parameters.max_num_regions < 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("No limit to the maximum allowed number of regions will be set.\n"), "Run");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("No limit to the maximum allowed number of regions will be set.\n"), "Run");
   }
 
   // Dynamic calculation of the number of allowed kmer hits for region selection.
@@ -109,9 +109,9 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 
   if (parameters.is_reference_circular == false)
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be linear.\n"), "Run");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be linear.\n"), "Run");
   else
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be circular.\n"), "Run");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be circular.\n"), "Run");
 
 //  if (parameters.alignment_algorithm == "edlib")
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in non-parsimonious mode.\n"), "Run");
@@ -119,9 +119,9 @@ void GraphMap::Run(ProgramParameters& parameters) {
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in slower, more accurate mode: %s.\n", parameters.composite_parameters.c_str()), "Run");
 
   if (parameters.output_multiple_alignments == 0)
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Only one alignment will be reported per mapped read.\n"), "Run");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Only one alignment will be reported per mapped read.\n"), "Run");
   else
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("One or more similarly good alignments will be output per mapped read. Will be marked secondary.\n"), "Run");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("One or more similarly good alignments will be output per mapped read. Will be marked secondary.\n"), "Run");
 
 
 
@@ -133,8 +133,8 @@ void GraphMap::Run(ProgramParameters& parameters) {
 
     // Do the actual work.
     ProcessReadsFromSingleFile(parameters, fp_out);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
 
     if (fp_out != stdout)
       fclose(fp_out);
@@ -148,7 +148,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
       if (GetFileList_(parameters.output_folder, file_list_out) == true) {
         FilterFileList_(file_list, read_files, sam_files);
 
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Loading reads from input folder. In total, %ld files need to be processed.\n", read_files.size()), "Run");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Loading reads from input folder. In total, %ld files need to be processed.\n", read_files.size()), "Run");
 
         clock_t all_reads_time = clock();
 
@@ -159,21 +159,21 @@ void GraphMap::Run(ProgramParameters& parameters) {
           FILE *fp_out = OpenOutSAMFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
 
           // Do the actual work.
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Starting to process read file %ld/%ld ('%s').\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Starting to process read file %ld/%ld ('%s').\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
           ProcessReadsFromSingleFile(parameters, fp_out);
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Finished processing read file %ld/%ld ('%s').\n\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Finished processing read file %ld/%ld ('%s').\n\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
 
           if (fp_out != stdout)
             fclose(fp_out);
         }
 
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min). =====\n", (((float) (clock() - all_reads_time))/CLOCKS_PER_SEC), ((((float) (clock() - all_reads_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min). =====\n", (((float) (clock() - all_reads_time))/CLOCKS_PER_SEC), ((((float) (clock() - all_reads_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
       }
     }
 
     if (read_files.size() == 0) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("No read files found in path '%s'. Exiting.\n\n", parameters.reads_folder.c_str()), "Run");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("No read files found in path '%s'. Exiting.\n\n", parameters.reads_folder.c_str()), "Run");
     }
   }
 }
@@ -192,10 +192,10 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   index_ = new IndexSpacedHashFast();
 
   if (parameters.parsimonious_mode) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Running in parsimonious mode. Only one index will be used.\n"), "Index");
 
   } else {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Running in fast and sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
 
 //    index_secondary_ = new IndexSpacedHash(SHAPE_TYPE_66);
     index_secondary_ = new IndexSpacedHashFast(SHAPE_TYPE_66);
@@ -209,9 +209,9 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     // Check if index already exists, if not generate it.
     FILE *fp = fopen(parameters.index_reference_path.c_str(), "r");
     if (fp == NULL) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
     } else {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
     }
     ret_index_loaded = index_->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path, (parameters.verbose_level > 0));
@@ -224,32 +224,32 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     if (parameters.parsimonious_mode == false ) {
       fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
       if (fp == NULL) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
       } else {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
         fclose (fp);
       }
   //    index_secondary_->GenerateFromFile(parameters.reference_path);
       ret_index_loaded = index_secondary_->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("sec"), (parameters.verbose_level > 0));
     }
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index loaded in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index loaded in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
 
   } else {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
 
     index_->GenerateFromFile(parameters.reference_path);
     index_->StoreToFile(parameters.index_reference_path);
 
     if (parameters.parsimonious_mode == false) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
       index_secondary_->GenerateFromFile(parameters.reference_path);
       index_secondary_->StoreToFile(parameters.index_reference_path + std::string("sec"));
     }
 
     ret_index_loaded = 0;
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Index generated in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index generated in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
 
   }
 
@@ -267,9 +267,9 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
 
   // Check whether to load in batches or to load all the data at once.
   if (parameters.batch_size_in_mb <= 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("All reads will be loaded in memory.\n"), "ProcessReads");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads will be loaded in memory.\n"), "ProcessReads");
   } else {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Reads will be loaded in batches of up to %ld MB in size.\n", parameters.batch_size_in_mb), "ProcessReads");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reads will be loaded in batches of up to %ld MB in size.\n", parameters.batch_size_in_mb), "ProcessReads");
   }
 
   SequenceFile reads;
@@ -283,25 +283,25 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   // Load sequences in batch (if requested), or all at once.
   while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllFromFastaOrFastqAsBatch(false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(parameters.batch_size_in_mb, false))) {
     if (parameters.batch_size_in_mb <= 0) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("All reads loaded in %.2f sec (size around %ld MB). (%ld bases)\n", (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads.GetNumberOfBases()), "ProcessReads");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads loaded in %.2f sec (size around %ld MB). (%ld bases)\n", (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads.GetNumberOfBases()), "ProcessReads");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
     }
     else {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Batch of %ld reads (%ld MiB) loaded in %.2f sec. (%ld bases)\n", reads.get_sequences().size(), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), parameters.reads_path.c_str(), (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.GetNumberOfBases()), "ProcessReads");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Batch of %ld reads (%ld MiB) loaded in %.2f sec. (%ld bases)\n", reads.get_sequences().size(), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), parameters.reads_path.c_str(), (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.GetNumberOfBases()), "ProcessReads");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
     }
 
     // This line actually does all the work.
     ProcessSequenceFileInParallel(&parameters, &reads, &absolute_time, fp_out, &num_mapped, &num_unmapped);
 
     if (parameters.batch_size_in_mb > 0) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
     }
 
     last_batch_loading_time = clock();
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
 
   reads.CloseFileAfterBatchLoading();
 }
@@ -319,7 +319,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
   if (parameters->num_threads > 0)
     num_threads = (int64_t) parameters->num_threads;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.\n", num_threads), "ProcessReads");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.\n", num_threads), "ProcessReads");
 
   // Set up the starting and ending read index.
   int64_t start_i = (parameters->start_read >= 0)?((int64_t) parameters->start_read):0;
@@ -370,7 +370,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
                            num_mapped, num_unmapped,
                            reads->get_sequences()[i]->get_data_length()) << reads->get_sequences()[i]->get_header();
         std::string string_buffer = FormatStringToLength(ss.str(), 140);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
 
         if (parameters->verbose_level > 6 && parameters->num_threads == 1)
               ss << "\n";
@@ -398,7 +398,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
     } else if (parameters->outfmt == "sam") {
       mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
     } else {
-      LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to SAM output.", parameters->outfmt.c_str()));
+      LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to SAM output.", parameters->outfmt.c_str()));
       mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
     }
 
@@ -448,8 +448,8 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
                                reads->get_sequences().size(), reads->get_sequences().size(), 100.0f,
                                num_mapped, num_unmapped);
   string_buffer = FormatStringToLength(string_buffer, 140);
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, "\n", "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, "\n", "[]");
 
   // Output the results to the SAM file in the exact ordering of the input file (if it was requested by the specified parameter).
   if (parameters->output_in_original_order == true) {
@@ -566,7 +566,7 @@ FILE* GraphMap::OpenOutSAMFile_(std::string out_sam_path) {
   if (out_sam_path.size() > 0) {
     fp_out = fopen(out_sam_path.c_str(), "w");
     if (fp_out == NULL) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "File path: '%s'.", out_sam_path.c_str()));
+      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "File path: '%s'.", out_sam_path.c_str()));
       return NULL;
     }
   }
@@ -587,7 +587,7 @@ bool GraphMap::GetFileList_(std::string folder, std::vector<std::string> &ret_fi
     closedir (dir);
 
   } else {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FOLDER_NOT_FOUND, "Folder path: '%s'.", folder.c_str()));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FOLDER_NOT_FOUND, "Folder path: '%s'.", folder.c_str()));
     return false;
   }
 

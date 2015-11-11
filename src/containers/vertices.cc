@@ -131,7 +131,7 @@ void Vertices::Clear() {
 
 int Vertices::ReallocArray_(int64_t **array_ptr, int64_t size) {
   if (size <= 0) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
+    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
     return 2;
   }
 
@@ -141,7 +141,7 @@ int Vertices::ReallocArray_(int64_t **array_ptr, int64_t size) {
     *array_ptr = (int64_t *) realloc(*array_ptr, sizeof(int64_t) * size);
 
   if (*array_ptr == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
     return 1;
   }
 
@@ -154,7 +154,7 @@ void Vertices::Reserve(int64_t size) {
     num_vertices = 0;
     container_capacity = 0;
     capacity_increment_size_ = 1;
-    LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
+    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
     return;
   }
 
@@ -178,7 +178,7 @@ void Vertices::Resize(int64_t size) {
     num_vertices = 0;
     container_capacity = 0;
     capacity_increment_size_ = 1;
-    LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
+    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "When reallocating array in Vertices object. Requested size: %ld.\n", size));
     return;
   }
 

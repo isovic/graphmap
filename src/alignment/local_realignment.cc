@@ -18,51 +18,51 @@ int HybridRealignment(const SingleSequence *read, const Index *index, const Prog
 
 
     if (parameters.alignment_algorithm == "gotoh") {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Gotoh for alignment!\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Gotoh for alignment!\n", "Alignment");
       if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false)
         return LocalRealignmentLinear(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
       else
         return LocalRealignmentCircular(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
     } else if (parameters.alignment_algorithm == "myers") {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
       if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false)
         return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
       else
         return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
     } else if (parameters.alignment_algorithm == "anchor") {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool extend_to_end = true;
 //      bool extend_to_end = false;
       bool is_linear = best_path->get_region_data().is_split == false || parameters.is_reference_circular == false;
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
       return AnchoredAlignment(is_linear, extend_to_end, MyersNWWrapper, MyersSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 //      return AnchoredAlignment(is_linear, extend_to_end, MyersNWWrapper, SeqAnSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 //      return AnchoredAlignment(is_linear, extend_to_end, SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
     } else if (parameters.alignment_algorithm == "anchorgotoh") {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool extend_to_end = true;
 //      bool extend_to_end = false;
       bool is_linear = best_path->get_region_data().is_split == false || parameters.is_reference_circular == false;
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
       return AnchoredAlignment(is_linear, extend_to_end, SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 //      return AnchoredAlignment(is_linear, extend_to_end, MyersNWWrapper, MyersSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
     } else if (parameters.alignment_algorithm == "anchormex") {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
 //      bool extend_to_end = true;
       bool extend_to_end = false;
       bool is_linear = best_path->get_region_data().is_split == false || parameters.is_reference_circular == false;
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
       return AnchoredAlignmentMex(is_linear, extend_to_end, OpalNWWrapper, OpalSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
 
     } else {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Warning: Unknown alignment algorithm selected. Using Myers' bit-vector alignment instead.\n", "Alignment");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Warning: Unknown alignment algorithm selected. Using Myers' bit-vector alignment instead.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
       if (best_path->get_region_data().is_split == false || parameters.is_reference_circular == false)
         return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op, perform_reverse_complement);
       else
@@ -203,9 +203,9 @@ int ClipCircularAlignment(int64_t alignment_start, int64_t alignment_end, unsign
   // Check for clipping and report the final result.
   // In this case, we need to clip a part of the alignment.
   if (position_of_ref_end >= alignment_start && position_of_ref_end < alignment_end) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Alignment needs to be clipped."), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Alignment needs to be clipped."), "[]");
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Alignment needs to be clipped."), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Alignment needs to be clipped."), "[]");
 
     // Find the base on the read which is on the position of the 0th base of the reference
     int64_t pos_on_read = 0, pos_on_ref = alignment_start, pos_on_alignment = 0;
@@ -373,10 +373,10 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
 
 #ifndef RELEASE_VERSION
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("\nl1_reference_start = %ld\nl1_reference_end = %ld\nreference_data_length = %ld\nreference_start = %ld\nreference_length = %ld\nabsolute_reference_id = %ld\norientation = %ld\n\n",
                                                           l1_reference_start, l1_reference_end, reference_data_length, reference_start, reference_length, absolute_reference_id, ((orientation == kForward) ? "forward" : "reverse")), "LocalRealignmentLinear");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("\n%s\n", best_path->VerboseInfoToString().c_str()), "LocalRealignmentLinear");
 
   }
@@ -408,7 +408,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
                                                (const unsigned char *) (index->get_data() + alignment_position_start), (alignment_position_end - alignment_position_start + 1),
                                                (unsigned char *) &(alignment[0]), alignment.size(),
                                                (0), MYERS_MODE_NW);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "LocalRealignmentLinear");
   }
 #endif
@@ -422,7 +422,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
                                                  (unsigned char *) &(alignment[0]), alignment.size(),
                                                  (alignment_position_end - l1_reference_start), MYERS_MODE_HW);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("alignment_position_start = %ld\nalignment_position_end = %ld\nl1_reference_start = %ld\n",
                                                           alignment_position_start, alignment_position_end, l1_reference_start), "LocalRealignmentLinear");
 
@@ -445,7 +445,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
     if (perform_reverse_complement == true) {
 //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
 //      read->ReverseComplement();
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                FormatString("ERROR! Tried to explicitly reverse complement a read! This functionality is no longer allowed!"), "LocalRealignmentLinear");
       exit(1);
     }
@@ -498,7 +498,7 @@ int CalcEditDistanceLinear(EditDistanceFunctionType EditDistanceFunction, const 
     return ret_code;
 
   if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("alignment_position_end = %ld\nl1_reference_start = %ld\n",
                                                           alignment_position_end, l1_reference_start), "LocalRealignmentLinear");
   }
@@ -520,7 +520,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
                              int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
 
   if (best_path->get_region_data().is_split == false) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
     return -1;
   }
 
@@ -554,7 +554,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
     orientation = kReverse;
     if (perform_reverse_complement == true) {
 //      read->ReverseComplement();
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                FormatString("ERROR! Tried to explicitly reverse complement a read! This functionality is no longer allowed!"), "LocalRealignmentCircular");
       exit(1);
     }
@@ -574,8 +574,8 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
   int64_t best_aligning_position = 0;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_start = %ld\n", best_aligning_position_start), "LocalRealignmentCircular");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", best_aligning_position_end), "LocalRealignmentCircular");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_start = %ld\n", best_aligning_position_start), "LocalRealignmentCircular");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", best_aligning_position_end), "LocalRealignmentCircular");
 
   int64_t left_alignment_length = 0, left_alignment_start = 0, left_alignment_end = 0;
   int64_t right_alignment_length = 0, right_alignment_start = 0, right_alignment_end = 0;
@@ -688,7 +688,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
                            int64_t *ret_alignment_position, int64_t *ret_edit_distance) {
 
   if (best_path->get_region_data().is_split == false) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
     return -1;
   }
 
@@ -715,7 +715,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
                                       &best_aligning_position_end, &edit_distance, MYERS_MODE_HW);
   best_aligning_position_end += l1_reference_start;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", best_aligning_position_end), "LocalRealignmentCircular");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", best_aligning_position_end), "LocalRealignmentCircular");
 
   *ret_alignment_position = best_aligning_position_end;
   *ret_edit_distance = edit_distance;
@@ -846,7 +846,7 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
           if ((last_move == EDLIB_I && alignment_char == EDLIB_D) || (last_move == EDLIB_D && alignment_char == EDLIB_I)) {
 //            printf ("CheckAlignmentSane returned false! return 2.\n");
 //            fflush(stdout);
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 2. num_same_moves = %ld, qname: '%s', read_length: %ld, ref_length: %ld\n", num_same_moves, read->get_header(), read_length, ref_length), "CheckAlignmentSane");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 2. num_same_moves = %ld, qname: '%s', read_length: %ld, ref_length: %ld\n", num_same_moves, read->get_header(), read_length, ref_length), "CheckAlignmentSane");
             return 2;
           }
         }
@@ -863,20 +863,20 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
 //    printf ("read_length = %ld\n", read_length);
 //    printf ("read->get_sequence_length() = %ld\n", read->get_sequence_length());
 //    fflush(stdout);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 3. read_length = %ld, read->get_sequence_length() = %ld\\n", read_length, read->get_sequence_length()), "CheckAlignmentSane");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 3. read_length = %ld, read->get_sequence_length() = %ld\\n", read_length, read->get_sequence_length()), "CheckAlignmentSane");
     return 3;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) && ref_length > index->get_reference_lengths()[reference_hit_id]) {
 //    printf ("CheckAlignmentSane returned false! return 4.\n");
 //    fflush(stdout);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 4.\n"), "CheckAlignmentSane");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 4.\n"), "CheckAlignmentSane");
     return 4;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
 //    printf ("CheckAlignmentSane returned false! return 5.\n");
 //    fflush(stdout);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 5.\n"), "CheckAlignmentSane");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 5.\n"), "CheckAlignmentSane");
     return 5;
   }
 

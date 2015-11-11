@@ -51,7 +51,7 @@ void ScorerCreateMatrix(Scorer** scorer, char* name, int gapOpen, int gapExtend)
 //    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString(), "ScorerCreateMatrix");
 
   } else {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Could not find the correct scoring matrix!"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Could not find the correct scoring matrix!"));
 
   }
 }
@@ -158,7 +158,7 @@ int SetupScorer(char* matrix_name, int64_t reference_length, int gap_open, int g
 //  statFastaChains(&chains, &cells, databasePath);
 //  long long reference_length = 1;
   if (scorer == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Scorer not initialized!"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Scorer not initialized!"));
     return 1;
   }
 

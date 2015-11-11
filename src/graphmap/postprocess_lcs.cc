@@ -314,7 +314,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
 }
 
 int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "PostProcessRegionWithLCS_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "PostProcessRegionWithLCS_");
 
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
@@ -329,7 +329,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
 
   if (lcskpp_length == 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "PostProcessRegionWithLCS_");
     return 1;
   }
 
@@ -342,15 +342,15 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, lcskpp_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
   if (ret_L1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
     return 1;
   }
   float allowed_L1_deviation = 3.0f * confidence_L1;
 
   #ifndef RELEASE_VERSION
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("l_median = %ld\n", l), "PostProcessRegionWithLCS_-DoubleLCSk");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("allowed_L1_deviation = %f\n", allowed_L1_deviation), "PostProcessRegionWithLCS_-DoubleLCSk");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("l_median = %ld\n", l), "PostProcessRegionWithLCS_-DoubleLCSk");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("allowed_L1_deviation = %f\n", allowed_L1_deviation), "PostProcessRegionWithLCS_-DoubleLCSk");
       VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
       VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, l, allowed_L1_deviation, true);
     }
@@ -368,7 +368,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   int64_t covered_bases = 0;
   int64_t covered_bases_query = 0, covered_bases_reference = 0;
   int64_t num_covering_kmers = 0;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
   for (uint64_t i = 0; i < lcskpp_indices.size(); i++) {
     covered_bases_query += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
     covered_bases_reference += local_score->get_registry_entries().covered_bases_references[lcskpp_indices[i]];
@@ -384,7 +384,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   // There are no valid graph paths! All scores were dismissed because of high deviation.
   // This is most likely a false positive.
   if (indexfirst == -1 || indexlast == -1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
     return 1;
   }
 
@@ -392,11 +392,11 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
 
 
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After second LCS calculation (with L1 filtering):\n", local_score->get_scores_id()), "PostProcessRegionWithLCS_2_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After second LCS calculation (with L1 filtering):\n", local_score->get_scores_id()), "PostProcessRegionWithLCS_2_");
     for (int64_t i = 0; i < lcskpp_indices.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s\n", i, local_score->get_registry_entries().VerboseToString(lcskpp_indices[i]).c_str()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s\n", i, local_score->get_registry_entries().VerboseToString(lcskpp_indices[i]).c_str()), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Checking index indices.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Checking index indices.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
 
     #ifndef RELEASE_VERSION
       VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, l, 3.0f * confidence_L1, true);
@@ -443,14 +443,14 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
 //    return 1;
 //  }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "Adding new entry.\n", "L1-PostProcessRegionWithLCS_");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "Adding new entry.\n", "L1-PostProcessRegionWithLCS_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   mapping_data->intermediate_mappings.push_back(new_entry);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "l = %ld, ", "L1-PostProcessRegionWithLCS_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "l = %ld, ", "L1-PostProcessRegionWithLCS_");
 
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
 
   return 0;
 }

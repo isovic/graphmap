@@ -529,7 +529,7 @@ int IndexOwler::FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed_leng
 }
 
 int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Creating double hashed spaced hash index.\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Creating double hashed spaced hash index.\n"), "CreateIndex_");
 
   if (kmer_hash_array_)
     free(kmer_hash_array_);
@@ -563,7 +563,7 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
 //  read_subindex_ = NULL;
 //  read_subindex_.clear();
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
 
   int64_t num_kmers = 0;
   CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, &kmer_counts_, &num_kmers);
@@ -571,7 +571,7 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
   memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
   num_kmers_ = num_kmers;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Kmer counting finished (kmer_counts.size() = %ld)\n", num_kmers_), "CreateIndex_");
 
   int64_t total_num_kmers = 0;
   for (uint64_t i = 0; i < num_kmers; i++) {
@@ -605,7 +605,7 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
     kmer_hash_ptr += kmer_counts_[i];
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index memory allocated.\n"), "CreateIndex_");
 
   int64_t hash_key = -1;
 
@@ -618,7 +618,7 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
       current_ref_id += 1;
 //      printf ("current_ref_id = %ld (i = %ld)\n", current_ref_id, i);
 //      fflush(stdout);
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\rProcessed %.2f%%", (((float) i) / ((float) (data_length_ - shape_index_length_ + 1))) * 100.0f), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\rProcessed %.2f%%", (((float) i) / ((float) (data_length_ - shape_index_length_ + 1))) * 100.0f), "[]");
     }
 
     int8_t *seed_start = &(data_[i]);
@@ -665,9 +665,9 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
 //    }
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\rProcesseg 100.00%%"), "[]");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\n"), "[]");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Converting read subindex data structures...\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\rProcesseg 100.00%%"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Converting read subindex data structures...\n"), "CreateIndex_");
 
   if (kmer_countdown)
     free(kmer_countdown);
@@ -696,7 +696,7 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
   }
   read_subindex.clear();
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished creating spaced hash index.\n"), "CreateIndex_");
 
   return 0;
 }
@@ -704,7 +704,7 @@ int IndexOwler::CreateIndex_(int8_t *data, uint64_t data_length) {
 
 
 int IndexOwler::SerializeIndex_(FILE* fp_out) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Started index serialization...\n"), "SerializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Started index serialization...\n"), "SerializeIndex_");
 
   int64_t vector_length = 0;
   fwrite(&shape_index_length_, sizeof(int64_t), 1, fp_out);
@@ -723,7 +723,7 @@ int IndexOwler::SerializeIndex_(FILE* fp_out) {
 //  for (int64_t i = 0; i < read_subindex_.size(); i++) {
 //    counts[i] = read_subindex_[i].size();
 //  }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Serializing the read subindex...\n"), "SerializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Serializing the read subindex...\n"), "SerializeIndex_");
 
   fwrite(subindex_counts_, sizeof(int64_t), num_sequences_, fp_out);
   fwrite(&all_subindexes_size_, sizeof(int64_t), 1, fp_out);
@@ -741,7 +741,7 @@ int IndexOwler::SerializeIndex_(FILE* fp_out) {
 //      fwrite(&(kmer_hash_array_[i][0]), sizeof(int64_t), vector_length, fp_out);
 //  }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished serializing the index.\n"), "SerializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished serializing the index.\n"), "SerializeIndex_");
 
   return 0;
 }
@@ -805,20 +805,20 @@ int IndexOwler::DeserializeIndex_(FILE* fp_in) {
 
   int64_t vector_length = 0;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
   if (fread(&shape_index_length_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
     return 1;
   }
 
   shape_index_ = (char *) malloc (sizeof(char) * (shape_index_length_ + 1));
   if (fread(shape_index_, sizeof(char), shape_index_length_, fp_in) != shape_index_length_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_."));
     return 1;
   }
   shape_index_[shape_index_length_] = '\0';
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "DeserializeIndex_");
 
 //  printf ("shapes_lookup_.size() = %ld\n", shapes_lookup_.size());
 //  for (int64_t i=0; i<shapes_lookup_.size(); i++)
@@ -827,9 +827,9 @@ int IndexOwler::DeserializeIndex_(FILE* fp_in) {
 
 
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_kmers_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- num_kmers_...\n"), "DeserializeIndex_");
   if (fread(&num_kmers_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_kmers_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable num_kmers_."));
     return 1;
   }
 
@@ -839,19 +839,19 @@ int IndexOwler::DeserializeIndex_(FILE* fp_in) {
 
   kmer_counts_ = (int64_t *) malloc(sizeof(int64_t) * num_kmers_);
   if (fread(kmer_counts_, sizeof(int64_t), num_kmers_, fp_in) != num_kmers_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable kmer_counts_.\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable kmer_counts_.\n"));
     return 3;
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
   if (fread(&all_kmers_size_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers_size_.\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers_size_.\n"));
     return 1;
   }
 
   all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * all_kmers_size_);
   if (fread(all_kmers_, sizeof(int64_t), all_kmers_size_, fp_in) != all_kmers_size_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers.\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_kmers.\n"));
     return 3;
   }
 
@@ -874,30 +874,30 @@ int IndexOwler::DeserializeIndex_(FILE* fp_in) {
 //  printf ("num_sequences_ = %ld\n", num_sequences_);
 //  fflush(stdout);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- allocating space for read subindex\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- allocating space for read subindex\n"), "DeserializeIndex_");
   read_subindex_ = (SubIndex **) malloc(sizeof(SubIndex *) * num_sequences_);
   subindex_counts_ = (int64_t *) malloc(sizeof(int64_t) * num_sequences_);
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reading subindex_counts_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reading subindex_counts_...\n"), "DeserializeIndex_");
   if (fread(subindex_counts_, sizeof(int64_t), num_sequences_, fp_in) != num_sequences_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable subindex_counts_!\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable subindex_counts_!\n"));
     return 3;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reading all_subindexes_size_..."), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reading all_subindexes_size_..."), "DeserializeIndex_");
   if (fread(&all_subindexes_size_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_subindexes_size_!\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_subindexes_size_!\n"));
     return 3;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("%ld\n", all_subindexes_size_), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("%ld\n", all_subindexes_size_), "[]");
 //  printf ("all_subindexes_size_ = %ld\n", all_subindexes_size_);
 //  fflush(stdout);
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- allocating space for all_subindexes_\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- allocating space for all_subindexes_\n"), "DeserializeIndex_");
   all_subindexes_ = (SubIndex *) malloc(sizeof(SubIndex) * all_subindexes_size_);
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reading all_subindexes_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- reading all_subindexes_...\n"), "DeserializeIndex_");
   if (fread(all_subindexes_, sizeof(SubIndex), all_subindexes_size_, fp_in) != all_subindexes_size_) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_subindexes_!\n"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable all_subindexes_!\n"));
     return 3;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- formatting the read subindex data structures...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- formatting the read subindex data structures...\n"), "DeserializeIndex_");
   int64_t current_num_subindexes = 0;
   for (int64_t i = 0; i < num_sequences_; i++) {
     if (subindex_counts_[i] > 0) {
@@ -908,7 +908,7 @@ int IndexOwler::DeserializeIndex_(FILE* fp_in) {
     }
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished deserializing the index!\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Finished deserializing the index!\n"), "DeserializeIndex_");
 
 //  int64_t *counts = (int64_t *) malloc(sizeof(int64_t) * num_sequences_);
 //  if (fread(counts, sizeof(int64_t), num_sequences_, fp_in) != num_sequences_) {

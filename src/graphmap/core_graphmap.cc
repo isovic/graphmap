@@ -10,20 +10,20 @@
 
 
 int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingData* mapping_data, const Index* index, const Index* index_secondary, const SingleSequence* read, const ProgramParameters* parameters) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "GraphMap_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "GraphMap_");
 
   uint64_t readlength = read->get_sequence_length();
 
   #ifndef RELEASE_VERSION
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
 //      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Region:"), "Inspecting region.is_split == false");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("ref_id = %ld, region_id = %ld, region_votes = %ld\n", local_score->get_region().reference_id, local_score->get_region().region_index, local_score->get_region().region_votes), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("rname: %s\n", index->get_headers()[local_score->get_region().reference_id % index->get_num_sequences_forward()].c_str()), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("read_length = %ld\n", read->get_sequence_length()), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start = %ld, end = %ld\n", local_score->get_region().start, local_score->get_region().end), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("is_split = %s\n", ((local_score->get_region().is_split == true) ? ("true") : ("false"))), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("split_start = %ld, split_end = %ld\n", local_score->get_region().split_start, local_score->get_region().split_end), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Region:"), "Inspecting region.is_split == false");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("ref_id = %ld, region_id = %ld, region_votes = %ld\n", local_score->get_region().reference_id, local_score->get_region().region_index, local_score->get_region().region_votes), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("rname: %s\n", index->get_headers()[local_score->get_region().reference_id % index->get_num_sequences_forward()].c_str()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("read_length = %ld\n", read->get_sequence_length()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start = %ld, end = %ld\n", local_score->get_region().start, local_score->get_region().end), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("is_split = %s\n", ((local_score->get_region().is_split == true) ? ("true") : ("false"))), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("split_start = %ld, split_end = %ld\n", local_score->get_region().split_start, local_score->get_region().split_end), "[]");
 //      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n"), "[]");
     }
   #endif

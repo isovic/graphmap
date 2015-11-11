@@ -77,7 +77,7 @@ int GraphMap::RegionSelectionSpacedHashv2_(int64_t bin_size, MappingData* mappin
           int64_t reference_index = index->RawPositionToReferenceIndexWithReverse(y);
           int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
           if (reference_index < 0) {
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, y, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, y, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
             continue;
           }
 
@@ -127,7 +127,7 @@ int GraphMap::RegionSelectionSpacedHashv2_(int64_t bin_size, MappingData* mappin
     }
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
 
   int64_t num_bins_above_zero = 0;
   for (int64_t i = 0; i < (index_primary->get_num_sequences_forward() * 2); i++) {
@@ -160,54 +160,54 @@ int GraphMap::RegionSelectionSpacedHashv2_(int64_t bin_size, MappingData* mappin
   // Verbose all bin counts along each chromomsome.
 // Ovaj debug sam maknuo za brzinu kod profiliranja!
   if (parameters->verbose_level > 8 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
     // The tuple will contain: reference_id, bin_index, bin_count.
     for (int64_t i = 0; i < (index_primary->get_num_sequences_forward()); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
       float max_bin_value_forward = 0;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         max_bin_value_forward = std::max(max_bin_value_forward, bins_chromosome[i][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
       std::stringstream ss_bins_forward;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         if (bins_chromosome[i][j] > 0) {
           ss_bins_forward << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i][j]);
           if (ss_bins_forward.str().size() > 120) {
             ss_bins_forward << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
             ss_bins_forward.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
 
       std::stringstream ss_bins_reverse;
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (reverse) %s, bins_chromosome.size() = %ld, ", i + index_primary->get_num_sequences_forward(), index_primary->get_headers()[i].c_str(), bins_chromosome[i + index_primary->get_num_sequences_forward()].size()), "[]");
       float max_bin_value_reverse = 0;
       for (int64_t j = 0; j < bins_chromosome[i + index_primary->get_num_sequences_forward()].size(); j++) {
         max_bin_value_reverse = std::max(max_bin_value_reverse, bins_chromosome[i + index_primary->get_num_sequences_forward()][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
       for (int64_t j = 0; j < bins_chromosome[i + index_primary->get_num_sequences_forward()].size(); j++) {
         if (bins_chromosome[i + index_primary->get_num_sequences_forward()][j] > 0) {
           ss_bins_reverse << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i + index_primary->get_num_sequences_forward()][j]);
           if (ss_bins_reverse.str().size() > 120) {
             ss_bins_reverse << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
             ss_bins_reverse.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
   return 0;
@@ -282,7 +282,7 @@ int GraphMap::RegionSelectionSpacedHashFast_(int64_t bin_size, MappingData* mapp
         int64_t reference_index = (int64_t) ((uint64_t) position) >> 32;  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
 
         if (reference_index < 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "3Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "3Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
           continue;
         }
 
@@ -330,7 +330,7 @@ int GraphMap::RegionSelectionSpacedHashFast_(int64_t bin_size, MappingData* mapp
     }
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
 
   int64_t num_bins_above_zero = 0;
   for (int64_t i = 0; i < (num_fwd_seqs * 2); i++) {
@@ -362,54 +362,54 @@ int GraphMap::RegionSelectionSpacedHashFast_(int64_t bin_size, MappingData* mapp
 
   // Verbose all bin counts along each chromomsome.
   if (parameters->verbose_level > 8 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
     // The tuple will contain: reference_id, bin_index, bin_count.
     for (int64_t i = 0; i < (num_fwd_seqs); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
       float max_bin_value_forward = 0;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         max_bin_value_forward = std::max(max_bin_value_forward, bins_chromosome[i][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
       std::stringstream ss_bins_forward;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         if (bins_chromosome[i][j] > 0) {
           ss_bins_forward << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i][j]);
           if (ss_bins_forward.str().size() > 120) {
             ss_bins_forward << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
             ss_bins_forward.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
 
       std::stringstream ss_bins_reverse;
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (reverse) %s, bins_chromosome.size() = %ld, ", i + num_fwd_seqs, index_primary->get_headers()[i].c_str(), bins_chromosome[i + num_fwd_seqs].size()), "[]");
       float max_bin_value_reverse = 0;
       for (int64_t j = 0; j < bins_chromosome[i + num_fwd_seqs].size(); j++) {
         max_bin_value_reverse = std::max(max_bin_value_reverse, bins_chromosome[i + num_fwd_seqs][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
       for (int64_t j = 0; j < bins_chromosome[i + num_fwd_seqs].size(); j++) {
         if (bins_chromosome[i + num_fwd_seqs][j] > 0) {
           ss_bins_reverse << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i + num_fwd_seqs][j]);
           if (ss_bins_reverse.str().size() > 120) {
             ss_bins_reverse << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
             ss_bins_reverse.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
   return 0;
@@ -675,7 +675,7 @@ int GraphMap::ExperimentalRegionSelection_(int64_t bin_size, MappingData* mappin
     index->LookUpHashKeys(bin_size, read, hash_keys, key_counts, seed_hits);
     clock_t end_clock = clock();
     double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ [Current index_id = %ld] New region selection time: %f sec.\n\n", index_id, elapsed_secs), "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ [Current index_id = %ld] New region selection time: %f sec.\n\n", index_id, elapsed_secs), "ProcessRead");
   }  // for (int64_t j=hits_start; j<(hits_start + num_hits); j++)
 
   std::sort(seed_hits.begin(), seed_hits.end(), seed_hit3_compare());
@@ -808,7 +808,7 @@ int GraphMap::ExperimentalRegionSelection_(int64_t bin_size, MappingData* mappin
 //    }
 //  }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
 
   int64_t num_bins_above_zero = 0;
   for (int64_t i = 0; i < (num_fwd_seqs * 2); i++) {
@@ -840,54 +840,54 @@ int GraphMap::ExperimentalRegionSelection_(int64_t bin_size, MappingData* mappin
 
   // Verbose all bin counts along each chromomsome.
   if (parameters->verbose_level > 8 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
     // The tuple will contain: reference_id, bin_index, bin_count.
     for (int64_t i = 0; i < (num_fwd_seqs); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
       float max_bin_value_forward = 0;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         max_bin_value_forward = std::max(max_bin_value_forward, bins_chromosome[i][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
       std::stringstream ss_bins_forward;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         if (bins_chromosome[i][j] > 0) {
           ss_bins_forward << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i][j]);
           if (ss_bins_forward.str().size() > 120) {
             ss_bins_forward << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
             ss_bins_forward.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
 
       std::stringstream ss_bins_reverse;
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (reverse) %s, bins_chromosome.size() = %ld, ", i + num_fwd_seqs, index_primary->get_headers()[i].c_str(), bins_chromosome[i + num_fwd_seqs].size()), "[]");
       float max_bin_value_reverse = 0;
       for (int64_t j = 0; j < bins_chromosome[i + num_fwd_seqs].size(); j++) {
         max_bin_value_reverse = std::max(max_bin_value_reverse, bins_chromosome[i + num_fwd_seqs][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
       for (int64_t j = 0; j < bins_chromosome[i + num_fwd_seqs].size(); j++) {
         if (bins_chromosome[i + num_fwd_seqs][j] > 0) {
           ss_bins_reverse << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i + num_fwd_seqs][j]);
           if (ss_bins_reverse.str().size() > 120) {
             ss_bins_reverse << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
             ss_bins_reverse.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
   return 0;
@@ -981,7 +981,7 @@ int GraphMap::RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData* ma
 //          int64_t reference_index = index->RawPositionToReferenceIndexWithReverse(y);
 //          int64_t reference_starting_pos = index->get_reference_starting_pos()[reference_index];
           if (reference_index < 0) {
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, hits_start, num_hits), "SelectRegionsWithHoughAndCircular");
             continue;
           }
 
@@ -1031,7 +1031,7 @@ int GraphMap::RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData* ma
     }
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
 
   int64_t num_bins_above_zero = 0;
   for (int64_t i = 0; i < (index_primary->get_num_sequences_forward() * 2); i++) {
@@ -1064,54 +1064,54 @@ int GraphMap::RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData* ma
   // Verbose all bin counts along each chromomsome.
 // Ovaj debug sam maknuo za brzinu kod profiliranja!
   if (parameters->verbose_level > 8 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Regions kmer count along reference:\n"), "OccuranceStatistics");
     // The tuple will contain: reference_id, bin_index, bin_count.
     for (int64_t i = 0; i < (index_primary->get_num_sequences_forward()); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (forward) %s, bins_chromosome.size() = %ld, ", i, index_primary->get_headers()[i].c_str(), bins_chromosome[i].size()), "[]");
       float max_bin_value_forward = 0;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         max_bin_value_forward = std::max(max_bin_value_forward, bins_chromosome[i][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_forward), "[]");
       std::stringstream ss_bins_forward;
       for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
         if (bins_chromosome[i][j] > 0) {
           ss_bins_forward << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i][j]);
           if (ss_bins_forward.str().size() > 120) {
             ss_bins_forward << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
             ss_bins_forward.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_forward.str(), "[]");
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
 
       std::stringstream ss_bins_reverse;
-      LogSystem::GetInstance().VerboseLog(
+      LogSystem::GetInstance().Log(
       VERBOSE_LEVEL_ALL_DEBUG,
                                           read->get_sequence_id() == parameters->debug_read, FormatString("[ref %ld] (reverse) %s, bins_chromosome.size() = %ld, ", i + index_primary->get_num_sequences_forward(), index_primary->get_headers()[i].c_str(), bins_chromosome[i + index_primary->get_num_sequences_forward()].size()), "[]");
       float max_bin_value_reverse = 0;
       for (int64_t j = 0; j < bins_chromosome[i + index_primary->get_num_sequences_forward()].size(); j++) {
         max_bin_value_reverse = std::max(max_bin_value_reverse, bins_chromosome[i + index_primary->get_num_sequences_forward()][j]);
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("max_bin_value = %.2f\n", max_bin_value_reverse), "[]");
       for (int64_t j = 0; j < bins_chromosome[i + index_primary->get_num_sequences_forward()].size(); j++) {
         if (bins_chromosome[i + index_primary->get_num_sequences_forward()][j] > 0) {
           ss_bins_reverse << FormatString("[%4ld] = %.2f\t", j, bins_chromosome[i + index_primary->get_num_sequences_forward()][j]);
           if (ss_bins_reverse.str().size() > 120) {
             ss_bins_reverse << "\n";
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
             ss_bins_reverse.str("");
           }
         }
       }
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, ss_bins_reverse.str(), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
   return 0;

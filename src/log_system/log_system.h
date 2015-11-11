@@ -41,8 +41,8 @@ class LogSystem {
   std::string GenerateErrorMessage(uint32_t error_type,
                                           const char *additional_message, ...);
   int WriteLog(std::string log_entry, bool always_output_to_std=false);
-  int Log(int severity, std::string function, std::string message);
-  int VerboseLog(uint32_t verbose_level, bool trigger_condition, std::string message, std::string message_header="");
+  int Error(int severity, std::string function, std::string message);
+  int Log(uint32_t verbose_level, bool trigger_condition, std::string message, std::string message_header="");
   void SetProgramVerboseLevelFromInt(int64_t verbose_level);
 //  std::string GenerateMessage(const char *message, ...);
 

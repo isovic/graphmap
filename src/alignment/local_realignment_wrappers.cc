@@ -38,7 +38,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                                 128, -1, MYERS_MODE_HW, &current_score, &current_positions, &current_num_positions,
                                                 false, &current_alignment, &current_alignment_length);
   if (current_num_positions == 0 || myers_return_code != MYERS_STATUS_OK) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Something went wrong when calculating the ending position using Myers HW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, true, "Something went wrong when calculating the ending position using Myers HW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   alignment_end = current_positions[0];
@@ -46,13 +46,13 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
     *ret_end_ambiguity = current_num_positions;
 
   if (verbose_debug_output) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Alignment ending positions:\n", "CalculateAlignmentStartAndEnd");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Alignment ending positions:\n", "CalculateAlignmentStartAndEnd");
     for (int64_t i=0; i<current_num_positions; i++) {
       if (i > 0)
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString(" ", current_positions[i]), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("%ld", current_positions[i]), "[]");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString(" ", current_positions[i]), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("%ld", current_positions[i]), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "\n", "[]");
   }
 
   if (current_positions) { free (current_positions); }  current_positions = NULL;
@@ -70,7 +70,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                                 128, -1, MYERS_MODE_SHW, &current_score, &current_positions, &current_num_positions,
                                                 false, &current_alignment, &current_alignment_length, &current_band_width);
   if (current_num_positions == 0 || myers_return_code != MYERS_STATUS_OK) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Something went wrong when calculating the starting position using Myers SHW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Something went wrong when calculating the starting position using Myers SHW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   alignment_start = alignment_end - current_positions[0];
@@ -79,13 +79,13 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
     *ret_start_ambiguity = current_num_positions;
 
   if (verbose_debug_output) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Alignment starting positions:\n", "CalculateAlignmentStartAndEnd");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Alignment starting positions:\n", "CalculateAlignmentStartAndEnd");
     for (int64_t i=0; i<current_num_positions; i++) {
       if (i > 0)
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString(" ", current_positions[i]), "[]");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("%ld", current_positions[i]), "[]");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString(" ", current_positions[i]), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("%ld", current_positions[i]), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "\n", "[]");
   }
 
   if (current_positions) { free (current_positions); }  current_positions = NULL;
@@ -93,11 +93,11 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
   if (reverse_target) { delete[] reverse_target; } reverse_target = NULL;
   if (reverse_query) { delete[] reverse_query; } reverse_query = NULL;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment starting position: %ld\n", alignment_start), "CalculateAlignmentStartAndEnd");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment ending position: %ld\n", alignment_end), "CalculateAlignmentStartAndEnd");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment starting ambiguity: %ld\n", (*ret_start_ambiguity)), "CalculateAlignmentStartAndEnd");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment ending ambiguity: %ld\n", (*ret_end_ambiguity)), "CalculateAlignmentStartAndEnd");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Reference length: %ld\n", reference_length), "CalculateAlignmentStartAndEnd");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment starting position: %ld\n", alignment_start), "CalculateAlignmentStartAndEnd");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment ending position: %ld\n", alignment_end), "CalculateAlignmentStartAndEnd");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment starting ambiguity: %ld\n", (*ret_start_ambiguity)), "CalculateAlignmentStartAndEnd");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Alignment ending ambiguity: %ld\n", (*ret_end_ambiguity)), "CalculateAlignmentStartAndEnd");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, FormatString("Reference length: %ld\n", reference_length), "CalculateAlignmentStartAndEnd");
 
   *ret_alignment_start = alignment_start + rough_reference_start;
   *ret_alignment_end = alignment_end + rough_reference_start;
@@ -431,7 +431,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
   seqan::assignSource(row(align, 0), seq_target);
   seqan::assignSource(row(align, 1), seq_query);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("band_width = %ld\n", band_width), "SeqAnLocalRealignment");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("band_width = %ld\n", band_width), "SeqAnLocalRealignment");
 
   int result = -1;
 //  band_width = 0;
@@ -596,7 +596,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
 
   uint8_t *converted_data = new uint8_t[read_length];
   if (converted_data == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
     return 1;
   }
   for (int64_t i=0; i<read_length; i++) {
@@ -605,7 +605,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
 
   uint8_t *converted_ref = new uint8_t[reference_length];
   if (converted_ref == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
     return 1;
   }
   for (int64_t i=0; i<reference_length; i++) {
@@ -654,19 +654,19 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
 //                                      gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
 //                                      OPAL_MODE_SW, OPAL_OVERFLOW_BUCKETS);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Finished running Opal.\n", "OpalNWWrapper");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, "Finished running Opal.\n", "OpalNWWrapper");
 
   if (resultCode == OPAL_ERR_OVERFLOW) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
     return 2;
   }
   if (resultCode == OPAL_ERR_NO_SIMD_SUPPORT) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
+      LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
       return 3;
   }
 
   if (results[0]->alignment == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
     return 4;
   }
 
@@ -715,7 +715,7 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
 
   uint8_t *converted_data = new uint8_t[read_length];
   if (converted_data == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
     return 1;
   }
   for (int64_t i=0; i<read_length; i++) {
@@ -724,7 +724,7 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
 
   uint8_t *converted_ref = new uint8_t[reference_length];
   if (converted_ref == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
     return 1;
   }
   for (int64_t i=0; i<reference_length; i++) {
@@ -754,29 +754,29 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
                                                     OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_BUCKETS);
 
   if (resultCode == OPAL_ERR_OVERFLOW) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
     return 2;
   }
   if (resultCode == OPAL_ERR_NO_SIMD_SUPPORT) {
-      LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
+      LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
       return 3;
   }
 
   if (results[0]->alignment == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
     return 4;
   }
 
   if (results[0]->startLocationQuery > 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query start location is > 0!", "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, "Opal: query start location is > 0!", "ProcessRead");
   }
 
   if (results[0]->endLocationQuery > 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is > 0! results[0]->endLocationQuery = %d", results[0]->endLocationQuery), "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is > 0! results[0]->endLocationQuery = %d", results[0]->endLocationQuery), "ProcessRead");
   }
 
   if (results[0]->endLocationQuery < read_length) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is < read_length! results[0]->endLocationQuery = %d", results[0]->endLocationQuery), "ProcessRead");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is < read_length! results[0]->endLocationQuery = %d", results[0]->endLocationQuery), "ProcessRead");
   }
 
   *ret_alignment_position_start = results[0]->startLocationTarget;

@@ -72,7 +72,7 @@ int IndexSA::CreateIndex_(int8_t *data, uint64_t data_length) {
   int ret_val = divsufsort64((sauchar_t *) data, (saidx64_t *) sa, data_length);
 
   if (ret_val) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: ret_val (divsufsort64 return)."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: ret_val (divsufsort64 return)."));
     return 1;
   }
 
@@ -101,28 +101,28 @@ int IndexSA::IsManualCleanupRequired(std::string function_name) const {
 int IndexSA::DeserializeIndex_(FILE* fp_in) {
   uint64_t vector_length = 0;
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- suffix_array_...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- suffix_array_...\n"), "Deserialize_");
   if (fread(&vector_length, sizeof(vector_length), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable suffix_array_->size()."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable suffix_array_->size()."));
     return 1;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  vector_length = %ld...\n", vector_length), "Deserialize_");
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  freeing old suffix_array_...\n", vector_length), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  vector_length = %ld...\n", vector_length), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  freeing old suffix_array_...\n", vector_length), "Deserialize_");
   if (suffix_array_)
     delete[] suffix_array_;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  allocating new suffix_array_...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  allocating new suffix_array_...\n"), "Deserialize_");
   suffix_array_ = new int64_t[vector_length];
   if (suffix_array_ == NULL) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when allocating memory for suffix_array_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when allocating memory for suffix_array_."));
     return 2;
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  reading suffix_array_...\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  reading suffix_array_...\n"), "Deserialize_");
   if (fread(suffix_array_, sizeof(saidx64_t), vector_length, fp_in) != vector_length) {
-    LogSystem::GetInstance().Log(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable suffix_array_->data()."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable suffix_array_->data()."));
     return 3;
   }
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  done.\n"), "Deserialize_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t  done.\n"), "Deserialize_");
 
   return 0;
 }

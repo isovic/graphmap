@@ -57,7 +57,7 @@ std::string LogSystem::GenerateErrorMessage(uint32_t error_type,
     std::stringstream ss;
     ss << std::string("#") << std::string(error_type_as_string)
     << std::string(": ") << "Memory assertion failure. Possible cause - not enough memory or memory not allocated.";
-    Log(SEVERITY_INT_FATAL, __FUNCTION__, ss.str());
+    Error(SEVERITY_INT_FATAL, __FUNCTION__, ss.str());
 
     return ((std::string) "");
   }
@@ -139,7 +139,7 @@ int LogSystem::WriteLog(std::string log_entry, bool always_output_to_std) {
   return 0;
 }
 
-int LogSystem::Log(int severity, std::string function, std::string message) {
+int LogSystem::Error(int severity, std::string function, std::string message) {
   std::string timestamp = GetUTCTime();
   bool is_critical = (severity == SEVERITY_INT_ERROR || severity == SEVERITY_INT_FATAL);
 
@@ -172,7 +172,7 @@ int LogSystem::Log(int severity, std::string function, std::string message) {
 //                                         true,
 //                                         FormatString(""));
 
-int LogSystem::VerboseLog(uint32_t verbose_level, bool trigger_condition, std::string message, std::string message_header) {
+int LogSystem::Log(uint32_t verbose_level, bool trigger_condition, std::string message, std::string message_header) {
 
   if (trigger_condition == false)
     return 1;
@@ -220,6 +220,7 @@ int LogSystem::VerboseLog(uint32_t verbose_level, bool trigger_condition, std::s
       ((verbose_level & VERBOSE_LEVEL_HIGH) && (PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_HIGH))) {
     if ((PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_DEBUG) ||      // In debug mode output everything.
         ((PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_DEBUG) == (verbose_level & VERBOSE_LEVEL_DEBUG))) { //Otherwise, only output those that aren't debug messages.
+//    if (((PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_DEBUG) == (verbose_level & VERBOSE_LEVEL_DEBUG))) { //Otherwise, only output those that aren't debug messages.
       if (message_header == "[]") {
         fprintf (fp, "%s", message.c_str());
       }

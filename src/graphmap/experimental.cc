@@ -244,29 +244,29 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
     }
 
 //    int64_t min_covered_bases = (new_cluster->query.end - new_cluster->query.start + 1) * min_cluster_coverage;
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), "L1-PostProcessRegionWithLCS_");
   }
 
   return 0;
 }
 
 int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
   CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
   if (lcskpp_length == 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
     return 1;
   }
 
 #ifndef RELEASE_VERSION
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After LCSk:\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After LCSk:\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i = 0; i < lcskpp_indices.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s\n", i, local_score->get_registry_entries().VerboseToString(lcskpp_indices[i]).c_str()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s\n", i, local_score->get_registry_entries().VerboseToString(lcskpp_indices[i]).c_str()), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 #endif
 
@@ -394,17 +394,17 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, cluster_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
   if (ret_L1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function (I) returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function (I) returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
 
     #ifndef RELEASE_VERSION
       if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/scores-%ld.csv", local_score->get_scores_id()), read, local_score, NULL, 0, 0, false);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
       }
     #endif
@@ -420,7 +420,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   int64_t covered_bases = 0;
   int64_t covered_bases_query = 0, covered_bases_reference = 0;
   int64_t num_covering_kmers = 0;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
   for (uint64_t i = 0; i < cluster_indices.size(); i++) {
     covered_bases_query += local_score->get_registry_entries().covered_bases_queries[cluster_indices[i]];
     covered_bases_reference += local_score->get_registry_entries().covered_bases_references[cluster_indices[i]];
@@ -436,7 +436,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   // There are no valid graph paths! All scores were dismissed because of high deviation.
   // This is most likely a false positive.
   if (indexfirst == -1 || indexlast == -1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
     return 1;
   }
 
@@ -455,7 +455,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
   mapping_info.local_score_id = local_score->get_scores_id();
 
 #ifndef RELEASE_VERSION
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
 #endif
 
   for (int64_t i=0; i<clusters.size(); i++) {
@@ -470,7 +470,7 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 #ifndef RELEASE_VERSION
       int64_t reference_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
       int64_t region_start = local_score->get_region().start;
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
                                                                                                                                     mapping_cluster.query.start, mapping_cluster.ref.start - reference_start, mapping_cluster.query.end, mapping_cluster.ref.end - reference_start), "");
 #endif
 //      }
@@ -500,37 +500,37 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
 
   PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   mapping_data->intermediate_mappings.push_back(new_entry);
 
 #ifndef RELEASE_VERSION
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/scores-%ld.csv", local_score->get_scores_id()), read, local_score, NULL, 0, 0, false);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false, &cluster_ids);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, l, 3.0f * confidence_L1, true);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("LCSk clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("LCSk clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i=0; i<clusters.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] num_anchors: %ld, length: %ld, coverage: %ld, query.start = %ld, query.end = %ld\n", i, clusters[i]->num_anchors, (clusters[i]->query.end - clusters[i]->query.start), clusters[i]->coverage, clusters[i]->query.start, clusters[i]->query.end), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] num_anchors: %ld, length: %ld, coverage: %ld, query.start = %ld, query.end = %ld\n", i, clusters[i]->num_anchors, (clusters[i]->query.end - clusters[i]->query.start), clusters[i]->coverage, clusters[i]->query.start, clusters[i]->query.end), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_info.clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_info.clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i=0; i<mapping_info.clusters.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", i, mapping_info.clusters[i].query.start, mapping_info.clusters[i].query.end, mapping_info.clusters[i].ref.start, mapping_info.clusters[i].ref.end), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", i, mapping_info.clusters[i].query.start, mapping_info.clusters[i].query.end, mapping_info.clusters[i].ref.start, mapping_info.clusters[i].ref.end), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
 #endif
 
   for (int64_t i=0; i<clusters.size(); i++) {
@@ -549,11 +549,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                            int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
 
   if (best_path->get_mapping_data().clusters.size() <= 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "No valid anchors exist!", "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "No valid anchors exist!", "LocalRealignmentCircular");
     return ALIGNMENT_WRONG_CLUSTER_SIZE;
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Entering anchored alignment.\n", "AnchoredAlignment");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Entering anchored alignment.\n", "AnchoredAlignment");
   int8_t *ref_data = (int8_t *) index->get_data();
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
 
@@ -566,11 +566,11 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
   if (is_linear == false) {
     if (best_path->get_region_data().is_split == false) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
       return ALIGNMENT_NOT_CIRCULAR;
     }
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Concatenating regions for circular alignment.\n", "AnchoredAlignment");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Concatenating regions for circular alignment.\n", "AnchoredAlignment");
     ConcatenateSplitRegion(index, (Region &) best_path->get_region_data(), &ref_data, &region_length_joined, &start_offset, &position_of_ref_end);
     reference_start = 0;
     reference_length = region_length_joined;
@@ -599,7 +599,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
     } else {
       if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                             "Aligning the begining of the read (overhang).\n", "LocalRealignmentLinear");
       }
 
@@ -635,13 +635,13 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
           std::string alignment_as_string = "";
 
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1)), "[]");
           alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
                                                        (const unsigned char *) (reversed_ref_front), clip_count_front*2,
                                                        (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
                                                        (0), MYERS_MODE_SHW);
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str()), "[]");
         }
 
@@ -656,7 +656,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
   if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
     for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("[anchor %d] [%ld, %ld]-[%ld, %ld]\n", i, best_path->get_mapping_data().clusters[i].query.start, best_path->get_mapping_data().clusters[i].ref.start,
                                                        best_path->get_mapping_data().clusters[i].query.end, best_path->get_mapping_data().clusters[i].ref.end), "[]");
     }
@@ -664,9 +664,9 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
   for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
     if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           "Aligning an anchor.\n", "LocalRealignmentLinear");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("[anchor %d] [%ld, %ld]-[%ld, %ld]\n", i, best_path->get_mapping_data().clusters[i].query.start, best_path->get_mapping_data().clusters[i].ref.start,
                                                        best_path->get_mapping_data().clusters[i].query.end, best_path->get_mapping_data().clusters[i].ref.end), "[]");
     }
@@ -688,7 +688,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                      &anchor_alignment_position_start, &anchor_alignment_position_end,
                                      &anchor_edit_distance, anchor_alignment);
     if (ret_code1 != 0 || anchor_alignment.size() == 0) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("Alignment returned with error! ret_code1 = %d\n", ret_code1), "LocalRealignmentLinear");
       return ret_code1;
     }
@@ -699,7 +699,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                                    (const unsigned char *) (ref_data + ref_start), (ref_alignment_length),
                                                    (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
                                                    (0), MYERS_MODE_NW);
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                 FormatString("Aligned anchor %d:\n%s\n", i, alignment_as_string.c_str()), "[]");
     }
 
@@ -763,14 +763,14 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
       } else if (inbetween_query_length < 0 && inbetween_ref_length < 0) {
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     "Problem aligning in between anchors!\n", "LocalRealignmentLinear");
         }
         return ALIGNMENT_DISTANCE_BETWEEN_ANCHORS_PROBLEM;
 
       } else if (inbetween_query_length > 0 && inbetween_ref_length > 0) {
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               "Aligning in between anchors.\n", "LocalRealignmentLinear");
         }
 
@@ -823,9 +823,9 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 //        }
 
         if (ret_code2 != 0 || between_anchor_alignment.size() == 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               FormatString("Alignment returned with error! ret_code2 = %d\n", ret_code2), "LocalRealignmentLinear");
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               FormatString("inbetween_query_length = %ld\ninbetween_ref_length = %ld\nnext_ref_start = %ld\nref_end = %ld\n",
                                                            inbetween_query_length, inbetween_ref_length, next_ref_start, ref_end), "[]");
           return ret_code2;
@@ -838,7 +838,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                                        (const unsigned char *) (ref_data + ref_end) + 1, inbetween_ref_length,
                                                        (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
                                                        (0), MYERS_MODE_NW);
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("Aligning in between anchors %d and %d:\n%s\n", i, (i+1), alignment_as_string.c_str()), "[]");
         }
 
@@ -889,7 +889,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
     } else {
       if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                             "Aligning the end of the read (overhang).\n", "LocalRealignmentLinear");
       }
 
@@ -918,7 +918,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                                          (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
                                                          (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
                                                          (0), MYERS_MODE_SHW);
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                       FormatString("Aligning the end of the read:\n%s\n", alignment_as_string.c_str()), "[]");
           }
 
@@ -964,7 +964,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
 
   if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                         FormatString("alignment_position_start = %ld\nalignment_position_end = %ld\n",
                                         alignment_position_start, alignment_position_end), "LocalRealignmentLinear");
   }
@@ -982,7 +982,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                                (const unsigned char *) (ref_data + alignment_position_start), (alignment_position_end - alignment_position_start + 1),
                                                (unsigned char *) &(alignment[0]), alignment.size(),
                                                (0), MYERS_MODE_NW);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
   }
 #endif
@@ -1002,7 +1002,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       if (perform_reverse_complement == true) {
   //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
   //      read->ReverseComplement();
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                  FormatString("ERROR! Tried to explicitly reverse complement a read! This functionality is no longer allowed!"), "LocalRealignmentLinear");
         exit(1);
       }
@@ -1021,17 +1021,17 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 #ifndef RELEASE_VERSION
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
 //    printf ("Alignment array:\n");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment array:\n"), "[]");
     for (int i1=0; i1<alignment.size(); i1++) {
 //      printf ("%d", alignment[i1]);
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                FormatString("%d", alignment[i1]), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("\n"), "[]");
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
 
 //    printf ("Read:\n%s\n\n", ((char *) read->get_data()));
@@ -1040,7 +1040,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 #endif
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("Alignment is insane!\n"), "LocalRealignmentLinear");
       return ALIGNMENT_NOT_SANE;
     }
@@ -1056,8 +1056,8 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
     int64_t best_aligning_position = 0;
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_start = %ld\n", alignment_position_start), "LocalRealignmentCircular");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", alignment_position_end), "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_start = %ld\n", alignment_position_start), "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", alignment_position_end), "LocalRealignmentCircular");
 
     int64_t left_alignment_length = 0, left_alignment_start = 0, left_alignment_end = 0;
     int64_t right_alignment_length = 0, right_alignment_start = 0, right_alignment_end = 0;
@@ -1125,7 +1125,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       delete[] ref_data;
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("Alignment is insane!\n"), "LocalRealignmentLinear");
       return ALIGNMENT_NOT_SANE;
     }
@@ -1271,22 +1271,22 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 //}
 
 int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
   CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
   if (lcskpp_length == 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
     return 1;
   }
 
 #ifndef RELEASE_VERSION
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After LCSk:\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After LCSk:\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i = 0; i < lcskpp_indices.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s\n", i, local_score->get_registry_entries().VerboseToString(lcskpp_indices[i]).c_str()), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %s\n", i, local_score->get_registry_entries().VerboseToString(lcskpp_indices[i]).c_str()), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 #endif
 
@@ -1367,7 +1367,7 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
     if (cluster_length >= min_cluster_length && covered_bases >= min_covered_bases) {
       cluster_indices.insert(cluster_indices.end(), clusters[i]->lcskpp_indices.begin(), clusters[i]->lcskpp_indices.end());
     } else {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld, min_cluster_length = %ld, min_covered_bases = %ld\n", i, cluster_length, covered_bases, min_cluster_length, min_covered_bases), "L1-PostProcessRegionWithLCS_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld, min_cluster_length = %ld, min_covered_bases = %ld\n", i, cluster_length, covered_bases, min_cluster_length, min_covered_bases), "L1-PostProcessRegionWithLCS_");
     }
   }
 
@@ -1380,17 +1380,17 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, cluster_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
   if (ret_L1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function (I) returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function (I) returned with %ld!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
 
     #ifndef RELEASE_VERSION
       if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/scores-%ld.csv", local_score->get_scores_id()), read, local_score, NULL, 0, 0, false);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false);
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
       }
     #endif
@@ -1406,7 +1406,7 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
   int64_t covered_bases = 0;
   int64_t covered_bases_query = 0, covered_bases_reference = 0;
   int64_t num_covering_kmers = 0;
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Counting the covered bases and finding the first and the last brick index.\n"), "PostProcessRegionWithLCS_-DoubleLCSk");
   for (uint64_t i = 0; i < cluster_indices.size(); i++) {
     covered_bases_query += local_score->get_registry_entries().covered_bases_queries[cluster_indices[i]];
     covered_bases_reference += local_score->get_registry_entries().covered_bases_references[cluster_indices[i]];
@@ -1422,7 +1422,7 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
   // There are no valid graph paths! All scores were dismissed because of high deviation.
   // This is most likely a false positive.
   if (indexfirst == -1 || indexlast == -1) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, indexfirst = %ld, indexlast = %ld\n", indexfirst, indexlast), "L1-PostProcessRegionWithLCS_");
     return 1;
   }
 
@@ -1441,7 +1441,7 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
   mapping_info.local_score_id = local_score->get_scores_id();
 
 #ifndef RELEASE_VERSION
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
 #endif
 
   for (int64_t i=0; i<clusters.size(); i++) {
@@ -1456,7 +1456,7 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
 #ifndef RELEASE_VERSION
       int64_t reference_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
       int64_t region_start = local_score->get_region().start;
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
                                                                                                                                     mapping_cluster.query.start, mapping_cluster.ref.start - reference_start, mapping_cluster.query.end, mapping_cluster.ref.end - reference_start), "");
 #endif
       }
@@ -1486,37 +1486,37 @@ int GraphMap::LCSForAnchoredAlignment_(ScoreRegistry* local_score, MappingData* 
 
   PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   mapping_data->intermediate_mappings.push_back(new_entry);
 
 #ifndef RELEASE_VERSION
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing all anchors to file scores-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/scores-%ld.csv", local_score->get_scores_id()), read, local_score, NULL, 0, 0, false);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, l, 3.0f * confidence_L1, true);
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("LCSk clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("LCSk clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i=0; i<clusters.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] num_anchors: %ld, length: %ld, coverage: %ld, query.start = %ld, query.end = %ld\n", i, clusters[i]->num_anchors, (clusters[i]->query.end - clusters[i]->query.start), clusters[i]->coverage, clusters[i]->query.start, clusters[i]->query.end), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] num_anchors: %ld, length: %ld, coverage: %ld, query.start = %ld, query.end = %ld\n", i, clusters[i]->num_anchors, (clusters[i]->query.end - clusters[i]->query.start), clusters[i]->coverage, clusters[i]->query.start, clusters[i]->query.end), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_info.clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_info.clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i=0; i<mapping_info.clusters.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", i, mapping_info.clusters[i].query.start, mapping_info.clusters[i].query.end, mapping_info.clusters[i].ref.start, mapping_info.clusters[i].ref.end), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", i, mapping_info.clusters[i].query.start, mapping_info.clusters[i].query.end, mapping_info.clusters[i].ref.start, mapping_info.clusters[i].ref.end), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");
 #endif
 
   for (int64_t i=0; i<clusters.size(); i++) {
@@ -1549,11 +1549,11 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                            int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
 
   if (best_path->get_mapping_data().clusters.size() <= 0) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "No valid anchors exist!", "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "No valid anchors exist!", "LocalRealignmentCircular");
     return ALIGNMENT_WRONG_CLUSTER_SIZE;
   }
 
-  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Entering anchored alignment.\n", "AnchoredAlignment");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Entering anchored alignment.\n", "AnchoredAlignment");
   int8_t *ref_data = (int8_t *) index->get_data();
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
 
@@ -1566,11 +1566,11 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
   if (is_linear == false) {
     if (best_path->get_region_data().is_split == false) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Called the function for handling the circular part of the genome, but alignment is not split. best_path->region.is_split == false.\n\n"), "LocalRealignmentCircular");
       return ALIGNMENT_NOT_CIRCULAR;
     }
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Concatenating regions for circular alignment.\n", "AnchoredAlignment");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Concatenating regions for circular alignment.\n", "AnchoredAlignment");
     ConcatenateSplitRegion(index, (Region &) best_path->get_region_data(), &ref_data, &region_length_joined, &start_offset, &position_of_ref_end);
     reference_start = 0;
     reference_length = region_length_joined;
@@ -1599,7 +1599,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
     } else {
       if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                             "Aligning the begining of the read (overhang).\n", "LocalRealignmentLinear");
       }
 
@@ -1635,13 +1635,13 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
           std::string alignment_as_string = "";
 
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1)), "[]");
           alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
                                                        (const unsigned char *) (reversed_ref_front), clip_count_front*2,
                                                        (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
                                                        (0), MYERS_MODE_SHW);
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str()), "[]");
         }
 
@@ -1656,7 +1656,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
   if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
     for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("[anchor %d] [%ld, %ld]-[%ld, %ld]\n", i, best_path->get_mapping_data().clusters[i].query.start, best_path->get_mapping_data().clusters[i].ref.start,
                                                        best_path->get_mapping_data().clusters[i].query.end, best_path->get_mapping_data().clusters[i].ref.end), "[]");
     }
@@ -1664,9 +1664,9 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
   for (int64_t i=0; i<best_path->get_mapping_data().clusters.size(); i++) {
     if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           "Aligning an anchor.\n", "LocalRealignmentLinear");
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("[anchor %d] [%ld, %ld]-[%ld, %ld]\n", i, best_path->get_mapping_data().clusters[i].query.start, best_path->get_mapping_data().clusters[i].ref.start,
                                                        best_path->get_mapping_data().clusters[i].query.end, best_path->get_mapping_data().clusters[i].ref.end), "[]");
     }
@@ -1688,7 +1688,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                                      &anchor_alignment_position_start, &anchor_alignment_position_end,
                                      &anchor_edit_distance, anchor_alignment);
     if (ret_code1 != 0 || anchor_alignment.size() == 0) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("Alignment returned with error! ret_code1 = %d\n", ret_code1), "LocalRealignmentLinear");
       return ret_code1;
     }
@@ -1699,7 +1699,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                                                    (const unsigned char *) (ref_data + ref_start), (ref_alignment_length),
                                                    (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
                                                    (0), MYERS_MODE_NW);
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                 FormatString("Aligned anchor %d:\n%s\n", i, alignment_as_string.c_str()), "[]");
     }
 
@@ -1763,14 +1763,14 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
       } else if (inbetween_query_length < 0 && inbetween_ref_length < 0) {
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     "Problem aligning in between anchors!\n", "LocalRealignmentLinear");
         }
         return ALIGNMENT_DISTANCE_BETWEEN_ANCHORS_PROBLEM;
 
       } else if (inbetween_query_length > 0 && inbetween_ref_length > 0) {
         if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               "Aligning in between anchors.\n", "LocalRealignmentLinear");
         }
 
@@ -1823,9 +1823,9 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 //        }
 
         if (ret_code2 != 0 || between_anchor_alignment.size() == 0) {
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               FormatString("Alignment returned with error! ret_code2 = %d\n", ret_code2), "LocalRealignmentLinear");
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                               FormatString("inbetween_query_length = %ld\ninbetween_ref_length = %ld\nnext_ref_start = %ld\nref_end = %ld\n",
                                                            inbetween_query_length, inbetween_ref_length, next_ref_start, ref_end), "[]");
           return ret_code2;
@@ -1838,7 +1838,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                                                        (const unsigned char *) (ref_data + ref_end) + 1, inbetween_ref_length,
                                                        (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
                                                        (0), MYERS_MODE_NW);
-          LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("Aligning in between anchors %d and %d:\n%s\n", i, (i+1), alignment_as_string.c_str()), "[]");
         }
 
@@ -1889,7 +1889,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
     } else {
       if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                             "Aligning the end of the read (overhang).\n", "LocalRealignmentLinear");
       }
 
@@ -1918,7 +1918,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                                                          (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
                                                          (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
                                                          (0), MYERS_MODE_SHW);
-            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                       FormatString("Aligning the end of the read:\n%s\n", alignment_as_string.c_str()), "[]");
           }
 
@@ -1964,7 +1964,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
 
   if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                         FormatString("alignment_position_start = %ld\nalignment_position_end = %ld\n",
                                         alignment_position_start, alignment_position_end), "LocalRealignmentLinear");
   }
@@ -1982,7 +1982,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                                                (const unsigned char *) (ref_data + alignment_position_start), (alignment_position_end - alignment_position_start + 1),
                                                (unsigned char *) &(alignment[0]), alignment.size(),
                                                (0), MYERS_MODE_NW);
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
   }
 #endif
@@ -2002,7 +2002,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
       if (perform_reverse_complement == true) {
   //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
   //      read->ReverseComplement();
-        LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                  FormatString("ERROR! Tried to explicitly reverse complement a read! This functionality is no longer allowed!"), "LocalRealignmentLinear");
         exit(1);
       }
@@ -2021,17 +2021,17 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 #ifndef RELEASE_VERSION
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
 //    printf ("Alignment array:\n");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment array:\n"), "[]");
     for (int i1=0; i1<alignment.size(); i1++) {
 //      printf ("%d", alignment[i1]);
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                FormatString("%d", alignment[i1]), "[]");
     }
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("\n"), "[]");
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
 
 //    printf ("Read:\n%s\n\n", ((char *) read->get_data()));
@@ -2040,7 +2040,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 #endif
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("Alignment is insane!\n"), "LocalRealignmentLinear");
       return ALIGNMENT_NOT_SANE;
     }
@@ -2056,8 +2056,8 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
 
     int64_t best_aligning_position = 0;
 
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_start = %ld\n", alignment_position_start), "LocalRealignmentCircular");
-    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", alignment_position_end), "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_start = %ld\n", alignment_position_start), "LocalRealignmentCircular");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", alignment_position_end), "LocalRealignmentCircular");
 
     int64_t left_alignment_length = 0, left_alignment_start = 0, left_alignment_end = 0;
     int64_t right_alignment_length = 0, right_alignment_start = 0, right_alignment_end = 0;
@@ -2125,7 +2125,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
       delete[] ref_data;
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
-      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                           FormatString("Alignment is insane!\n"), "LocalRealignmentLinear");
       return ALIGNMENT_NOT_SANE;
     }
