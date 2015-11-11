@@ -151,7 +151,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     if (parameters->alignment_algorithm == "myers" || parameters->alignment_algorithm == "gotoh") {
       int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
     } else {
-      int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
     }
 
     local_score.Clear();

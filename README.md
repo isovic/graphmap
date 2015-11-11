@@ -1,14 +1,18 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.21__**  
-Release date: 02 June 2015  
+**__Current Version: 0.22__**  
+Release date: 12 November 2015  
 
 ### Quick start on Linux x64
-```
-git clone https://github.com/isovic/graphmap.git
-cd graphmap
-make
-./bin/Linux-x64/graphmap -r reference.fa -d reads.fasta -o output.sam
+```  
+git clone https://github.com/isovic/graphmap.git  
+cd graphmap  
+make  
+  
+# To align:  
+./bin/Linux-x64/graphmap -r reference.fa -d reads.fasta -o output.sam  
 
+# To overlap:  
+./bin/Linux-x64/graphmap -w owler -r reads.fasta -d reads.fasta -o output.mhap  
 ```  
 
 ### Description
@@ -65,8 +69,17 @@ More installation instructions can be found in the INSTALL file.
 # Align all reads from a given FASTA/FASTQ file using anchored alignment approach:  
 ./graphmap -a anchor -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
+# Overlap all reads from a given FASTA/FASTQ file and report overlaps in MHAP format (fast):
+./graphmap -w owler -r reads.fa -d reads.fa -o overlaps.mhap  
+
+# Overlap all reads from a given FASTA/FASTQ in a full GraphMap mode with generating alignments (slow):
+./graphmap -w overlapper -r reads.fa -d reads.fa -o overlaps.sam  
+
 # Align reads using the Gotoh for semiglobal alignment:  
 ./graphmap -a gotoh -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
+
+# Align reads using Gotoh alignment with anchored approach: 
+./graphmap -a anchorgotoh -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
 
 # Process reads from a circular genome:  
 ./graphmap -C -r escherichia_coli.fa -d reads.fastq -o alignments.sam  

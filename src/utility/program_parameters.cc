@@ -701,11 +701,11 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\n";
 
   ss << "\t# Overlap reads and produce alignments in SAM format:\n";
-  ss << "\t./graphmap -w overlapper -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";
+  ss << "\t./graphmap -w overlapper -r reads.fa -d reads.fa -o overlaps.sam\n";
   ss << "\n";
 
   ss << "\t# Overlap reads fast (Overlap With Long Erroneous Reads - OWLER), and generate MHAP output:\n";
-  ss << "\t./graphmap -w owler -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";
+  ss << "\t./graphmap -w owler -r reads.fa -d reads.fa -o overlaps.mhap\n";
   ss << "\n";
 
 //  ss << "\t# Process reads using more sensitive parameters for Illumina and nanopore data:\n";
