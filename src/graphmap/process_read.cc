@@ -87,28 +87,27 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   int64_t max_num_regions = parameters->max_num_regions;
   if (parameters->alignment_approach == "overlapper") {
     max_num_regions = mapping_data->bins.size();
-//    int64_t smaller_seq_length = std::min(read->get_sequence_length(), index->get_reference_lengths()[0]);
-//    min_allowed_bin_value = std::max((0.10f * mapping_data->bins.front().bin_value), 0.10f * read->get_sequence_length());
-//    min_allowed_bin_value = 0.10f * read->get_sequence_length();
-//    min_allowed_bin_value = 0.01f * read->get_sequence_length();
     min_allowed_bin_value = std::min(0.10f * read->get_sequence_length(), 100.0f);
   }
 
   mapping_data->num_region_iterations = 0;
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
-  for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
-    Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
-    ScoreRegistry local_score(region, i);
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+  // Just verbose.
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
+    for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
+      Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
+      ScoreRegistry local_score(region, i);
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+    }
   }
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
 
   // Process regions one by one.
   for (int64_t i = 0; i < mapping_data->bins.size() && i < max_num_regions; i++) {
-//    if (parameters->alignment_algorithm == "overlapper") {
-//      if (index->get_headers()[mapping_data->bins[i].reference_id % index->get_num_sequences_forward()] == ((std::string) read->get_header())) {
+//    if (parameters->alignment_approach == "overlapper") {
+//      if (mapping_data->bins[i].reference_id % index->get_num_sequences_forward() == read->get_sequence_id()) {
 //        continue;
 //      }
 //    }
@@ -126,28 +125,12 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
     // Region search needs to stop.
     if (ret_check < 0) {
-
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished returned with value to break! ret_check = %d\n", ret_check), "ProcessRead");
-
       break;
-
       // Another iteration needs to be performed.
     } else if (ret_check > 0) {
       mapping_data->num_region_iterations += 1;
-
-//      if (mapped_data.num_region_iterations > 1 && (num_similar_mappings_ - num_same_mappings_) > 10 && ret_check == 5) {
-//        std::stringstream ss;
-//        ss << "Unmapped_15_mapping_quality_is_zero_after_batch_completed." << "__readlength=" << read->get_sequence_length() << "__max_region_votes=" << mapped_data.bins.front().bin_value << "__num_region_iterations=" << mapped_data.num_region_iterations;
-//        mapped_data.unmapped_reason += ss.str();
-//        return 0;
-//      }
     }
-    // for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
-
-    //   if (mapping_data->bins[i].bin_value < min_allowed_bin_value)
-    //     break;
-    //   if (i >= parameters->max_num_regions && ((i > 0 && mapping_data->bins[i].bin_value != mapping_data->bins[i-1].bin_value) || i == 0))
-    //     break;
 
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
@@ -165,22 +148,12 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
-//    #ifndef RELEASE_VERSION
     if (parameters->alignment_algorithm == "myers" || parameters->alignment_algorithm == "gotoh") {
       int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
     } else {
       int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
     }
 
-//    if (parameters->alignment_algorithm == "anchor") {
-//      int ret_value_lcs = ExperimentalPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
-//    } else {
-//      int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
-//    }
-
-//    #else
-//        int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
-//    #endif
     local_score.Clear();
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {

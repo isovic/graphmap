@@ -909,10 +909,12 @@ int GraphMap::ExperimentalRegionSelection_(int64_t bin_size, MappingData* mappin
 
 int GraphMap::RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData* mapping_data, const IndexSpacedHashFast* index_primary, const IndexSpacedHashFast* index_secondary, const SingleSequence* read, const ProgramParameters* parameters) {
   int64_t readlength = read->get_sequence_length();
+  int64_t num_fwd_seqs = index_primary->get_num_sequences_forward();
+  bool self_overlap = (parameters->alignment_approach == "overlapper" && parameters->reference_path == parameters->reads_path);
 
   mapping_data->bin_size = bin_size;
 
-  float bin_size_inverse = 1.0f / ((float) bin_size);
+  float bin_size_inverse = (bin_size > 0) ? (1.0f / ((float) bin_size)) : (0.0f);
 
   std::vector<const IndexSpacedHashFast *> indexes = { index_primary, index_secondary };
 
@@ -929,8 +931,7 @@ int GraphMap::RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData* ma
   // Resizing containers for each chromosome.
   for (int64_t i = 0; i < index_primary->get_num_sequences_forward(); i++) {
     int64_t current_reference_length = index_primary->get_reference_lengths()[i];
-    int64_t current_num_bins = ceil(((float) current_reference_length) * bin_size_inverse);
-
+    int64_t current_num_bins = ceil(((float) current_reference_length) * bin_size_inverse) + 1;
     // Forward strand.
     bins_chromosome[i].resize(current_num_bins, 0);
     last_update_chromosome[i].resize(current_num_bins, 0);
@@ -971,6 +972,15 @@ int GraphMap::RegionSelectionSpacedHashFastv2_(int64_t bin_size, MappingData* ma
           int64_t position = hits[j];
           int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
           int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
+
+          if (self_overlap == true) {
+            if ((reference_index % num_fwd_seqs) == read->get_sequence_id()) {
+              continue;
+            }
+//            if (index->get_headers()[reference_index % num_fwd_seqs] == ((std::string) read->get_header())) {
+//              continue;
+//            }
+          }
 
           int64_t x = i;          // Coordinate on the read.
 //          int64_t y = position;   // Coordinate on the reference.

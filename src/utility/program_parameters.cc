@@ -6,89 +6,90 @@
  */
 
 #include "utility/program_parameters.h"
-#include "utility/argumentparser.h"
+#include "utility/argparser.h"
 #include "utility/utility_general.h"
 
-int ProcessArgs1(int argc, char **argv, ProgramParameters *parameters)
-{
-  if (argc == 1) {
-    VerboseShortHelpAndExit(argc, argv);
-  }
+//int ProcessArgs1(int argc, char **argv, ProgramParameters *parameters)
+//{
+//  if (argc == 1) {
+//    VerboseShortHelpAndExit(argc, argv);
+//  }
+//
+//  std::stringstream ss_command_line;
+//  for (int i=0; i<argc; i++) {
+//    if (i > 0)
+//      ss_command_line << " ";
+//    ss_command_line << argv[i];
+//  }
+//  parameters->command_line = ss_command_line.str();
+//
+//  ArgumentParser argparser;
 
-  std::stringstream ss_command_line;
-  for (int i=0; i<argc; i++) {
-    if (i > 0)
-      ss_command_line << " ";
-    ss_command_line << argv[i];
-  }
-  parameters->command_line = ss_command_line.str();
-
-  ArgumentParser argparser;
-//  argparser.AddArgument("o", "open", VALUE_TYPE_STRING, "", "Long description of the parameter. If too long, it will automatically be wrapped to 120 characters line width.", 0, "Basic options");
-//  argparser.AddArgument("a", "", VALUE_TYPE_NONE, "", "Test for only a short argument.", 0, "Basic options");
-//  argparser.AddArgument("", "threads", VALUE_TYPE_INT, "-1", "Test for only a long argument.", 0, "Basic options");
-//  argparser.AddArgument("", "", VALUE_TYPE_NONE, "", "Test for specifying no arguments.", 0, "Basic options");
-//  argparser.AddArgument("s", "start", VALUE_TYPE_NONE, "", "Starts something important.", 0, "Control options");
-//  argparser.AddArgument("", "reads1", VALUE_TYPE_STRING, "reads.fasta", "Path to the file with read sequences.", -2, "Input/Output");
-//  argparser.AddArgument("", "reads2", VALUE_TYPE_STRING, "reads2.fasta", "Path to the file with read sequences.", -1, "Input/Output");
-
-  argparser.AddArgument("r", "reference", VALUE_TYPE_STRING,   "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
-  argparser.AddArgument("i", "index",     VALUE_TYPE_STRING,   "", "Path to the index of the reference sequence. If not specified, index is generated in the same path as the reference file, with .gmidx extension.", 0, "Input/Output options");
-  argparser.AddArgument("d", "reads",     VALUE_TYPE_STRING,   "", "Path to the reads file (fastq or fasta).", 0, "Input/Output options");
-  argparser.AddArgument("o", "outsam",    VALUE_TYPE_STRING,   "", "Path to the output SAM file that will be generated.", 0, "Input/Output options");
-  argparser.AddArgument("D", "readsfldr", VALUE_TYPE_STRING,   "", "Path to a folder containing read files (in fastq or fasta format) to process. Cannot be used in combination with '-d' or '-o'.", 0, "Input/Output options");
-  argparser.AddArgument("O", "outfldr",   VALUE_TYPE_STRING,   "", "Path to a folder for placing SAM alignments. Use in combination with '-D'.", 0, "Input/Output options");
-  argparser.AddArgument("I", "idxonly",   VALUE_TYPE_NONE, "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
-  argparser.AddArgument("u", "keeporder", VALUE_TYPE_NONE, "0", "SAM alignments will be output after the processing has finished, in the order of input reads.", 0, "Input/Output options");
-  argparser.AddArgument("B", "batchsize", VALUE_TYPE_INT,   DEFAULT_BATCH_SIZE_IN_MB, "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
-
-  argparser.AddArgument("j", "kregion",     VALUE_TYPE_INT,   DEFUALT_K_REGION, "Region selection kmer size.", 0, "Algorithmic options");
-  argparser.AddArgument("k", "kgraph",      VALUE_TYPE_INT,   DEFAULT_K_GRAPH, "Graph construction kmer size.", 0, "Algorithmic options");
-  argparser.AddArgument("l", "nlinks",      VALUE_TYPE_INT,   DEFAULT_NUM_LINKS, "Number of edges per vertex.", 0, "Algorithmic options");
-  argparser.AddArgument("e", "errrate",     VALUE_TYPE_FLOAT, DEFAULT_ERROR_RATE, "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
-  argparser.AddArgument("m", "maxhits",     VALUE_TYPE_INT,   DEFAULT_MAX_NUM_HITS, "Maximum number of hits per kmer. If 0, threshold will be estimated automatically. If < 0, all hits will be taken into account.", 0, "Algorithmic options");
-  argparser.AddArgument("g", "maxreg",      VALUE_TYPE_INT,   DEFAULT_MAX_NUM_REGIONS, "If the final number of regions exceeds this amount, the read will be called unmapped. If 0, value will be dynamically determined. If < 0, no limit is set.", 0, "Algorithmic options");
-  argparser.AddArgument("q", "regcutoff",   VALUE_TYPE_INT,   DEFAULT_MAX_NUM_REGIONS_CUTOFF, "Attempt to heuristically reduce the number of regions if it exceeds this amount. Value <= 0 disables reduction but only if param -g is not 0. If -g is 0, the value of this parameter is set to 1/5 of maximum number of regions.", 0, "Algorithmic options");
-  argparser.AddArgument("f", "noedfilt",    VALUE_TYPE_NONE, "0", "Disables filtering by edit distance in the final step of mapping.", 0, "Algorithmic options");
-  argparser.AddArgument("C", "circular",    VALUE_TYPE_NONE, "0", "Reference sequence is a circular genome.", 0, "Algorithmic options");
-  argparser.AddArgument("F", "ambigdiff", VALUE_TYPE_FLOAT,   DEFAULT_MARGIN_FOR_AMBIGUITY, "All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0f accounts only for identical mappings.", 0, "Algorithmic options");
-  argparser.AddArgument("Z", "outall", VALUE_TYPE_NONE, "0", "If specified, all alignments within (-P FLT) will be output. Otherwise, single best alignment will be output.", 0, "Algorithmic options");
-  argparser.AddArgument("P", "parsimon",    VALUE_TYPE_NONE, "0", "If specified, the parsimonoius memory mode will be used. If omitted, a fast and sensitive (but 2x memory-hungry) mode will be used.", 0, "Algorithmic options");
-
-#ifndef RELEASE_VERSION
-  argparser.AddArgument("M", "match", VALUE_TYPE_INT,   DEFAULT_MATCH_SCORE, "Match score for the DP alignment.", 0, "Algorithmic options");
-  argparser.AddArgument("X", "mismatch", VALUE_TYPE_INT,   DEFAULT_MISMATCH_PENALTY, "Mismatch penalty for the DP alignment.", 0, "Algorithmic options");
-  argparser.AddArgument("G", "gapopen", VALUE_TYPE_INT,   DEFAULT_GAP_OPEN_PENALTY, "Gap open penalty for the DP alignment.", 0, "Algorithmic options");
-  argparser.AddArgument("E", "gapext", VALUE_TYPE_INT,   DEFAULT_GAP_EXTEND_PENALTY, "Gap extend penalty for the DP alignment.", 0, "Algorithmic options");
-  argparser.AddArgument("S", "kstep", VALUE_TYPE_INT,   DEFAULT_KMER_STEP, "Kmer step for region selection.", 0, "Algorithmic options");
-#endif
-
-#ifndef RELEASE_VERSION
-  argparser.AddArgument("y", "", VALUE_TYPE_INT,   DEFAULT_DEBUG_READ, "ID of the read to give the detailed verbose output.", 0, "Debug options");
-  argparser.AddArgument("Y", "", VALUE_TYPE_STRING,   "", "QNAME of the read to give the detailed verbose output. Has precedence over -y.", 0, "Debug options");
-  argparser.AddArgument("b", "verbosam", VALUE_TYPE_INT,   DEFAULT_VERBOSE_SAM_OUTPUT, "Helpful debug comments can be placed in SAM output lines (at the end). Comments can be turned of by setting this parameter to 0. Different values increase/decrease verbosity level.", 0, "Debug options");
-#endif
-
-  argparser.AddArgument("x", "preset", VALUE_TYPE_STRING,   "", "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are: 'illumina' and 'nanopore'.", 0, "General-purpose pre-set options");
-
-  argparser.AddArgument("t", "threads", VALUE_TYPE_INT,   DEFAULT_NUM_THREADS, "Number of threads to use. If '-1', number of threads will be equal to the number of cores.", 0, "Other options");
-  argparser.AddArgument("v", "verbose", VALUE_TYPE_INT,   DEFAULT_VERBOSE_LEVEL, "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
-  argparser.AddArgument("s", "startread", VALUE_TYPE_INT,   DEFAULT_START_READ, "Ordinal number of the read from which to start processing data.", 0, "Other options");
-  argparser.AddArgument("n", "numreads", VALUE_TYPE_INT,   DEFAULT_NUM_READS_TO_PROCESS, "Number of reads to process per batch. Value of '-1' processes all reads.", 0, "Other options");
-  argparser.AddArgument("h", "help", VALUE_TYPE_NONE, "0", "View this help.", 0, "Other options");
-
-  argparser.ProcessArguments(argc, argv);
-
-  fprintf (stderr, "%s", argparser.VerboseArgumentsByGroup().c_str());
-  fprintf (stderr, "\n");
-  fprintf (stderr, "Results of parsing the command line:\n");
-
-  argparser.VerboseArguments(stdout);
-
-  exit(1);
-
-  return 0;
-}
+////  argparser.AddArgument("o", "open", VALUE_TYPE_STRING, "", "Long description of the parameter. If too long, it will automatically be wrapped to 120 characters line width.", 0, "Basic options");
+////  argparser.AddArgument("a", "", VALUE_TYPE_NONE, "", "Test for only a short argument.", 0, "Basic options");
+////  argparser.AddArgument("", "threads", VALUE_TYPE_INT, "-1", "Test for only a long argument.", 0, "Basic options");
+////  argparser.AddArgument("", "", VALUE_TYPE_NONE, "", "Test for specifying no arguments.", 0, "Basic options");
+////  argparser.AddArgument("s", "start", VALUE_TYPE_NONE, "", "Starts something important.", 0, "Control options");
+////  argparser.AddArgument("", "reads1", VALUE_TYPE_STRING, "reads.fasta", "Path to the file with read sequences.", -2, "Input/Output");
+////  argparser.AddArgument("", "reads2", VALUE_TYPE_STRING, "reads2.fasta", "Path to the file with read sequences.", -1, "Input/Output");
+//
+//  argparser.AddArgument("r", "reference", VALUE_TYPE_STRING,   "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
+//  argparser.AddArgument("i", "index",     VALUE_TYPE_STRING,   "", "Path to the index of the reference sequence. If not specified, index is generated in the same path as the reference file, with .gmidx extension.", 0, "Input/Output options");
+//  argparser.AddArgument("d", "reads",     VALUE_TYPE_STRING,   "", "Path to the reads file (fastq or fasta).", 0, "Input/Output options");
+//  argparser.AddArgument("o", "outsam",    VALUE_TYPE_STRING,   "", "Path to the output SAM file that will be generated.", 0, "Input/Output options");
+//  argparser.AddArgument("D", "readsfldr", VALUE_TYPE_STRING,   "", "Path to a folder containing read files (in fastq or fasta format) to process. Cannot be used in combination with '-d' or '-o'.", 0, "Input/Output options");
+//  argparser.AddArgument("O", "outfldr",   VALUE_TYPE_STRING,   "", "Path to a folder for placing SAM alignments. Use in combination with '-D'.", 0, "Input/Output options");
+//  argparser.AddArgument("I", "idxonly",   VALUE_TYPE_NONE, "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
+//  argparser.AddArgument("u", "keeporder", VALUE_TYPE_NONE, "0", "SAM alignments will be output after the processing has finished, in the order of input reads.", 0, "Input/Output options");
+//  argparser.AddArgument("B", "batchsize", VALUE_TYPE_INT,   DEFAULT_BATCH_SIZE_IN_MB, "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
+//
+//  argparser.AddArgument("j", "kregion",     VALUE_TYPE_INT,   DEFUALT_K_REGION, "Region selection kmer size.", 0, "Algorithmic options");
+//  argparser.AddArgument("k", "kgraph",      VALUE_TYPE_INT,   DEFAULT_K_GRAPH, "Graph construction kmer size.", 0, "Algorithmic options");
+//  argparser.AddArgument("l", "nlinks",      VALUE_TYPE_INT,   DEFAULT_NUM_LINKS, "Number of edges per vertex.", 0, "Algorithmic options");
+//  argparser.AddArgument("e", "errrate",     VALUE_TYPE_FLOAT, DEFAULT_ERROR_RATE, "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
+//  argparser.AddArgument("m", "maxhits",     VALUE_TYPE_INT,   DEFAULT_MAX_NUM_HITS, "Maximum number of hits per kmer. If 0, threshold will be estimated automatically. If < 0, all hits will be taken into account.", 0, "Algorithmic options");
+//  argparser.AddArgument("g", "maxreg",      VALUE_TYPE_INT,   DEFAULT_MAX_NUM_REGIONS, "If the final number of regions exceeds this amount, the read will be called unmapped. If 0, value will be dynamically determined. If < 0, no limit is set.", 0, "Algorithmic options");
+//  argparser.AddArgument("q", "regcutoff",   VALUE_TYPE_INT,   DEFAULT_MAX_NUM_REGIONS_CUTOFF, "Attempt to heuristically reduce the number of regions if it exceeds this amount. Value <= 0 disables reduction but only if param -g is not 0. If -g is 0, the value of this parameter is set to 1/5 of maximum number of regions.", 0, "Algorithmic options");
+//  argparser.AddArgument("f", "noedfilt",    VALUE_TYPE_NONE, "0", "Disables filtering by edit distance in the final step of mapping.", 0, "Algorithmic options");
+//  argparser.AddArgument("C", "circular",    VALUE_TYPE_NONE, "0", "Reference sequence is a circular genome.", 0, "Algorithmic options");
+//  argparser.AddArgument("F", "ambigdiff", VALUE_TYPE_FLOAT,   DEFAULT_MARGIN_FOR_AMBIGUITY, "All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0f accounts only for identical mappings.", 0, "Algorithmic options");
+//  argparser.AddArgument("Z", "outall", VALUE_TYPE_NONE, "0", "If specified, all alignments within (-P FLT) will be output. Otherwise, single best alignment will be output.", 0, "Algorithmic options");
+//  argparser.AddArgument("P", "parsimon",    VALUE_TYPE_NONE, "0", "If specified, the parsimonoius memory mode will be used. If omitted, a fast and sensitive (but 2x memory-hungry) mode will be used.", 0, "Algorithmic options");
+//
+//#ifndef RELEASE_VERSION
+//  argparser.AddArgument("M", "match", VALUE_TYPE_INT,   DEFAULT_MATCH_SCORE, "Match score for the DP alignment.", 0, "Algorithmic options");
+//  argparser.AddArgument("X", "mismatch", VALUE_TYPE_INT,   DEFAULT_MISMATCH_PENALTY, "Mismatch penalty for the DP alignment.", 0, "Algorithmic options");
+//  argparser.AddArgument("G", "gapopen", VALUE_TYPE_INT,   DEFAULT_GAP_OPEN_PENALTY, "Gap open penalty for the DP alignment.", 0, "Algorithmic options");
+//  argparser.AddArgument("E", "gapext", VALUE_TYPE_INT,   DEFAULT_GAP_EXTEND_PENALTY, "Gap extend penalty for the DP alignment.", 0, "Algorithmic options");
+//  argparser.AddArgument("S", "kstep", VALUE_TYPE_INT,   DEFAULT_KMER_STEP, "Kmer step for region selection.", 0, "Algorithmic options");
+//#endif
+//
+//#ifndef RELEASE_VERSION
+//  argparser.AddArgument("y", "", VALUE_TYPE_INT,   DEFAULT_DEBUG_READ, "ID of the read to give the detailed verbose output.", 0, "Debug options");
+//  argparser.AddArgument("Y", "", VALUE_TYPE_STRING,   "", "QNAME of the read to give the detailed verbose output. Has precedence over -y.", 0, "Debug options");
+//  argparser.AddArgument("b", "verbosam", VALUE_TYPE_INT,   DEFAULT_VERBOSE_SAM_OUTPUT, "Helpful debug comments can be placed in SAM output lines (at the end). Comments can be turned of by setting this parameter to 0. Different values increase/decrease verbosity level.", 0, "Debug options");
+//#endif
+//
+//  argparser.AddArgument("x", "preset", VALUE_TYPE_STRING,   "", "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are: 'illumina' and 'nanopore'.", 0, "General-purpose pre-set options");
+//
+//  argparser.AddArgument("t", "threads", VALUE_TYPE_INT,   DEFAULT_NUM_THREADS, "Number of threads to use. If '-1', number of threads will be equal to the number of cores.", 0, "Other options");
+//  argparser.AddArgument("v", "verbose", VALUE_TYPE_INT,   DEFAULT_VERBOSE_LEVEL, "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
+//  argparser.AddArgument("s", "startread", VALUE_TYPE_INT,   DEFAULT_START_READ, "Ordinal number of the read from which to start processing data.", 0, "Other options");
+//  argparser.AddArgument("n", "numreads", VALUE_TYPE_INT,   DEFAULT_NUM_READS_TO_PROCESS, "Number of reads to process per batch. Value of '-1' processes all reads.", 0, "Other options");
+//  argparser.AddArgument("h", "help", VALUE_TYPE_NONE, "0", "View this help.", 0, "Other options");
+//
+//  argparser.ProcessArguments(argc, argv);
+//
+//  fprintf (stderr, "%s", argparser.VerboseArgumentsByGroup().c_str());
+//  fprintf (stderr, "\n");
+//  fprintf (stderr, "Results of parsing the command line:\n");
+//
+//  argparser.VerboseArguments(stdout);
+//
+//  exit(1);
+//
+//  return 0;
+//}
 
 int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
 {
@@ -344,13 +345,15 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         parameters->alignment_algorithm = std::string(optarg);
         break;
       case 'w':
-#ifndef RELEASE_VERSION
         parameters->alignment_approach = std::string(optarg);     // overlapper, owler; split? spliced? both?
+        if (parameters->alignment_approach == "overlapper") {
+          parameters->alignment_algorithm = "anchor";
+          parameters->evalue_threshold = 1e0;
+          parameters->output_multiple_alignments = 1;
+          parameters->margin_for_ambiguity = 0.50f;
+        }
+
         break;
-#else
-        parameters->alignment_approach = DEFAULT_ALIGNMENT_APPROACH;
-        break;
-#endif
       case 'L':
         parameters->outfmt = std::string(optarg);
         break;
@@ -365,7 +368,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
         sscanf (optarg, "%ld", &(parameters->match_score));
         break;
       case 'T':
-        sscanf (optarg, "%ld", &(parameters->match_extend_score));
+        sscanf (optarg, "%ld", &(parameters->mex_score));
         break;
       case 'X':
         sscanf (optarg, "%ld", &(parameters->mismatch_penalty));
@@ -588,11 +591,11 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-i STR\tPath to the index of the reference sequence. If not specified, index is generated\n\t\tin the same path as the reference file, with .gmidx extension.\n\t\tFor non-parsimonious mode, secondary index .gmidxsec is also generated.\n";
   ss << "\t-d STR\tPath to the reads file (fastq or fasta).\n";
   ss << "\t-o STR\tPath to the output file that will be generated.\n";
-#ifndef RELEASE_VERSION
-  ss << "\t-L STR\tFormat in which to output alignments [" << (DEFAULT_OUTPUT_FORMAT) << "]. Options are: \n";
-  ss << "\t             sam     - Standard SAM output.\n";
-  ss << "\t             afg     - AMOS overlap format.\n";
-#endif
+//  ss << "\t-L STR\tFormat in which to output alignments [" << (DEFAULT_OUTPUT_FORMAT) << "]. Options are: \n";
+//  ss << "\t             sam     - Standard SAM output (in normal and '-w overlap' modes).\n";
+//  ss << "\t             afg     - AMOS overlap format (use with '-w overlapper').\n";
+//  ss << "\t             mhap    - MHAP overlap format (use with '-w owler').\n";
+
   ss << "\n";
   ss << "\t-D STR\tPath to a folder containing read files (in fastq or fasta format) to process.\n\t\tCannot be used in combination with '-d' or '-o'.\n";
   ss << "\t-O STR\tPath to a folder for placing SAM alignments. Use in combination with '-D'.\n";
@@ -629,10 +632,10 @@ void VerboseUsageAndExit(FILE *fp) {
 //  ss << "\t-f\tDisables filtering by edit distance in the final step of mapping\n";
   ss << "\t-C\tReference sequence is a circular genome. [" << ((DEFAULT_IS_REFERENCE_CIRCULAR == false) ? ("false") : ("true")) << "]\n";
   ss << "\n";
-  ss << "\t-P FLT\tAll mapping positions within the given fraction of the top score will be counted for\n\t\tambiguity (mapping quality). Value of 0.0 counts only identical mappings. [" << DEFAULT_MARGIN_FOR_AMBIGUITY << "]\n";
+  ss << "\t-F FLT\tAll mapping positions within the given fraction of the top score will be counted for\n\t\tambiguity (mapping quality). Value of 0.0 counts only identical mappings. [" << DEFAULT_MARGIN_FOR_AMBIGUITY << "]\n";
   ss << "\t-Z\tIf specified, all alignments within (-P FLT) will be output to a file.\n\t\tOtherwise, only one alignment will be output.\n";
   ss << "\n";
-  ss << "\t-F\tIf specified, the parsimonious memory mode will be used. If omitted, a fast and sensitive\n\t\t(but 2x memory-hungry) mode will be used.\n";
+  ss << "\t-P\tIf specified, the parsimonious memory mode will be used. If omitted, a fast and sensitive\n\t\t(but 2x memory-hungry) mode will be used.\n";
   ss << "\n";
 
 #ifndef RELEASE_VERSION
@@ -644,19 +647,19 @@ void VerboseUsageAndExit(FILE *fp) {
 //    ss << "\t-w INT\tKmer step during graph construction (the number of bases to skip between\n\t\tbeginnings of every adjacent kmer) [" << DEFAULT_KMER_GRAPH_STEP << "]\n";
 //    ss << "\t-p\tOne kmer of a read can have multiple hits within the same region.\n\t\tThis parameter enables using multiple hits per region\n";
   ss << "\t-a STR\tSpecifies which algorithm should be used for alignment. Options are: [" << DEFAULT_ALIGNMENT_ALGORITHM << "]\n";
-  ss << "\t             myers     - Myers' bit-vector approach. Edit distance alignment.\n";
-  ss << "\t             gotoh     - Gotoh alignment with affine gaps.\n";
-  ss << "\t             anchor    - anchored alignment with end-to-end extension. Uses Myers' NW alignment.\n";
+  ss << "\t             myers       - Myers' bit-vector approach. Edit distance alignment.\n";
+  ss << "\t             gotoh       - Gotoh alignment with affine gaps.\n";
+  ss << "\t             anchor      - anchored alignment with end-to-end extension. Uses Myers' NW alignment.\n";
+  ss << "\t             anchorgotoh - anchored alignment with end-to-end extension. Uses Gotoh for alignment.\n";
 //  ss << "\t-w STR\tSpecifies the alignment strategy. Options are: [" << DEFAULT_ALIGNMENT_APPROACH << "]\n";
 //  ss << "\t             sg     - semiglobal alignment over best region. Can be used with both Myers and Gotoh.\n";
 //  ss << "\t             anchor - anchored alignment with end-to-end extension. Uses Myers alignment only.\n";
 //  ss << "\t             overlap - anchored alignment with end-to-end extension\n";
 //  ss << "\t             splice - spliced alignment (each anchor chain output separately)";
-#ifndef RELEASE_VERSION
   ss << "\t-w STR\tAlignment approach. Changes the way alignment algorithm is applied [" << DEFAULT_ALIGNMENT_APPROACH << "]. Options are: \n";
-  ss << "\t             overlapper - (Experimental) Runs the entire GraphMap pipeline with small modifications for better overlapping.\n";
-  ss << "\t             owler      - (Experimental) Runs reduced pipeline, does not produce alignments, extremely fast. Output in MHAP, AFG and DOT formats.\n";
-#endif
+  ss << "\t             overlapper - (Experimental) Runs the entire GraphMap pipeline with small modifications for better overlapping. Output in SAM format.\n";
+  ss << "\t                          This is also a composite parameter - it changes the value of other parameters to: '-a anchor -Z -F 0.50 -z 1e0'.\n";
+  ss << "\t             owler      - (Experimental) Runs reduced pipeline, does not produce alignments, very fast. Output in MHAP format.\n";
 
   ss << "\t-M INT\tMatch score for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MATCH_SCORE << "]\n";
   ss << "\t-X INT\tMismatch penalty for the DP alignment. Ignored for Myers alignment. [" << DEFAULT_MISMATCH_PENALTY << "]\n";
@@ -692,6 +695,19 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t# Process all reads from a given FASTA/FASTQ file:\n";
   ss << "\t./graphmap -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";
   ss << "\n";
+
+  ss << "\t# Process all reads using anchored alignment:\n";
+  ss << "\t./graphmap -a anchor -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";
+  ss << "\n";
+
+  ss << "\t# Overlap reads and produce alignments in SAM format:\n";
+  ss << "\t./graphmap -w overlapper -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";
+  ss << "\n";
+
+  ss << "\t# Overlap reads fast (Overlap With Long Erroneous Reads - OWLER), and generate MHAP output:\n";
+  ss << "\t./graphmap -w owler -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";
+  ss << "\n";
+
 //  ss << "\t# Process reads using more sensitive parameters for Illumina and nanopore data:\n";
   ss << "\t# Process reads using more sensitive alignment parameters for Illumina data:\n";
 //  ss << "\t./graphmap -x nanopore -r escherichia_coli.fa -d reads.fastq -o alignments.sam\n";

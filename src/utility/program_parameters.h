@@ -55,7 +55,7 @@
 #define DEFAULT_CALCULATE_ONLY_INDEX      false
 
 #define DEFAULT_MATCH_SCORE               (int64_t) 5 // 5 // 4 // 1
-#define DEFAULT_MATCH_EXTEND_SCORE        (int64_t) 1
+#define DEFAULT_MEX_SCORE        (int64_t) 1
 #define DEFAULT_MISMATCH_PENALTY          (int64_t) 4 // 4 // 4 // 3
 #define DEFAULT_GAP_OPEN_PENALTY          (int64_t) 8 // 8 // 5 //1 // 6 // 5
 #define DEFAULT_GAP_EXTEND_PENALTY        (int64_t) 6 // 6 // 2 // 1 // 2
@@ -125,7 +125,7 @@ struct ProgramParameters {
   bool calc_only_index = DEFAULT_CALCULATE_ONLY_INDEX;
 
   int64_t match_score = DEFAULT_MATCH_SCORE;
-  int64_t match_extend_score = DEFAULT_MATCH_EXTEND_SCORE;
+  int64_t mex_score = DEFAULT_MEX_SCORE;
   int64_t mismatch_penalty = DEFAULT_MISMATCH_PENALTY;
   int64_t gap_open_penalty = DEFAULT_GAP_OPEN_PENALTY;
   int64_t gap_extend_penalty = DEFAULT_GAP_EXTEND_PENALTY;

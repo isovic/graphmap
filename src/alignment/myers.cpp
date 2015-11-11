@@ -202,21 +202,12 @@ int myersCalcEditDistance(const unsigned char* query, int queryLength,
                                     alphabetLength, *bestScore, &alnBestScore, 
                                     &alnPosition, true, &alignData);
             if (queryLength <= 0 || (targetEnd - targetStart + 1) <= 0) {
-//#ifndef RELEASE_VERSION
-//                  fprintf (stderr, "ERROR: Myers: queryLength <= 0 || (targetEnd - targetStart + 1) <= 0! queryLength = %d, targetStart = %d, targetEnd = %d\n", queryLength, targetStart, targetEnd);
-//                  fflush(stdout);
-//#endif
               return MYERS_STATUS_ERROR;
             }
             obtainAlignment(maxNumBlocks, queryLength, targetEnd - targetStart + 1, W, alnBestScore, 
                             alnPosition, alignData, alignment, alignmentLength);
         } else {
           if (queryLength <= 0 || targetLength <= 0) {
-//#ifndef RELEASE_VERSION
-//                  fprintf (stderr, "ERROR: Myers: queryLength <= 0 || targetLength <= 0!\n");
-//                  fflush(stdout);
-//#endif
-
             return MYERS_STATUS_ERROR;
           }
             obtainAlignment(maxNumBlocks, queryLength, targetLength, W, *bestScore, 

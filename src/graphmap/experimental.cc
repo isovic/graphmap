@@ -260,7 +260,6 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     return 1;
   }
 
-#ifndef RELEASE_VERSION
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("After LCSk:\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i = 0; i < lcskpp_indices.size(); i++) {
@@ -268,7 +267,6 @@ int GraphMap::ExperimentalPostProcessRegionWithLCS_(ScoreRegistry* local_score, 
     }
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   }
-#endif
 
 //  int64_t min_cluster_length = std::max(30.0f, read->get_sequence_length() * 0.02f);
 //  int64_t min_covered_bases = 20;
@@ -975,7 +973,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                            parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
                            ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
 
-#ifndef RELEASE_VERSION
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
     std::string alignment_as_string = "";
     alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data()), read->get_sequence_length(),
@@ -985,7 +982,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
   }
-#endif
 
 
 
@@ -1018,26 +1014,15 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     *ret_reference_id = reference_id;
     *ret_position_ambiguity = 0;
 
-#ifndef RELEASE_VERSION
-  if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
-//    printf ("Alignment array:\n");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("Alignment array:\n"), "[]");
-    for (int i1=0; i1<alignment.size(); i1++) {
-//      printf ("%d", alignment[i1]);
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                               FormatString("%d", alignment[i1]), "[]");
+    if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Alignment array:\n"), "[]");
+      for (int i1=0; i1<alignment.size(); i1++) {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
+      }
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("\n"), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
+
     }
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("\n"), "[]");
-
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
-
-//    printf ("Read:\n%s\n\n", ((char *) read->get_data()));
-  }
-
-#endif
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
@@ -1611,7 +1596,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
       std::vector<unsigned char> leftover_left_alignment;
       int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
                                        (int8_t *) (reversed_ref_front), (clip_count_front*2),
-                                       -1, parameters.match_score, parameters.match_extend_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                                       -1, parameters.match_score, parameters.mex_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_left_start, &leftover_left_end,
                                        &leftover_left_edit_distance, leftover_left_alignment);
       if (ret_code_right != 0) {
@@ -1684,7 +1669,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
     std::vector<unsigned char> anchor_alignment;
     int ret_code1 = AlignmentFunctionNW(read->get_data() + query_start, (query_alignment_length),
                                         (int8_t *) (ref_data + ref_start), (ref_alignment_length),
-                                     -1, parameters.match_score, parameters.match_extend_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                                     -1, parameters.match_score, parameters.mex_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                      &anchor_alignment_position_start, &anchor_alignment_position_end,
                                      &anchor_edit_distance, anchor_alignment);
     if (ret_code1 != 0 || anchor_alignment.size() == 0) {
@@ -1778,7 +1763,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
         std::vector<unsigned char> between_anchor_alignment;
         int ret_code2 = AlignmentFunctionNW(read->get_data() + (query_end) + 1, inbetween_query_length,
                                             (int8_t *) (ref_data + ref_end) + 1, inbetween_ref_length,
-                                         -1, parameters.match_score, parameters.match_extend_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                                         -1, parameters.match_score, parameters.mex_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                          &between_alignment_position_start, &between_alignment_position_end,
                                          &between_anchor_edit_distance, between_anchor_alignment);
 
@@ -1897,7 +1882,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
       std::vector<unsigned char> leftover_right_alignment;
       int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),
                                        (int8_t *) (ref_data + alignment_position_end + 1), (clip_count_back*2),
-                                       -1, parameters.match_score, parameters.match_extend_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                                       -1, parameters.match_score, parameters.mex_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_right_start, &leftover_right_end,
                                        &leftover_right_edit_distance, leftover_right_alignment);
       if (ret_code_right != 0) {
@@ -2018,26 +2003,14 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
     *ret_reference_id = reference_id;
     *ret_position_ambiguity = 0;
 
-#ifndef RELEASE_VERSION
-  if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
-//    printf ("Alignment array:\n");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("Alignment array:\n"), "[]");
-    for (int i1=0; i1<alignment.size(); i1++) {
-//      printf ("%d", alignment[i1]);
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                               FormatString("%d", alignment[i1]), "[]");
+    if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Alignment array:\n"), "[]");
+      for (int i1=0; i1<alignment.size(); i1++) {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
+      }
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("\n"), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
     }
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("\n"), "[]");
-
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
-
-//    printf ("Read:\n%s\n\n", ((char *) read->get_data()));
-  }
-
-#endif
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,

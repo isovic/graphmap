@@ -583,7 +583,7 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
 
 int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
-                   int64_t band_width, int64_t match_score, int64_t match_extend_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
 
@@ -622,7 +622,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   }
 
 //  printf ("match_score = %ld\n", match_score);
-//  printf ("match_extend_score = %ld\n", match_extend_score);
+//  printf ("mex_score = %ld\n", mex_score);
 //  printf ("mismatch_penalty = %ld\n", mismatch_penalty);
 //  printf ("gap_open_penalty = %ld\n", gap_open_penalty);
 //  printf ("gap_extend_penalty = %ld\n", gap_extend_penalty);
@@ -648,11 +648,8 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   };
 
   int resultCode = resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
-                                                    gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
+                                                    gap_open_penalty, gap_extend_penalty, mex_score, scoreMatrix, alphabet_length, results,
                                                     OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_SIMPLE);
-//  int resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
-//                                      gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
-//                                      OPAL_MODE_SW, OPAL_OVERFLOW_BUCKETS);
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, "Finished running Opal.\n", "OpalNWWrapper");
 
@@ -706,7 +703,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
 
 int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
-                   int64_t band_width, int64_t match_score, int64_t match_extend_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment) {
 
@@ -750,7 +747,7 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
   };
 
   int resultCode = resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
-                                                    gap_open_penalty, gap_extend_penalty, match_extend_score, scoreMatrix, alphabet_length, results,
+                                                    gap_open_penalty, gap_extend_penalty, mex_score, scoreMatrix, alphabet_length, results,
                                                     OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_BUCKETS);
 
   if (resultCode == OPAL_ERR_OVERFLOW) {

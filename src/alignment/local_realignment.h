@@ -130,17 +130,4 @@ int CountAlignmentOperations(std::vector<unsigned char> &alignment, const int8_t
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
                              int64_t *ret_eq, int64_t *ret_x, int64_t *ret_i, int64_t *ret_d, int64_t *ret_alignment_score, int64_t *ret_nonclipped_length);
 
-//int64_t RescoreAlignment(unsigned char *alignment, int64_t alignment_length, int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend);
-
-
-
-//#ifndef RELEASE_VERSION
-//  int LocalRealignmentLinearExperimental(AlignmentFunctionType AlignmentFunction, SingleSequence *read, Index *index, ProgramParameters &parameters, PathGraphEntry *best_path,
-//                             int64_t unused_reference_length, int64_t *ret_alignment_position, std::string *ret_cigar,
-//                             SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity);
-//  int LocalRealignmentCircularExperimental(AlignmentFunctionType AlignmentFunction, SingleSequence *read, Index *index, ProgramParameters &parameters, PathGraphEntry *best_path,
-//                             int64_t unused_reference_length, int64_t *ret_alignment_position, std::string *ret_cigar,
-//                             SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity);
-//#endif
-
 #endif /* MYERS_WRAPPER_H_ */

@@ -206,7 +206,7 @@ int Owler::BuildIndex(ProgramParameters &parameters) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
     }
-    ret_index_loaded = index_primary->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path, (parameters.verbose_level > 0));
+    ret_index_loaded = index_primary->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("owl"), (parameters.verbose_level > 0));
 
 //    if (parameters.parsimonious_mode == false ) {
 //      fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
