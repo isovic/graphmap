@@ -160,7 +160,7 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[]) {
             if (arguments_[argument_index].value_type != VALUE_TYPE_NONE) {      // This argument expects a value.
               if ((i + 1) < argc) {
                 arguments_[argument_index].value = argv[i + 1];
-                SetArgumentTarget_(arguments_[argument_index].target, arguments_[argument_index].value_type, arguments_[argument_index].value);
+                SetArgumentTarget_((void *) arguments_[argument_index].target, (ValueType) arguments_[argument_index].value_type, arguments_[argument_index].value);
                 i += 1;
               } else {
                 fprintf (stderr, "ERROR: Argument '%s' expects a value. Exiting.\n", arg.c_str());
@@ -214,7 +214,7 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[]) {
                 /// Check if there are actually any command line parameters left to load.
                 if ((i + 1) < argc) {
                   arguments_[argument_index].value = argv[i + 1];
-                  SetArgumentTarget_(arguments_[argument_index].target, arguments_[argument_index].value_type, arguments_[argument_index].value);
+                  SetArgumentTarget_((void *) arguments_[argument_index].target, (ValueType) arguments_[argument_index].value_type, arguments_[argument_index].value);
                   i += 1;
 
                 } else {
@@ -234,12 +234,12 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[]) {
       if (valid_args_positional_.find(position_back) != valid_args_positional_.end()) {
         arguments_[valid_args_positional_[position_back]].value = arg;
         arguments_[valid_args_positional_[position_back]].is_set = true;
-        SetArgumentTarget_(arguments_[valid_args_positional_[position_back]].target, arguments_[valid_args_positional_[position_back]].value_type, arguments_[valid_args_positional_[position_back]].value);
+        SetArgumentTarget_((void *) arguments_[valid_args_positional_[position_back]].target, (ValueType) arguments_[valid_args_positional_[position_back]].value_type, arguments_[valid_args_positional_[position_back]].value);
 
       } else if (valid_args_positional_.find(position_front) != valid_args_positional_.end()) {
         arguments_[valid_args_positional_[position_front]].value = arg;
         arguments_[valid_args_positional_[position_front]].is_set = true;
-        SetArgumentTarget_(arguments_[valid_args_positional_[position_front]].target, arguments_[valid_args_positional_[position_front]].value_type, arguments_[valid_args_positional_[position_front]].value);
+        SetArgumentTarget_((void *) arguments_[valid_args_positional_[position_front]].target, (ValueType) arguments_[valid_args_positional_[position_front]].value_type, arguments_[valid_args_positional_[position_front]].value);
 
       } else {
         fprintf (stderr, "ERROR: Unknown parameter value: '%s'. Exiting.\n\n", arg.c_str());
@@ -354,7 +354,7 @@ std::string ArgumentParser::VerboseUsage() {
       std::string empty_chars(num_empty_chars, ' ');
       ss << empty_chars;
 
-      ss << ValueTypeToStr(arguments_[it->second.at(i)].value_type);
+      ss << ValueTypeToStr((ValueType) arguments_[it->second.at(i)].value_type);
 //      if (arguments_[it->second.at(i)].value_type.size() >= 3)
 //        ss << arguments_[it->second.at(i)].value_type.substr(0, 3);
 //      else {
@@ -391,7 +391,7 @@ std::string ArgumentParser::VerboseArguments() {
   for (uint32_t i=0; i<arguments_.size(); i++) {
     ss << "'-" << arguments_[i].arg_short << "'\t";
     ss << "'--" << arguments_[i].arg_long << "'\t";
-    ss << "'" << ValueTypeToStr(arguments_[i].value_type) << "'\t";
+    ss << "'" << ValueTypeToStr((ValueType) arguments_[i].value_type) << "'\t";
     ss << "value = '" << arguments_[i].value << "'\t";
     ss << "default = '" << arguments_[i].default_value << "'\t";
     ss << "positional = " << arguments_[i].positional << "\t";

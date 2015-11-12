@@ -656,7 +656,8 @@ void VerboseUsageAndExit(FILE *fp) {
 //  ss << "\t             anchor - anchored alignment with end-to-end extension. Uses Myers alignment only.\n";
 //  ss << "\t             overlap - anchored alignment with end-to-end extension\n";
 //  ss << "\t             splice - spliced alignment (each anchor chain output separately)";
-  ss << "\t-w STR\tAlignment approach. Changes the way alignment algorithm is applied [" << DEFAULT_ALIGNMENT_APPROACH << "]. Options are: \n";
+  ss << "\t-w STR\tAdditional alignment approaches. Changes the way alignment algorithm is applied [" << DEFAULT_ALIGNMENT_APPROACH << "]. Options are: \n";
+  ss << "\t             sg         - Normal (default) alignment mode (non-overlapping).\n";
   ss << "\t             overlapper - (Experimental) Runs the entire GraphMap pipeline with small modifications for better overlapping. Output in SAM format.\n";
   ss << "\t                          This is also a composite parameter - it changes the value of other parameters to: '-a anchor -Z -F 0.50 -z 1e0'.\n";
   ss << "\t             owler      - (Experimental) Runs reduced pipeline, does not produce alignments, very fast. Output in MHAP format.\n";
