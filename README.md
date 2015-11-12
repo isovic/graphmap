@@ -12,6 +12,8 @@ Owler mode (Overlap With Long Erroneous Reads) skips the graph-mapping and align
 3. LCSk.  
 4. Filtering seeds reported by LCSk.  
 5. Output overlaps in MHAP-like format (instead of Jaccard score, fraction of bases covered by seeds is reported; instead of '# shared min-mers' the number of seeds which survived filtering is reported). Other formats will be supported soon.  
+
+Note that the overlappers are still experimental, and require thorough testing.  
   
 
 ### Quick start on Linux x64
