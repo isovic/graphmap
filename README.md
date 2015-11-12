@@ -2,6 +2,11 @@
 **__Current Version: 0.22__**  
 Release date: 12 November 2015  
 
+Updates:  
+- Many tiny bug fixes, mostly related to anchored alignment. It should be slightly more sensitive now.
+- Two overlap modes merged from the dev branch: '-w owler' (fast, uses a trimmed GraphMap pipeline, reports output in the MHAP format) and '-w overlapper' (full GraphMap pipeline including alignment, output in SAM format). For usage - check examples at the bottom.  
+
+
 ### Quick start on Linux x64
 ```  
 git clone https://github.com/isovic/graphmap.git  
