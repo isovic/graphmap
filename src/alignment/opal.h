@@ -18,6 +18,8 @@
 #ifndef OPAL_H
 #define OPAL_H
 
+#ifndef RELEASE_VERSION
+
 /***********************************************************************************
  *  - adapts score type and reports overflow if score does not fit in int
  *  - calculating column by column (not 4 of them at once)
@@ -185,6 +187,8 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif /* OPAL_H */

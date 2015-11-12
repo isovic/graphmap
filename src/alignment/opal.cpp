@@ -15,6 +15,8 @@
 //  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 //  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#ifndef RELEASE_VERSION
+
 #include <algorithm>
 #include <cassert>
 #include <climits>
@@ -1717,3 +1719,5 @@ extern void opalSearchResultSetScore(OpalSearchResult* result, int score) {
     result->scoreSet = 1;
     result->score = score;
 }
+
+#endif
