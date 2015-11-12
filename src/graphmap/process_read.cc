@@ -480,7 +480,9 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     /// TODO: This needs to happen in all cases! Currently only for testing purposes for anchored alignment.
     if (parameters->alignment_algorithm == "anchor") {
       /// Check if something went wrong and the read is unmapped.
-      if (evalue_left_part > ((double) 1e+300) || evalue_right_part > ((double) 1e+300)) {
+      if (evalue_left_part > ((double) 1e+300) || evalue_right_part > ((double) 1e+300) ||
+          (evalue_left_part > ((double) 1e0) && mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_query < 0.10f * read->get_sequence_length())) {
+
         mapping_data->unmapped_reason += FormatString("__Evalue_is_too_large__evalue_left_part=%e__evalue_right_part=%e", evalue_left_part, evalue_right_part);
         mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned = false;
         mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().unmapped_reason = mapping_data->unmapped_reason;

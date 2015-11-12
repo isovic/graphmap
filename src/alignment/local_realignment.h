@@ -35,53 +35,17 @@
 
 
 
-
-//void VerboseAlignment(SingleSequence *read, ProgramParameters &parameters, VertexData &vertex, std::string &cigar, int current_score,
-//                      const unsigned char* query, const int query_length,
-//                      const unsigned char* target, const int target_length,
-//                      const unsigned char* alignment, const int alignment_length,
-//                      const int position, const int mode_code);
-
-
-
-//typedef int (*AlignmentFunctionType)(int8_t *read_data, int64_t read_length,
-//                 int8_t *reference_data, int64_t reference_length,
-//                 int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
-//                 int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
-//                 int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
-//
-//int MyersEditDistanceWrapper(int8_t *read_data, int64_t read_length,
-//                 int8_t *reference_data, int64_t reference_length,
-//                 int64_t *ret_alignment_position_end,
-//                 int64_t *ret_edit_distance, int myers_mode_code=MYERS_MODE_HW);
-
 typedef int (*AlignmentFunctionType)(const int8_t*, int64_t, const int8_t*, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t*, int64_t*, int64_t*, std::vector<unsigned char> &);
 typedef int (*EditDistanceFunctionType)(const int8_t*, int64_t, const int8_t*, int64_t, int64_t*, int64_t*, int);
 
 typedef int (*AlignmentFunctionTypeMex)(const int8_t*, int64_t, const int8_t*, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t*, int64_t*, int64_t*, std::vector<unsigned char> &);
 
-//int ClipCircularAlignment(int64_t alignment_start, int64_t alignment_end, unsigned char *alignment, int64_t alignment_length,
-//                   int64_t read_length, int64_t reference_start, int64_t reference_length, int64_t split_region_start_offset, int64_t position_of_ref_end,
-//                   unsigned char **ret_clipped_alignment, int64_t *ret_clipped_alignment_length,
-//                   int64_t *ret_clipped_alignment_pos_start, int64_t *ret_clipped_alignment_pos_end);
 int ClipCircularAlignment(int64_t alignment_start, int64_t alignment_end, unsigned char *alignment, int64_t alignment_length,
                           int64_t read_length, int64_t reference_start, int64_t reference_length, int64_t split_region_start_offset, int64_t position_of_ref_end,
                           unsigned char **ret_left_alignment, int64_t *ret_left_alignment_length,
                           int64_t *ret_left_alignment_pos_start, int64_t *ret_left_alignment_pos_end,
                           unsigned char **ret_right_alignment, int64_t *ret_right_alignment_length,
                           int64_t *ret_right_alignment_pos_start, int64_t *ret_right_alignment_pos_end);
-
-//int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, SingleSequence *read, Index *index, ProgramParameters &parameters, PathGraphEntry *best_path,
-//                           int64_t unused_reference_length, int64_t *ret_alignment_position, std::string *ret_cigar,
-//                           SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
-//                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement=true);
-//int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, SingleSequence *read, Index *index, ProgramParameters &parameters, PathGraphEntry *best_path,
-//                           int64_t unused_reference_length, int64_t *ret_alignment_position, std::string *ret_cigar,
-//                           SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
-//                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement=true);
-//int HybridRealignment(SingleSequence *read, Index *index, ProgramParameters &parameters, PathGraphEntry *best_path, int64_t reference_length,  int64_t *ret_alignment_position, std::string *ret_cigar,
-//                      SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
-//                      int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement=true);
 
 int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters &parameters, const PathGraphEntry *best_path,
                            int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part, int64_t *ret_nonclipped_left_part,
