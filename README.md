@@ -1,11 +1,18 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
 **__Current Version: 0.22__**  
 Release date: 12 November 2015  
-
+  
 Updates:  
-- Many tiny bug fixes, mostly related to anchored alignment. It should be slightly more sensitive now.
+- Many tiny bug fixes, mostly related to anchored alignment. It should be slightly more sensitive now.  
 - Two overlap modes merged from the dev branch: '-w owler' (fast, uses a trimmed GraphMap pipeline, reports output in the MHAP format) and '-w overlapper' (full GraphMap pipeline including alignment, output in SAM format). For usage - check examples at the bottom.  
 
+Owler mode (Overlap With Long Erroneous Reads) skips the graph-mapping and alignments steps. The full pipeline consists of:  
+1. Construct a gapped spaced index of the reads for only one shape (6-mers, "1111110111111").  
+2. For a read, collect all gapped spaced seed hits.  
+3. LCSk.  
+4. Filtering seeds reported by LCSk.  
+5. Output overlaps in MHAP-like format (instead of Jaccard score, fraction of bases covered by seeds is reported; instead of '# shared min-mers' the number of seeds which survived filtering is reported). Other formats will be supported soon.  
+  
 
 ### Quick start on Linux x64
 ```  
