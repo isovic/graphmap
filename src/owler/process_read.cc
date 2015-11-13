@@ -702,8 +702,8 @@ int Owler::CalcCoveredBases(std::vector<SeedHit2> &seed_hits, int64_t seed_lengt
   return 0;
 }
 
-OverlapResult Owler::GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
-                          int64_t read_id, int64_t read_length) {
+OverlapResult Owler::GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, std::string ref_header,
+                          int64_t read_id, int64_t read_length, bool read_reversed, std::string read_header) {
   OverlapResult ret;
 
 //  int64_t front_id = lcskpp_indices.front();
@@ -737,7 +737,7 @@ OverlapResult Owler::GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std
   ret.ref_id = ref_id;
   ret.jaccard_score = jaccard_score;
   ret.shared_minmers = shared_minmers;
-  ret.read_is_reverse = false;
+  ret.read_is_reverse = read_reversed;
   ret.read_start = A_start;
   ret.read_end = A_end;
   ret.read_length = read_length;
@@ -746,74 +746,51 @@ OverlapResult Owler::GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std
   ret.ref_end = B_end;
   ret.ref_length = reference_length;
 
+  ret.read_header = read_header;
+  ret.ref_header = ref_header;
+  ret.cov_bases_read = cov_bases_A;
+  ret.cov_bases_ref = cov_bases_B;
+
   ret.front_id = front_id;
   ret.back_id = back_id;
 
   return ret;
 }
 
-std::string Owler::OverlapToMHAP(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
-                          int64_t read_id, int64_t read_length) {
-  std::stringstream ret;
-
-//  int64_t front_id = lcskpp_indices.front();
-//  int64_t back_id = lcskpp_indices.back();
-  int64_t front_id = lcskpp_indices.back();
-  int64_t back_id = lcskpp_indices.front();
-
-  int64_t A_start = seed_hits[hits_start + back_id].query_pos;
-  int64_t A_end = seed_hits[hits_start + front_id].query_pos + 12;
-  int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
-  int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
-
-  if (ref_reversed) {
-    int64_t temp = B_start;
-    B_start = reference_length - B_end - 1;
-    B_end = reference_length - temp - 1;
-  }
-
-  int64_t shared_minmers = lcskpp_indices.size();
-
-//  int64_t covered_bases = shared_minmers * (12 + 1);
-  int64_t cov_bases_A = 0, cov_bases_B = 0;
-//  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases.\n", "OverlapToMHAP");
-  CalcCoveredBases(seed_hits, 13, lcskpp_indices, hits_start, hits_end, &cov_bases_A, &cov_bases_B);
-
-//  float jaccard_score = ((float) covered_bases) / ((float) std::min((A_end - A_start), (B_end - B_start)));
-  float jaccard_score = std::max(((float) cov_bases_A) / ((float) (A_end - A_start)), ((float) cov_bases_B) / ((float) (B_end - B_start)));
-
-  ret << read_id << " ";      /// read1_id
-  ret << ref_id << " ";      /// read2_id
-  ret << jaccard_score << " ";      /// Jaccard score
-  ret << shared_minmers << " ";        /// Shared minmers
-  ret << "0 ";        /// A is reverse
-  ret << A_start << " ";
-  ret << A_end << " ";
-  ret << read_length << " ";
-  ret << (ref_reversed ? 1 : 0) << " ";
-  ret << B_start << " ";
-  ret << B_end << " ";
-  ret << reference_length;
-
-  return ret.str();
-}
-
-std::string Owler::OverlapToAFG(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
-                          int64_t read_id, int64_t read_length) {
-  std::stringstream ret;
-
-  int64_t front_id = lcskpp_indices.front();
-  int64_t back_id = lcskpp_indices.back();
-
-  int64_t A_start = seed_hits[hits_start + back_id].query_pos;
-  int64_t A_end = seed_hits[hits_start + front_id].query_pos + 12;
-  int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
-  int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
-
+//std::string Owler::OverlapToMHAP(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
+//                          int64_t read_id, int64_t read_length) {
+//  std::stringstream ret;
+//
+////  int64_t front_id = lcskpp_indices.front();
+////  int64_t back_id = lcskpp_indices.back();
+//  int64_t front_id = lcskpp_indices.back();
+//  int64_t back_id = lcskpp_indices.front();
+//
+//  int64_t A_start = seed_hits[hits_start + back_id].query_pos;
+//  int64_t A_end = seed_hits[hits_start + front_id].query_pos + 12;
+//  int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
+//  int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
+//
+//  if (ref_reversed) {
+//    int64_t temp = B_start;
+//    B_start = reference_length - B_end - 1;
+//    B_end = reference_length - temp - 1;
+//  }
+//
+//  int64_t shared_minmers = lcskpp_indices.size();
+//
+////  int64_t covered_bases = shared_minmers * (12 + 1);
+//  int64_t cov_bases_A = 0, cov_bases_B = 0;
+////  LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, true, "Calling function CalcCoveredBases.\n", "OverlapToMHAP");
+//  CalcCoveredBases(seed_hits, 13, lcskpp_indices, hits_start, hits_end, &cov_bases_A, &cov_bases_B);
+//
+////  float jaccard_score = ((float) covered_bases) / ((float) std::min((A_end - A_start), (B_end - B_start)));
+//  float jaccard_score = std::max(((float) cov_bases_A) / ((float) (A_end - A_start)), ((float) cov_bases_B) / ((float) (B_end - B_start)));
+//
 //  ret << read_id << " ";      /// read1_id
 //  ret << ref_id << " ";      /// read2_id
-//  ret << "0.0 ";      /// Jaccard score
-//  ret << "0 ";        /// Shared minmers
+//  ret << jaccard_score << " ";      /// Jaccard score
+//  ret << shared_minmers << " ";        /// Shared minmers
 //  ret << "0 ";        /// A is reverse
 //  ret << A_start << " ";
 //  ret << A_end << " ";
@@ -822,33 +799,61 @@ std::string Owler::OverlapToAFG(std::vector<SeedHit2> &seed_hits, std::vector<in
 //  ret << B_start << " ";
 //  ret << B_end << " ";
 //  ret << reference_length;
-
-
-
-  std::string adj = (ref_reversed == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
-  int64_t read1_id = read_id + 1;
-  int64_t read2_id = ref_id + 1;
-  int64_t score = std::min((A_end - A_start), (B_end - B_start));
-
-  //ahg - Ahang. Length of the non-overlapping portion of the first read.
-  //bhg - Bhang. Length of the non-overlapping portion of the second read.
-  /// The position (alignment_start - clip_count_front) would be roughly where alignment of one reads starts on another.
-  /// If this value is > 0, the first read starts within read2, and thus ahang needs to be negative (hence the '-' sign).
-  int64_t ahang = 0; // - (alignment_start - clip_count_front);
-  int64_t bhang = 0; // reference_length - (alignment_end + clip_count_back);
-
-  ret << "{OVL" << "\n";
-  ret << "adj:" << adj << "\n";
-  ret << "rds:" << read1_id << "," << read2_id << "\n";
-  ret << "scr:" << score << "\n";
-  ret << "ahg:" << ahang << "\n";
-  ret << "bhg:" << bhang << "\n";
-  ret << "}";
-
-
-
-  return ret.str();
-}
+//
+//  return ret.str();
+//}
+//
+//std::string Owler::OverlapToAFG(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed,
+//                          int64_t read_id, int64_t read_length) {
+//  std::stringstream ret;
+//
+//  int64_t front_id = lcskpp_indices.front();
+//  int64_t back_id = lcskpp_indices.back();
+//
+//  int64_t A_start = seed_hits[hits_start + back_id].query_pos;
+//  int64_t A_end = seed_hits[hits_start + front_id].query_pos + 12;
+//  int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
+//  int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
+//
+////  ret << read_id << " ";      /// read1_id
+////  ret << ref_id << " ";      /// read2_id
+////  ret << "0.0 ";      /// Jaccard score
+////  ret << "0 ";        /// Shared minmers
+////  ret << "0 ";        /// A is reverse
+////  ret << A_start << " ";
+////  ret << A_end << " ";
+////  ret << read_length << " ";
+////  ret << (ref_reversed ? 1 : 0) << " ";
+////  ret << B_start << " ";
+////  ret << B_end << " ";
+////  ret << reference_length;
+//
+//
+//
+//  std::string adj = (ref_reversed == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
+//  int64_t read1_id = read_id + 1;
+//  int64_t read2_id = ref_id + 1;
+//  int64_t score = std::min((A_end - A_start), (B_end - B_start));
+//
+//  //ahg - Ahang. Length of the non-overlapping portion of the first read.
+//  //bhg - Bhang. Length of the non-overlapping portion of the second read.
+//  /// The position (alignment_start - clip_count_front) would be roughly where alignment of one reads starts on another.
+//  /// If this value is > 0, the first read starts within read2, and thus ahang needs to be negative (hence the '-' sign).
+//  int64_t ahang = 0; // - (alignment_start - clip_count_front);
+//  int64_t bhang = 0; // reference_length - (alignment_end + clip_count_back);
+//
+//  ret << "{OVL" << "\n";
+//  ret << "adj:" << adj << "\n";
+//  ret << "rds:" << read1_id << "," << read2_id << "\n";
+//  ret << "scr:" << score << "\n";
+//  ret << "ahg:" << ahang << "\n";
+//  ret << "bhg:" << bhang << "\n";
+//  ret << "}";
+//
+//
+//
+//  return ret.str();
+//}
 
 bool CheckContainment(int64_t A_start, int64_t A_end, int64_t A_length, int64_t B_start, int64_t B_end, int64_t B_length) {
   /// Check if A is contained in B
@@ -1114,6 +1119,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
   int64_t read_id = read->get_sequence_id();
   int64_t read_length = read->get_sequence_length();
   int64_t num_references_fwd = index->get_num_sequences_forward();
+  std::string read_header = read->get_header();
 
   int64_t previous_ref_id = 0, current_ref_id = 0, next_ref_id = 0;
   int64_t ref_streak_start = 0;
@@ -1141,6 +1147,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
       int64_t read_len = read->get_sequence_length();
       int64_t ref_id = owler_data->seed_hits2[i].ref_id;
       int64_t ref_len = index->get_reference_lengths()[ref_id];
+      std::string ref_header = index->get_headers()[ref_id % num_references_fwd];
 
       /// Check if there are enough hits on a reference to initiate the LCSk process.
       if ((i - ref_streak_start + 1) >= min_num_hits) {
@@ -1271,8 +1278,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
             LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- number of SV detected: %d\n", num_svs), "[]");
           }
 
-          found_overlaps.push_back(GenerateOverlapResult(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd),
-                                                         read_id, read_length));
+          found_overlaps.push_back(GenerateOverlapResult(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd), ref_header,
+                                                         read_id, read_length, false, read_header));
 
 //          if (parameters->outfmt == "afg") {
 //            if (owler_data->overlap_lines.size() > 0)
@@ -1344,7 +1351,15 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
     }
     if (owler_data->overlap_lines.size() > 0)
       owler_data->overlap_lines += "\n";
-    owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
+
+    /// Generate output lines.
+    if (parameters->outfmt == "mhap") {
+      owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
+//    } else if (parameters->outfmt == "afg") {
+//      owler_data->overlap_lines += found_overlaps[i].GenerateAFGLine();
+    } else {
+      owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
+    }
   }
 
   return 0;

@@ -398,7 +398,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
     } else if (parameters->outfmt == "sam") {
       mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
     } else {
-      LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to SAM output.", parameters->outfmt.c_str()));
+//      LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to SAM output.", parameters->outfmt.c_str()));
       mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
     }
 

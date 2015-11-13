@@ -128,3 +128,6 @@ More installation instructions can be found in the INSTALL file.
 
 For additional information, help and bug reports please send an email to one of the following:  
 ivan.sovic@irb.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
+
+### Acknowledgement  
+This work was supported by the IMaGIN platform (project No. 102 101 0025), through a grant from the Science and Engineering Research Council, funding to the Genome Institute of Singapore from the Agency for Science, Technology and Research (A*STAR), Singapore, and funding from the Croatian Science Foundation (Project no. UIP-11-2013-7353 - Algorithms for Genome Sequence Analysis).  

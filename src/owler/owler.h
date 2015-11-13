@@ -44,7 +44,7 @@ class OverlapResult {
   int64_t ref_id;
   float jaccard_score;
   int64_t shared_minmers;
-  bool read_is_reverse;
+  bool read_is_reverse;   /// In the MHAP-like output, read is always considered to be forward oriented.
   int64_t read_start;
   int64_t read_end;
   int64_t read_length;
@@ -56,11 +56,18 @@ class OverlapResult {
   int64_t front_id;
   int64_t back_id;
 
+  std::string read_header;
+  std::string ref_header;
+  int64_t cov_bases_read;
+  int64_t cov_bases_ref;
+
   OverlapResult() {
     read_id = ref_id = shared_minmers = read_start = read_end = read_length = ref_start = ref_end = ref_length = 0;
     jaccard_score = 0.0f;
     read_is_reverse = ref_is_reverse = false;
     front_id = back_id = 0;
+    cov_bases_read = cov_bases_ref = 0;
+    read_header = ref_header = "";
   }
 
   std::string GenerateMHAPLine() {
@@ -69,7 +76,7 @@ class OverlapResult {
     ret << (ref_id + 1) << " ";      /// read2_id
     ret << jaccard_score << " ";      /// Jaccard score
     ret << shared_minmers << " ";        /// Shared minmers
-    ret << "0 ";        /// A is reverse
+    ret << (read_is_reverse ? 1 : 0) << " ";  /// A is reverse
     ret << read_start << " ";
     ret << read_end << " ";
     ret << read_length << " ";
@@ -79,6 +86,41 @@ class OverlapResult {
     ret << ref_length;
     return ret.str();
   }
+
+  std::string GenerateAFGLine() {
+    std::stringstream ret;
+
+//    int64_t front_id = lcskpp_indices.front();
+//    int64_t back_id = lcskpp_indices.back();
+//
+//    int64_t A_start = seed_hits[hits_start + back_id].query_pos;
+//    int64_t A_end = seed_hits[hits_start + front_id].query_pos + 12;
+//    int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
+//    int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
+//
+//    std::string adj = (ref_reversed == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
+//    int64_t read1_id = read_id + 1;
+//    int64_t read2_id = ref_id + 1;
+//    int64_t score = std::min((A_end - A_start), (B_end - B_start));
+//
+//    //ahg - Ahang. Length of the non-overlapping portion of the first read.
+//    //bhg - Bhang. Length of the non-overlapping portion of the second read.
+//    /// The position (alignment_start - clip_count_front) would be roughly where alignment of one reads starts on another.
+//    /// If this value is > 0, the first read starts within read2, and thus ahang needs to be negative (hence the '-' sign).
+//    int64_t ahang = 0; // - (alignment_start - clip_count_front);
+//    int64_t bhang = 0; // reference_length - (alignment_end + clip_count_back);
+//
+//    ret << "{OVL" << "\n";
+//    ret << "adj:" << adj << "\n";
+//    ret << "rds:" << read1_id << "," << read2_id << "\n";
+//    ret << "scr:" << score << "\n";
+//    ret << "ahg:" << ahang << "\n";
+//    ret << "bhg:" << bhang << "\n";
+//    ret << "}";
+
+    return ret.str();
+  }
+
 };
 
 struct overlapresult_sort_key
@@ -136,7 +178,7 @@ class Owler {
   int OverlapLength(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *A_start, int64_t *A_end, int64_t *ret_query_length, int64_t *B_start, int64_t *B_end, int64_t *ret_ref_length);
   std::string OverlapMHAPVerbose(OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, int64_t ref_id, int64_t hits_start, std::vector<int> &lcskpp_indices);
 
-  OverlapResult GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, int64_t read_id, int64_t read_length);
+  OverlapResult GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, std::string ref_header, int64_t read_id, int64_t read_length, bool read_reversed, std::string read_header);
 
  private:
   SequenceFile *reference_;

@@ -199,14 +199,15 @@ int Owler::BuildIndex(ProgramParameters &parameters) {
 
   if (parameters.calc_only_index == false) {
     // Check if index already exists, if not generate it.
-    FILE *fp = fopen(parameters.index_reference_path.c_str(), "r");
+    std::string index_path = parameters.index_reference_path + std::string("owl");
+    FILE *fp = fopen(index_path.c_str(), "r");
     if (fp == NULL) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
     } else {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
     }
-    ret_index_loaded = index_primary->LoadOrGenerate(parameters.reference_path, parameters.index_reference_path + std::string("owl"), (parameters.verbose_level > 0));
+    ret_index_loaded = index_primary->LoadOrGenerate(parameters.reference_path, index_path, (parameters.verbose_level > 0));
 
 //    if (parameters.parsimonious_mode == false ) {
 //      fp = fopen((parameters.index_reference_path + std::string("sec")).c_str(), "r");
