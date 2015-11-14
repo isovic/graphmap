@@ -98,7 +98,6 @@ class OverlapResult {
 //    int64_t B_start = seed_hits[hits_start + back_id].ref_pos;
 //    int64_t B_end = seed_hits[hits_start + front_id].ref_pos + 12;
 //
-//    std::string adj = (ref_reversed == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
 //    int64_t read1_id = read_id + 1;
 //    int64_t read2_id = ref_id + 1;
 //    int64_t score = std::min((A_end - A_start), (B_end - B_start));
@@ -110,13 +109,37 @@ class OverlapResult {
 //    int64_t ahang = 0; // - (alignment_start - clip_count_front);
 //    int64_t bhang = 0; // reference_length - (alignment_end + clip_count_back);
 //
+
+//    std::string adj = (ref_is_reverse == false) ? OVERLAP_NORMAL : OVERLAP_INNIE;
 //    ret << "{OVL" << "\n";
 //    ret << "adj:" << adj << "\n";
-//    ret << "rds:" << read1_id << "," << read2_id << "\n";
+//    ret << "rds:" << (read_id + 1) << "," << (ref_id + 1) << "\n";
 //    ret << "scr:" << score << "\n";
 //    ret << "ahg:" << ahang << "\n";
 //    ret << "bhg:" << bhang << "\n";
 //    ret << "}";
+
+    return ret.str();
+  }
+
+  std::string GeneratePAFLine() {
+    std::stringstream ret;
+//    ret << ref_header << "\t";
+    if (read_header == "") { ret << (read_id + 1) << "\t"; } else { ret << TrimToFirstSpace(read_header) << "\t"; }
+    ret << read_length << "\t";
+    ret << read_start << "\t";
+    ret << read_end << "\t";
+
+    ret << (ref_is_reverse ? "-" : "+") << "\t";  /// Or maybe this should be (read_is_reverse)? In this case, upper and lower parts need to be switched (ref and read).
+    if (ref_header == "") { ret << (ref_id + 1) << "\t"; } else { ret << TrimToFirstSpace(ref_header) << "\t"; }
+    ret << ref_length << "\t";
+    ret << ref_start << "\t";
+    ret << ref_end << "\t";
+
+    ret << std::min(cov_bases_read, cov_bases_ref) << "\t";
+    ret << (((read_end - read_start) > (ref_end - ref_start)) ? (read_end - read_start) : (ref_end - ref_start)) << "\t";
+    ret << "255" << "\t";
+    ret << "cm:i:" << shared_minmers;
 
     return ret.str();
   }

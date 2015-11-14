@@ -591,10 +591,11 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-i STR\tPath to the index of the reference sequence. If not specified, index is generated\n\t\tin the same path as the reference file, with .gmidx extension.\n\t\tFor non-parsimonious mode, secondary index .gmidxsec is also generated.\n";
   ss << "\t-d STR\tPath to the reads file (fastq or fasta).\n";
   ss << "\t-o STR\tPath to the output file that will be generated.\n";
-//  ss << "\t-L STR\tFormat in which to output alignments [" << (DEFAULT_OUTPUT_FORMAT) << "]. Options are: \n";
-//  ss << "\t             sam     - Standard SAM output (in normal and '-w overlap' modes).\n";
+  ss << "\t-L STR\tFormat in which to output results [" << (DEFAULT_OUTPUT_FORMAT) << "]. Options are: \n";
+  ss << "\t             sam     - Standard SAM output (in normal and '-w overlap' modes).\n";
 //  ss << "\t             afg     - AMOS overlap format (use with '-w overlapper').\n";
-//  ss << "\t             mhap    - MHAP overlap format (use with '-w owler').\n";
+  ss << "\t             mhap    - MHAP overlap format (use with '-w owler').\n";
+  ss << "\t             paf    - MHAP overlap format (use with '-w owler').\n";
 
   ss << "\n";
   ss << "\t-D STR\tPath to a folder containing read files (in fastq or fasta format) to process.\n\t\tCannot be used in combination with '-d' or '-o'.\n";

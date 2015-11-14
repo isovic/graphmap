@@ -1355,8 +1355,10 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
     /// Generate output lines.
     if (parameters->outfmt == "mhap") {
       owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
-//    } else if (parameters->outfmt == "afg") {
-//      owler_data->overlap_lines += found_overlaps[i].GenerateAFGLine();
+    } else if (parameters->outfmt == "paf") {
+      owler_data->overlap_lines += found_overlaps[i].GeneratePAFLine();
+    } else if (parameters->outfmt == "afg") {
+      owler_data->overlap_lines += found_overlaps[i].GenerateAFGLine();
     } else {
       owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
     }
