@@ -142,6 +142,51 @@ class OwlerData {
   std::vector<Index*> *indexes_;
 };
 
+class OverlapResult {
+ public:
+  int64_t read_id;
+  int64_t ref_id;
+  float jaccard_score;
+  int64_t shared_minmers;
+  bool read_is_reverse;   /// In the MHAP-like output, read is always considered to be forward oriented.
+  int64_t read_start;
+  int64_t read_end;
+  int64_t read_length;
+  bool ref_is_reverse;
+  int64_t ref_start;
+  int64_t ref_end;
+  int64_t ref_length;
+
+  int64_t front_id;
+  int64_t back_id;
+
+  std::string read_header;
+  std::string ref_header;
+  int64_t cov_bases_read;
+  int64_t cov_bases_ref;
+
+  OverlapResult();
+  std::string GenerateMHAPLine();
+  std::string GenerateAFGLine();
+  std::string GeneratePAFLine();
+};
+
+struct overlapresult_sort_key
+{
+    inline bool operator() (const OverlapResult& op1, const OverlapResult& op2) {
+      if (op1.read_id == op2.read_id) {
+        if (op1.ref_id == op2.ref_id) {
+          return (op1.jaccard_score > op2.jaccard_score);
+        } else {
+          return (op1.ref_id < op2.ref_id);
+        }
+      } else {
+        return (op1.read_id < op2.read_id);
+      }
+      return false;
+    }
+};
+
 struct overlaps_greater_than_key
 {
     inline bool operator() (const PairwiseOverlapData& op1, const PairwiseOverlapData& op2) {
