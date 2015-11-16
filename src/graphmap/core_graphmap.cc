@@ -77,13 +77,14 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
   uint64_t hits_start = -1;
   uint64_t num_hits = 0;
   int64_t *hits = NULL;
+
   int ret_search = ((IndexHash *) index_read)->FindAllRawPositionsOfIncrementalSeed(kmer, (uint64_t) k, (uint64_t) parameters->max_num_hits, &hits, &hits_start, &num_hits);
 
   if (ret_search == 1) {      // There are no hits for the current kmer.
     return 1;
   } else if (ret_search == 2) {  // There are too many seeds for the current kmer.
     // We ignore this case, and we'll use all the hits.
-  } else if (ret_search > 2) {        // Something other went wrong.
+  } else if (ret_search > 2 || ret_search < 0) {        // Something other went wrong.
     return 2;
   }
 

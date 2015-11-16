@@ -468,6 +468,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   int64_t query_start = best_path->get_mapping_data().clusters.front().query.start; // - clip_count_front;
   int64_t query_end = best_path->get_mapping_data().clusters.back().query.end; // + clip_count_back;  /////I
 
+  /// Aligning the begining of the read (in front of the first anchor).
   if (clip_count_front > 0) {
     /// Check if we need to extend the alignment to the left boundary. Also, even if the user specified it, if we are to close to the boundary, just clip it.
     if (end_to_end == false || ((alignment_position_start - clip_count_front*2) < reference_start)) {
@@ -491,7 +492,10 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                        -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_left_start, &leftover_left_end,
                                        &leftover_left_edit_distance, leftover_left_alignment);
-      if (ret_code_right != 0) {
+      /// Check if the return code is ok. Otherwise, just clip the front.
+      /// Added on 15.11.2015.: check if the edit distance of the front part is too high. EDlib will automatically return an error code, but SeqAn won't.
+      /// An example is when the entire front part does not match (e.g. alignment of a read to a part of the reference consisted of N bases).
+      if (ret_code_right != 0 || leftover_left_edit_distance > clip_count_front/2) {
         // TODO: This is a nasty hack. EDlib used to crash when query and target are extremely small, e.g. query = "C" and target = "TC".
         // In this manner we just ignore the leading part, and clip it.
         std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
@@ -718,6 +722,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
 
 
+  /// Aligning the end of the read.
   if (clip_count_back > 0) {
     /// Handle the clipping at the end, or extend alignment to the end of the sequence.
     if (end_to_end == false || (alignment_position_end + 1 + clip_count_back * 2) >= (reference_start + reference_length)) {
@@ -737,7 +742,10 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                        -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_right_start, &leftover_right_end,
                                        &leftover_right_edit_distance, leftover_right_alignment);
-      if (ret_code_right != 0) {
+      /// Check if the return code is ok. Otherwise, just clip the back.
+      /// Added on 15.11.2015.: check if the edit distance of the back part is too high. EDlib will automatically return an error code, but SeqAn won't.
+      /// An example is when the entire back part does not match (e.g. alignment of a read to a part of the reference consisted of N bases).
+      if (ret_code_right != 0 || leftover_right_edit_distance > clip_count_back/2) {
         // TODO: This is a nasty hack. EDlib used to crash when query and target are extremely small, e.g. query = "C" and target = "TC".
         // In this manner we just ignore the trailing part, and clip it.
         std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);

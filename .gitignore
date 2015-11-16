@@ -5,6 +5,7 @@ obj_debug/
 obj_linux/
 obj_mac/
 obj_test/
+obj_testext/
 obj_extcigar/
 # bin/graphmap-not_release
 # bin/graphmap-debug

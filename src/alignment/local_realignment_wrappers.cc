@@ -130,6 +130,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
 
   std::vector<unsigned char> alignment;
 //  alignment.reserve(align.data_rows[0].
+  int64_t aln_edit_distance = 0;
 
   // Reinitilaize the iterators.
   TGapsIterator itGapsText = seqan::begin(gapsText);
@@ -141,6 +142,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
 
   if (alignment_type == ALIGNMENT_TYPE_NW || alignment_type == ALIGNMENT_TYPE_SHW) {
     alignment.insert(alignment.begin(), (*ret_start_offset), (char) EDLIB_D);
+    aln_edit_distance += (*ret_start_offset);
     *ret_start_offset = 0;
   }
 
@@ -155,6 +157,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
           alignment.insert(alignment.end(), num_gaps, (char) EDLIB_D);
           itGapsText += num_gaps;
           itGapsPattern += num_gaps;
+          aln_edit_distance += num_gaps;
           continue;
       }
       // Count deletions.
@@ -163,6 +166,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
           alignment.insert(alignment.end(), num_gaps, (char) EDLIB_I);
           itGapsText += num_gaps;
           itGapsPattern += num_gaps;
+          aln_edit_distance += num_gaps;
           continue;
       }
 
@@ -184,6 +188,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
       {
           ++numChar;
           alignment.insert(alignment.end(), 1, (char) EDLIB_X);
+          aln_edit_distance += 1;
           ++itGapsText;
           ++itGapsPattern;
       }
@@ -196,6 +201,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
 
   if (alignment_type == ALIGNMENT_TYPE_NW) {
     alignment.insert(alignment.end(), (*ret_end_offset), (char) EDLIB_D);
+    aln_edit_distance += (*ret_end_offset);
     *ret_end_offset = 0;
   }
 
@@ -214,6 +220,7 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
 //  *ret_end_offset = 0;
 
   ret_alignment = alignment;
+  *edit_distance = aln_edit_distance;
 
 //  if (alignment.size() > 0)
 //    cigar = AlignmentToCigar((unsigned char *) &alignment[0], alignment.size());

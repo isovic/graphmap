@@ -2,7 +2,8 @@ BIN = ./bin/graphmap-not_release
 BIN_DEBUG = ./bin/graphmap-debug
 BIN_LINUX = ./bin/Linux-x64/graphmap
 BIN_MAC = ./bin/Mac/graphmap
-OBJ = ./obj_test
+OBJ_TESTING = ./obj_test
+OBJ_TESTING_EXT = ./obj_testext
 OBJ_DEBUG = ./obj_debug
 OBJ_LINUX = ./obj_linux
 OBJ_EXTCIGAR = ./obj_extcigar
@@ -22,7 +23,8 @@ CC_FILES := $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc)
 H_FILES := $(wildcard $(SOURCE)/*/*.h) $(wildcard $(SOURCE)/*.h)
 
 OBJ_FILES := $(CPP_FILES:.cpp=.o) $(CC_FILES:.cc=.o)
-OBJ_FILES_FOLDER := $(addprefix $(OBJ)/,$(OBJ_FILES))
+OBJ_FILES_FOLDER_TESTING := $(addprefix $(OBJ_TESTING)/,$(OBJ_FILES))
+OBJ_FILES_FOLDER_TESTING_EXT := $(addprefix $(OBJ_TESTING_EXT)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_DEBUG := $(addprefix $(OBJ_DEBUG)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_LINUX := $(addprefix $(OBJ_LINUX)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_EXTCIGAR := $(addprefix $(OBJ_EXTCIGAR)/,$(OBJ_FILES))
@@ -36,6 +38,7 @@ CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp 
 CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread # -march=native
 CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
 CC_FLAGS_NOT_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
+CC_FLAGS_NOT_RELEASE_EXT = -O3 -DUSE_EXTENDED_CIGAR_FORMAT -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
 LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
 LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64
 
@@ -45,9 +48,9 @@ all: gcc_version_check linux
 
 
 
-testing: $(OBJ_FILES_FOLDER)
+testing: $(OBJ_FILES_FOLDER_TESTING)
 	mkdir -p $(dir $(BIN))
-	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN) $(OBJ_FILES_FOLDER) $(LD_LIBS)
+	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN) $(OBJ_FILES_FOLDER_TESTING) $(LD_LIBS)
 	
 obj_test/%.o: %.cc $(H_FILES)
 	mkdir -p $(dir $@)
@@ -56,6 +59,19 @@ obj_test/%.o: %.cc $(H_FILES)
 obj_test/%.o: %.cpp $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_NOT_RELEASE) -o $@ $<
+
+testingext: $(OBJ_FILES_FOLDER_TESTING_EXT)
+	mkdir -p $(dir $(BIN))
+	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN) $(OBJ_FILES_FOLDER_TESTING_EXT) $(LD_LIBS)
+	
+obj_testext/%.o: %.cc $(H_FILES)
+	mkdir -p $(dir $@)
+	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_NOT_RELEASE_EXT) -o $@ $<
+	
+obj_testext/%.o: %.cpp $(H_FILES)
+	mkdir -p $(dir $@)
+	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_NOT_RELEASE_EXT) -o $@ $<
+
 
 
 gcc_version_check:

@@ -225,19 +225,23 @@ int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& seque
 //  }
 
   int64_t hash_key = -1;
+  bool last_skipped = true;
 
   for (uint64_t i=0; i<(sequence.get_sequence_length() - k_ + 1); i++) {
     int8_t *seed_start = &(data_[i]);
 //    int64_t hash_key = GenerateHashKey(seed_start, k_);
 
-    if (i == 0) {
+    if (i == 0 || last_skipped == true) {
       hash_key = GenerateHashKey(seed_start, k_);
+      last_skipped = false;
     } else {
       hash_key = UpdateHashKey(seed_start, k_, hash_key);
     }
 
-    if (hash_key < 0)
+    if (hash_key < 0) {
+      last_skipped = true;
       continue;
+    }
 
 //    kmer_hash_[hash_key].push_back(((int64_t) i));
 //    printf ("\nkmer_counts[%ld] = %ld\n", hash_key, kmer_counts[hash_key]);
@@ -319,6 +323,7 @@ int IndexHash::FindAllRawPositionsOfIncrementalSeed(int8_t* seed, uint64_t seed_
   }
 
   if (hash_key < 0 || hash_key >= kmer_hash_size_) {
+    kmer_hash_last_key_initialized_ = false;
     return 3;
   }
 
