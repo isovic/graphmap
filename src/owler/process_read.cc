@@ -18,8 +18,8 @@
 
 
 int Owler::ProcessRead(OwlerData *owler_data, std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_absolute_id() == parameters->debug_read, FormatString("\n"), "[]");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_absolute_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
 
   // If the read length is too short, call it unmapped.
   if (read->get_sequence_length() < 80) {
@@ -183,9 +183,9 @@ int Owler::ProcessRead(OwlerData *owler_data, std::vector<Index *> indexes, cons
 //  GenerateAlignments_(mapping_data, index_primary, read, parameters, evalue_params);
 
   // Just verbose.
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
+  if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_absolute_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
   }
 
   return 0;
@@ -247,7 +247,7 @@ int Owler::CollectSeedHits(OwlerData* owler_data, std::vector<Index*> &indexes, 
         int64_t position_local = position - reference_start;
 
         if (reference_index < 0) {
-          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index.\n"), "SelectRegionsWithHoughAndCircular");
           continue;
         }
         /// Don't count self hits
@@ -300,11 +300,11 @@ int Owler::FilterUnlikelyOverlaps(OwlerData* owler_data, std::vector<Index*> &in
 
   /// Just verbose.
   for (int64_t i=0; i<owler_data->overlaps.size(); i++) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld / %ld] %s\n", i, owler_data->overlaps.size(), owler_data->overlaps[i].VerboseToString().c_str()), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("[%ld / %ld] %s\n", i, owler_data->overlaps.size(), owler_data->overlaps[i].VerboseToString().c_str()), "[]");
   }
 
 #ifndef RELEASE_VERSION
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+  if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing gapped qgrams to file.\n"), "FilterUnlikelyOverlaps");
     for (int64_t i=0; i<owler_data->overlaps.size(); i++) {
       std::string out_path = FormatString("temp/overlaps/scores-%ld.csv", owler_data->overlaps[i].ref_id_);
@@ -378,7 +378,7 @@ int Owler::ApplyLCS(OwlerData* owler_data, std::vector<Index*> &indexes, const S
     CalcLCSFromLocalScoresCacheFriendly_(owler_data, i, &lcskpp_length, &lcskpp_indices);
 
 #ifndef RELEASE_VERSION
-    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
     std::vector<SeedHit> filtered_seed_hits;
     filtered_seed_hits.resize(lcskpp_indices.size());
     for (int64_t j = 0; j < lcskpp_indices.size(); j++) {
@@ -1116,7 +1116,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
   Index *index = indexes[0];
 
-  int64_t read_id = read->get_sequence_id();
+  int64_t read_id = read->get_sequence_absolute_id();
   int64_t read_length = read->get_sequence_length();
   int64_t num_references_fwd = index->get_num_sequences_forward();
   std::string read_header = read->get_header();
@@ -1126,8 +1126,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
   int64_t num_output_overlaps = 0;
 
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+  if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, "\n", "[]");
   }
 
   std::vector<OverlapResult> found_overlaps;
@@ -1264,18 +1264,18 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
             overhang_ok == true) { // min_num_hits) {
 
 
-          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+          if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
             int64_t first_lcskpp_id = ref_streak_start + lcskpp_indices.back();
             int64_t last_lcskpp_id = ref_streak_start + lcskpp_indices.front();
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] /good/ start -> %s, end -> %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[ref_streak_start].VerboseToString().c_str(), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len), "[]");
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- start -> %s, (end) %s\n", owler_data->seed_hits2[first_lcskpp_id].VerboseToString().c_str(), owler_data->seed_hits2[last_lcskpp_id].VerboseToString().c_str()), "[]");
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- found different reference, [%ld, %ld]\n", ref_streak_start, i), "[]");
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\t- passed filter\n", "[]");
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- LCSk performed, lcskpp_indices.size() = %ld\n", lcskpp_indices.size()), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("[%ld] /good/ start -> %s, end -> %s, ref_id_fwd = %ld, read_len = %ld, ref_len = %ld\n", (num_output_overlaps + 1), owler_data->seed_hits2[ref_streak_start].VerboseToString().c_str(), owler_data->seed_hits2[i].VerboseToString().c_str(), (owler_data->seed_hits2[i].ref_id % index->get_num_sequences_forward()), read_len, ref_len), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("\t- start -> %s, (end) %s\n", owler_data->seed_hits2[first_lcskpp_id].VerboseToString().c_str(), owler_data->seed_hits2[last_lcskpp_id].VerboseToString().c_str()), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("\t- found different reference, [%ld, %ld]\n", ref_streak_start, i), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, "\t- passed filter\n", "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("\t- LCSk performed, lcskpp_indices.size() = %ld\n", lcskpp_indices.size()), "[]");
           }
 
-          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\t- number of SV detected: %d\n", num_svs), "[]");
+          if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, FormatString("\t- number of SV detected: %d\n", num_svs), "[]");
           }
 
           found_overlaps.push_back(GenerateOverlapResult(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, i, (current_ref_id % num_references_fwd), ref_length, (current_ref_id >= num_references_fwd), ref_header,
@@ -1306,13 +1306,13 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
           num_output_overlaps += 1;
         } else {
-          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+          if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read,
                                                 FormatString("[%ld] /bad/ (num_output_overlaps) current_ref_id=%ld, ref_id_fwd=%ld, overhang_ok = %d, num_svs = %d, lcskpp_indices.size() = %ld, qlen = %ld, rlen = %ld\n\t° query_overlap_length = %ld, min_perc_overlap_len*read_len = %ld\n\t° ref_overlap_length = %ld, min_perc_overlap_len*ref_len = %ld\n\t° size_diff = %f, perc_covered_bases_read = %f, perc_covered_bases_ref = %f, min_perc_covered_bases = %f\n\t° cov_bases_read = %ld, cov_bases_ref = %ld\n",
                                                              (num_output_overlaps + 1), current_ref_id, (current_ref_id % num_references_fwd), overhang_ok, num_svs, lcskpp_indices.size(), read_length, ref_len, query_overlap_length, (int64_t) min_perc_overlap_len*read_len, ref_overlap_length, (int64_t) min_perc_overlap_len*ref_len, size_diff, perc_covered_bases_read, perc_covered_bases_ref, min_perc_covered_bases, cov_bases_read, cov_bases_ref), "[]");
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read,
                                                 FormatString("\t° A_start = %ld, A_end = %ld\n", A_start, A_end),"[]");
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read,
                                                 FormatString("\t° B_start = %ld, B_end = %ld\n", B_start, B_end),"[]");
 //            LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
 //                                                FormatString("\t° dist_start = %ld, dist_end = %ld, max_overhang = %ld\n", dist_start, dist_end, max_overhang),"[]");
@@ -1324,7 +1324,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
 
       #ifndef RELEASE_VERSION
-          if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+          if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
             std::string reference_header = index->get_headers()[(current_ref_id % num_references_fwd)];
 
             WriteHits(FormatString("temp/overlaps/scores-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], NULL, NULL);
