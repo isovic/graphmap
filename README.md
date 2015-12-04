@@ -9,7 +9,7 @@ Updates:
 
 For more information on overlapping, take a look at [overlap.md](overlap.md).  
 
-GraphMap is also used as an overlapper in a new *de novo* genome assembly project called [Ra](https://github.com/mariokostelac/ra-integrate) [https://github.com/mariokostelac/ra-integrate](https://github.com/mariokostelac/ra-integrate).  
+GraphMap is also used as an overlapper in a new *de novo* genome assembly project called [Ra](https://github.com/mariokostelac/ra-integrate) ([https://github.com/mariokostelac/ra-integrate](https://github.com/mariokostelac/ra-integrate)).  
 Ra attempts to create *de novo* assemblies from raw nanopore and PacBio reads without requiring error correction, for which a highly sensitive overlapper is required.  
 
 
