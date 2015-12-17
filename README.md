@@ -4,17 +4,14 @@ Release date: 12 November 2015
   
 Updates:  
 - Many tiny bug fixes, mostly related to anchored alignment. It should be slightly more sensitive now.  
-- Two overlap modes merged from the dev branch: '-w owler' (fast, uses a trimmed GraphMap pipeline, reports output in the MHAP format) and '-w overlapper' (full GraphMap pipeline including alignment, output in SAM format). For usage - check examples at the bottom.  
+- Two overlap modes merged from the dev branch: ```-w owler``` (fast, uses a trimmed GraphMap pipeline, reports output in the MHAP format) and ```-w overlapper``` (full GraphMap pipeline including alignment, output in SAM format). For usage - check examples at the bottom.  
+- GraphMap integration into marginAlign - we forked marginAlign and extended it to support GraphMap alongside to LAST and BWA-MEM ([https://github.com/isovic/marginAlign](https://github.com/isovic/marginAlign)). Use parameters ```--graphmap``` or ```--graphmapanchor``` with marginAlign to specify the mapper.  
 
-Owler mode (Overlap With Long Erroneous Reads) skips the graph-mapping and alignments steps. The full pipeline consists of:  
-1. Construct a gapped spaced index of the reads for only one shape (6-mers, "1111110111111").  
-2. For a read, collect all gapped spaced seed hits.  
-3. LCSk.  
-4. Filtering seeds reported by LCSk.  
-5. Output overlaps in MHAP-like format (instead of Jaccard score, fraction of bases covered by seeds is reported; instead of '# shared min-mers' the number of seeds which survived filtering is reported). Other formats will be supported soon.  
+For more information on overlapping, take a look at [overlap.md](overlap.md).  
 
-Note that the overlappers are still experimental, and require thorough testing.  
-  
+GraphMap is also used as an overlapper in a new *de novo* genome assembly project called [Ra](https://github.com/mariokostelac/ra-integrate) ([https://github.com/mariokostelac/ra-integrate](https://github.com/mariokostelac/ra-integrate)).  
+Ra attempts to create *de novo* assemblies from raw nanopore and PacBio reads without requiring error correction, for which a highly sensitive overlapper is required.  
+
 
 ### Quick start on Linux x64
 ```  
