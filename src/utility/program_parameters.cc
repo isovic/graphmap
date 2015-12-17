@@ -634,7 +634,7 @@ void VerboseUsageAndExit(FILE *fp) {
   ss << "\t-C\tReference sequence is a circular genome. [" << ((DEFAULT_IS_REFERENCE_CIRCULAR == false) ? ("false") : ("true")) << "]\n";
   ss << "\n";
   ss << "\t-F FLT\tAll mapping positions within the given fraction of the top score will be counted for\n\t\tambiguity (mapping quality). Value of 0.0 counts only identical mappings. [" << DEFAULT_MARGIN_FOR_AMBIGUITY << "]\n";
-  ss << "\t-Z\tIf specified, all alignments within (-P FLT) will be output to a file.\n\t\tOtherwise, only one alignment will be output.\n";
+  ss << "\t-Z\tIf specified, all alignments within (-F FLT) will be output to a file.\n\t\tOtherwise, only one alignment will be output.\n";
   ss << "\n";
   ss << "\t-P\tIf specified, the parsimonious memory mode will be used. If omitted, a fast and sensitive\n\t\t(but 2x memory-hungry) mode will be used.\n";
   ss << "\n";

@@ -205,6 +205,9 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
     *ret_end_offset = 0;
   }
 
+//  printf ("*ret_end_offset = %ld\n", *ret_end_offset);
+//  fflush(stdout);
+
 //  for (int64_t i=0; i<alignment.size(); i++) {
 //    if (alignment[i] == EDLIB_I)
 //      alignment[i] = EDLIB_S;

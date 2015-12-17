@@ -210,7 +210,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
 
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("\nl1_reference_start = %ld\nl1_reference_end = %ld\nreference_data_length = %ld\nreference_start = %ld\nreference_length = %ld\nabsolute_reference_id = %ld\norientation = %ld\n\n",
+                                             FormatString("\nl1_reference_start = %ld\nl1_reference_end = %ld\nreference_data_length = %ld\nreference_start = %ld\nreference_length = %ld\nabsolute_reference_id = %ld\norientation = %s\n\n",
                                                           l1_reference_start, l1_reference_end, reference_data_length, reference_start, reference_length, absolute_reference_id, ((orientation == kForward) ? "forward" : "reverse")), "LocalRealignmentLinear");
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("\n%s\n", best_path->VerboseInfoToString().c_str()), "LocalRealignmentLinear");
