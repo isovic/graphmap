@@ -15,29 +15,34 @@
 #include <stdint.h>
 #include <string>
 #include <sstream>
-#include <algorithm>
 #include <vector>
 #include <map>
 
+#define MAX_LINE_LENGTH 120
+
 typedef enum {
   VALUE_TYPE_NONE = 0,
-  VALUE_TYPE_INT32 = 1,
-  VALUE_TYPE_UINT32 = 2,
-  VALUE_TYPE_INT64 = 3,
-  VALUE_TYPE_UINT64 = 4,
-  VALUE_TYPE_FLOAT = 5,
-  VALUE_TYPE_DOUBLE = 6,
-  VALUE_TYPE_STRING = 7
+  VALUE_TYPE_BOOL = 1,
+  VALUE_TYPE_INT32 = 2,
+  VALUE_TYPE_UINT32 = 3,
+  VALUE_TYPE_INT64 = 4,
+  VALUE_TYPE_UINT64 = 5,
+  VALUE_TYPE_FLOAT = 6,
+  VALUE_TYPE_DOUBLE = 7,
+  VALUE_TYPE_STRING = 8,
+  VALUE_TYPE_COMPOSITE = 9
 } ValueType;
 
 inline std::string ValueTypeToStr(ValueType value_type) {
   if (value_type == VALUE_TYPE_NONE)
     return std::string(" - ");
+  else if (value_type == VALUE_TYPE_BOOL)
+    return std::string(" - ");
   else if (value_type == VALUE_TYPE_INT32 || value_type == VALUE_TYPE_UINT32 || value_type == VALUE_TYPE_INT64 || value_type == VALUE_TYPE_UINT64)
     return std::string("INT");
   else if (value_type == VALUE_TYPE_FLOAT || value_type == VALUE_TYPE_DOUBLE)
     return std::string("FLT");
-  else if (value_type == VALUE_TYPE_STRING)
+  else if (value_type == VALUE_TYPE_STRING || value_type == VALUE_TYPE_COMPOSITE)
     return std::string("STR");
   return std::string(" - ");
 }
@@ -84,8 +89,14 @@ class ArgumentParser {
                    std::string description, int32_t positional=0,
                    std::string argument_group="unknown");
 
+  /// Defines composite parameters. A composite parameter can change more than one
+  /// parameter through a symbolic name. The argument name is literally expanded with the given
+  /// arg_expansion string containing other valid command line parameters.
+  void AddCompositeArgument(std::string arg_name, std::string arg_expansion);
+
   /// Processes the command line and parses arguments. Prints usage if argument parameter is invalid.
-  void ProcessArguments(int argc, char* argv[]);
+  /// If offset > 0, then the given number of arguments from the beginning will be skipped (i.e. program name).
+  void ProcessArguments(int argc, char* argv[], int offset=1);
 
   /// Formats and returns the usage of the program according to the specified arguments.
   std::string VerboseUsage();
@@ -127,8 +138,10 @@ class ArgumentParser {
   std::map<std::string, int32_t> valid_args_long_;
   std::map<std::string, std::vector<int32_t>> valid_args_group_;
   std::map<int32_t, int32_t> valid_args_positional_;
+  std::vector<std::string> arg_groups_in_order_of_appearance_;
   std::vector<Argument> arguments_;
   std::string program_name_;
+  std::map<std::string, std::string> composite_args_;
 };
 
 #endif /* CMDPARSER_H_ */

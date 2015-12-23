@@ -608,7 +608,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   uint8_t *converted_data = new uint8_t[read_length];
   if (converted_data == NULL) {
     LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
-    return 1;
+    return ALIGNMENT_WRONG_DATA;
   }
   for (int64_t i=0; i<read_length; i++) {
     converted_data[i] = kBaseToBwaUnsigned[read_data[i]];
@@ -617,7 +617,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   uint8_t *converted_ref = new uint8_t[reference_length];
   if (converted_ref == NULL) {
     LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
-    return 1;
+    return ALIGNMENT_WRONG_DATA;
   }
   for (int64_t i=0; i<reference_length; i++) {
     converted_ref[i] = kBaseToBwaUnsigned[reference_data[i]];
@@ -665,17 +665,18 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, "Finished running Opal.\n", "OpalNWWrapper");
 
   if (resultCode == OPAL_ERR_OVERFLOW) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
-    return 2;
+    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with overflow error!"));
+    return ALIGNMENT_OPAL_OVERFLOW_ERROR;
   }
   if (resultCode == OPAL_ERR_NO_SIMD_SUPPORT) {
       LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal returned with error, no SIMD support!"));
-      return 3;
+      return ALIGNMENT_OPAL_NO_SIMD;
   }
 
   if (results[0]->alignment == NULL) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
-    return 4;
+//    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"), std::string(__FUNCTION__));
+    return ALIGNMENT_NOT_SANE;
   }
 
 //  if (results[0]->endLocationQuery > 0) {

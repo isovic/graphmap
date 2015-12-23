@@ -253,7 +253,7 @@ void LogSystem::SetProgramVerboseLevelFromInt(int64_t verbose_level) {
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_ALL | VERBOSE_FREQ_MED;
   else if (verbose_level == 5)
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_ALL | VERBOSE_FREQ_HIGH;
-#ifndef RELEASE_VERSION
+//#ifndef RELEASE_VERSION
   else if (verbose_level == 6)
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_LOW | VERBOSE_LEVEL_DEBUG | VERBOSE_FREQ_ALL;
   else if (verbose_level == 7)
@@ -262,7 +262,7 @@ void LogSystem::SetProgramVerboseLevelFromInt(int64_t verbose_level) {
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_DEBUG | VERBOSE_FREQ_ALL;
   else if (verbose_level == 9)
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_ALL | VERBOSE_LEVEL_DEBUG | VERBOSE_FREQ_ALL;
-#endif
+//#endif
   else
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_ALL | VERBOSE_FREQ_ALL;
 }

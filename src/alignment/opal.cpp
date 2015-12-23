@@ -1513,7 +1513,7 @@ static void findAlignment(
     // Construct alignment.
     // I reserve max size possibly needed for alignment.
     unsigned char* alignment = (unsigned char*) malloc(
-        sizeof(unsigned char) * (result->endLocationQuery + result->endLocationTarget));
+        sizeof(unsigned char) * (result->endLocationQuery + result->endLocationTarget + 1));
     int alignmentLength = 0;
     int rIdx = result->endLocationQuery;
     int cIdx = result->endLocationTarget;
@@ -1562,7 +1562,7 @@ static void findAlignment(
     }
     //printf("rIdx: %d, cIdx: %d\n", rIdx, cIdx);
     assert(rIdx == -1 && cIdx == -1);
-    alignment = (unsigned char*) realloc(alignment, sizeof(unsigned char) * alignmentLength);
+    alignment = (unsigned char*) realloc(alignment, sizeof(unsigned char) * alignmentLength + 1);
     revertArray(alignment, alignmentLength);
     // Store alignment to result.
     result->alignment = alignment;

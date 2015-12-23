@@ -116,7 +116,7 @@ void Owler::Run(ProgramParameters& parameters) {
 //  else if (parameters.alignment_algorithm == "seqan")
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in slower, more accurate mode: %s.\n", parameters.composite_parameters.c_str()), "Run");
 
-  if (parameters.output_multiple_alignments == 0)
+  if (parameters.output_multiple_alignments == false)
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Only one alignment will be reported per mapped read.\n"), "Run");
   else
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("One or more similarly good alignments will be output per mapped read. Will be marked secondary.\n"), "Run");
