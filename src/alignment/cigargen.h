@@ -27,10 +27,6 @@
 
 std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength);
 int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLength);
-void PrintAlignment(const unsigned char* query, const int queryLength,
-                    const unsigned char* target, const int targetLength,
-                    const unsigned char* alignment, const int alignmentLength,
-                    const int position, const int modeCode, const char* idxToLetter);
 std::string PrintAlignmentToString(const unsigned char* query, const int queryLength,
                     const unsigned char* target, const int targetLength,
                     const unsigned char* alignment, const int alignmentLength,

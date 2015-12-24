@@ -347,47 +347,6 @@ int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLeng
   return length;
 }
 
-void PrintAlignment(const unsigned char* query, const int queryLength,
-                    const unsigned char* target, const int targetLength,
-                    const unsigned char* alignment, const int alignmentLength,
-                    const int position, const int modeCode, const char* idxToLetter) {
-    int tIdx = -1;
-    int qIdx = -1;
-    if (modeCode == MYERS_MODE_HW) {
-        tIdx = position;
-        for (int i = 0; i < alignmentLength; i++) {
-            if (alignment[i] != 1)
-                tIdx--;
-        }
-    }
-    for (int start = 0; start < alignmentLength; start += 50) {
-        // target
-        printf("T: ");
-        int startTIdx = 0;
-        for (int j = start; j < start + 50 && j < alignmentLength; j++) {
-            if (alignment[j] == 1)
-                printf("_");
-            else
-                printf("%c", idxToLetter[target[++tIdx]]);
-            if (j == start)
-                startTIdx = tIdx;
-        }
-        printf(" (%d - %d)\n", std::max(startTIdx, 0), tIdx);
-        // query
-        printf("Q: ");
-        int startQIdx = qIdx;
-        for (int j = start; j < start + 50 && j < alignmentLength; j++) {
-            if (alignment[j] == 2)
-                printf("_");
-            else
-                printf("%c", idxToLetter[query[++qIdx]]);
-            if (j == start)
-                startQIdx = qIdx;
-        }
-        printf(" (%d - %d)\n\n", std::max(startQIdx, 0), qIdx);
-    }
-}
-
 std::string PrintAlignmentToString(const unsigned char* query, const int queryLength,
                     const unsigned char* target, const int targetLength,
                     const unsigned char* alignment, const int alignmentLength,
