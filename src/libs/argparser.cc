@@ -145,8 +145,10 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[], int offset) {
         exit(1);
 
       } else {
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////
+        /// Find the argument by either the short or the long name.
+        //////////////////////////////////////////////////////////////
+        int32_t argument_index = -1;
         // If the second character is not '-' then the argument is specified by its short name.
         if (arg[1] != '-') {      // Handle the short argument assignment.
           std::string arg_name = arg.substr(1);
@@ -155,87 +157,63 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[], int offset) {
           if (valid_args_short_.find(arg_name) == valid_args_short_.end()) {
             fprintf (stderr, "ERROR: Unknown parameter '%s'.\n", arg.c_str());
             exit(1);
-
           } else {
-            int32_t argument_index = valid_args_short_[arg_name];
-            arguments_[argument_index].count += 1;
-            arguments_[argument_index].is_set = true;
-
-            if (arguments_[argument_index].value_type != VALUE_TYPE_NONE && arguments_[argument_index].value_type != VALUE_TYPE_BOOL) {      // This argument expects a value.
-              if ((i + 1) < argc) {
-                arguments_[argument_index].value = argv[i + 1];
-                SetArgumentTarget_(arguments_[argument_index].target, arguments_[argument_index].value_type, arguments_[argument_index].value);
-                i += 1;
-              } else {
-                fprintf (stderr, "ERROR: Argument '%s' expects a value. Exiting.\n", arg.c_str());
-                exit(1);
-              }
-
-              if (arguments_[argument_index].value_type == VALUE_TYPE_COMPOSITE) {
-                auto it_arg = composite_args_.find(arguments_[argument_index].value);
-                if (it_arg == composite_args_.end()) {
-                  fprintf (stderr, "ERROR: Composite parameter '%s' not defined. Exiting.\n", arguments_[argument_index].value.c_str());
-                  exit(1);
-                }
-
-                wordexp_t p;
-                wordexp(it_arg->second.c_str(), &p, 0);
-                char **w = p.we_wordv;
-                int32_t c = p.we_wordc;
-                ProcessArguments(c, w, 0);
-                wordfree(&p);
-              }
-
-            } else {
-              arguments_[argument_index].value = "1";
-
-            }
+            argument_index = valid_args_short_[arg_name];
           }
 
-       /////////////////////////////////////////////////////////
-       /////////////////////////////////////////////////////////
         } else if (arg[1] == '-') {                  // Handle the long argument assignment.
           /// Check if there is nothing after '--' in the given argument name.
           if (arg.size() == 2) {
             fprintf (stderr, "ERROR: Unspecified parameter '%s'. Exiting.\n\n", arg.c_str());
             exit(1);
-
           } else {
             std::string arg_name = arg.substr(2);
-
             // If the argument cannot be found, report it.
             if (valid_args_long_.find(arg_name) == valid_args_long_.end()) {
               fprintf (stderr, "ERROR: Unknown argument '%s'. Exiting.\n\n", arg.c_str());
               exit(1);
-
             } else {
-              int32_t argument_index = valid_args_long_[arg_name];
-              arguments_[argument_index].count += 1;
-              arguments_[argument_index].is_set = true;
-
-              /// Check if the argument requires a value.
-              if (arguments_[argument_index].value_type != VALUE_TYPE_NONE && arguments_[argument_index].value_type != VALUE_TYPE_BOOL) {      // This argument expects a value.
-                /// Check if the following command line argument is actually a specified argument and not a value required for this argument.
-                auto matching = CheckArguments_(std::string(argv[i + 1]));
-                if (matching != NULL) {
-                  fprintf (stderr, "ERROR: Argument '%s' expects a value. Exiting.\n\n", arg.c_str());
-                  exit(1);
-                }
-
-                /// Check if there are actually any command line parameters left to load.
-                if ((i + 1) < argc) {
-                  arguments_[argument_index].value = argv[i + 1];
-                  SetArgumentTarget_(arguments_[argument_index].target, arguments_[argument_index].value_type, arguments_[argument_index].value);
-                  i += 1;
-
-                } else {
-                  fprintf (stderr, "ERROR: Argument '%s' expects a value. Exiting.\n\n", arg.c_str());
-                  exit(1);
-                }
-              }
+              argument_index = valid_args_long_[arg_name];
             }
           }
         }
+
+        ///////////////////////////////////////////////////////////////
+        /// Process the argument.
+        //////////////////////////////////////////////////////////////
+        if (argument_index >= 0) {
+          arguments_[argument_index].count += 1;
+          arguments_[argument_index].is_set = true;
+
+          if (arguments_[argument_index].value_type != VALUE_TYPE_NONE && arguments_[argument_index].value_type != VALUE_TYPE_BOOL) {      // This argument expects a value.
+            if ((i + 1) < argc) {
+              arguments_[argument_index].value = argv[i + 1];
+              SetArgumentTarget_(arguments_[argument_index].target, arguments_[argument_index].value_type, arguments_[argument_index].value);
+              i += 1;
+            } else {
+              fprintf (stderr, "ERROR: Argument '%s' expects a value. Exiting.\n", arg.c_str());
+              exit(1);
+            }
+
+            /// Handle the special case when the argument is a composite one. Need to find the composite definition and expand it (recursively).
+            if (arguments_[argument_index].value_type == VALUE_TYPE_COMPOSITE) {
+              auto it_arg = composite_args_.find(arguments_[argument_index].value);
+              if (it_arg == composite_args_.end()) {
+                fprintf (stderr, "ERROR: Composite parameter '%s' not defined. Exiting.\n", arguments_[argument_index].value.c_str());
+                exit(1);
+              }
+              wordexp_t p;
+              wordexp(it_arg->second.c_str(), &p, 0);
+              ProcessArguments((int32_t) p.we_wordc, (char **) p.we_wordv, 0);
+              wordfree(&p);
+            }
+
+          } else {
+            arguments_[argument_index].value = "1";
+          }
+        }
+       /////////////////////////////////////////////////////////
+       /////////////////////////////////////////////////////////
       }
     } else {      // In this case, the argument can either be positional, or misspelled.
       int32_t position_back = i - argc;
@@ -253,7 +231,6 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[], int offset) {
 
       } else {
         fprintf (stderr, "ERROR: Unknown parameter value: '%s'. Exiting.\n\n", arg.c_str());
-//        fprintf (stderr, "%s\n", VerboseUsage().c_str());
         exit(1);
       }
     }
@@ -263,9 +240,7 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[], int offset) {
   for (uint32_t i = 0; i < arguments_.size(); i++) {
     if (arguments_[i].positional != 0 && arguments_[i].is_set == false) {
       std::string argument_name = (arguments_[i].arg_long != "") ? arguments_[i].arg_long : arguments_[i].arg_short;
-      fprintf (stderr, "ERROR: Not all required arguments specified. Parameter '%s' missing a value.\n", argument_name.c_str());
-      fprintf (stderr, "Exiting.\n\n");
-//      fprintf (stderr, "%s\n", VerboseUsage().c_str());
+      fprintf (stderr, "ERROR: Not all required arguments specified. Parameter '%s' missing a value. Exiting.\n", argument_name.c_str());
       exit(1);
     }
   }
