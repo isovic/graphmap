@@ -16,7 +16,7 @@
 #include <sstream>
 #include <algorithm>
 
-#include "alignment/myers.h"
+#include "libs/myers.h"
 
 #define EDLIB_M 0
 #define EDLIB_EQUAL 0

@@ -10,7 +10,6 @@
 
 #include <vector>
 #include <algorithm>
-#include "divsufsort64.h"
 #include "index/index.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"

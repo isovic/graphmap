@@ -9,7 +9,7 @@
 #define INDEX_SA_H_
 
 #include <vector>
-#include "divsufsort64.h"
+#include "libs/libdivsufsort-2.0.1-64bit/divsufsort64.h"
 #include "index/index.h"
 #include "log_system/log_system.h"
 

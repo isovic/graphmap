@@ -7,7 +7,7 @@
 
 #include <omp.h>
 #include <algorithm>
-#include "divsufsort64.h"
+#include "libs/libdivsufsort-2.0.1-64bit/divsufsort64.h"
 #include "graphmap/graphmap.h"
 //#include "graphmap/path_graph_registry.h"
 //#include "sam/sam_entry.h"

@@ -18,9 +18,9 @@ GCC_MINOR_VERSION_GE_7 := $(shell expr `$(GCC) -dumpversion | cut -f2 -d.` \>= 7
 GCC_MAC ?= /opt/local/bin/g++-mp-4.8
 
 
-CPP_FILES := $(wildcard $(SOURCE)/*/*.cpp) $(wildcard $(SOURCE)/*.cpp)
-CC_FILES := $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc)
-H_FILES := $(wildcard $(SOURCE)/*/*.h) $(wildcard $(SOURCE)/*.h)
+CPP_FILES := $(wildcard $(SOURCE)/*/*.cpp) $(wildcard $(SOURCE)/*.cpp) $(wildcard $(SOURCE)/libs/*/*.cpp)
+CC_FILES := $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc) $(wildcard $(SOURCE)/libs/*/*.cc)
+H_FILES := $(wildcard $(SOURCE)/*/*.h) $(wildcard $(SOURCE)/*.h) $(wildcard $(SOURCE)/libs/*/*.h)
 
 OBJ_FILES := $(CPP_FILES:.cpp=.o) $(CC_FILES:.cc=.o)
 OBJ_FILES_FOLDER_TESTING := $(addprefix $(OBJ_TESTING)/,$(OBJ_FILES))
@@ -32,7 +32,8 @@ OBJ_FILES_FOLDER_MAC := $(addprefix $(OBJ_MAC)/,$(OBJ_FILES))
 
 LIB_DIRS = -L"/usr/local/lib" -L"libs/libdivsufsort-2.0.1/build/lib"
 CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
-INCLUDE = -I"./src/" -I"/usr/include/" -I"libs/libdivsufsort-2.0.1/build/include" -I"libs/seqan-library-1.4.2/include"
+# INCLUDE = -I"./src/" -I"/usr/include/" -I"libs/libdivsufsort-2.0.1/build/include" -I"libs/seqan-library-1.4.2/include"
+INCLUDE = -I"./src/" -I"/usr/include/" -I"src/libs/seqan-library-1.4.2/include"
 
 CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
 CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread # -march=native
@@ -40,7 +41,8 @@ CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -O3 -fdata-sec
 CC_FLAGS_NOT_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
 CC_FLAGS_NOT_RELEASE_EXT = -O3 -DUSE_EXTENDED_CIGAR_FORMAT -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
 LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
-LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64
+# LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64
+LD_LIBS = -lpthread -lgomp -lm -lz
 
 
 
@@ -139,8 +141,8 @@ obj_mac/%.o: %.cpp $(H_FILES)
 
 
 
-deps:
-	cd libs; cd libdivsufsort-2.0.1; make clean; rm -rf build; ./configure; mkdir build ;cd build; cmake -DBUILD_DIVSUFSORT64:BOOL=ON -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="/usr/local" .. ; make
+# deps:
+# 	cd libs; cd libdivsufsort-2.0.1; make clean; rm -rf build; ./configure; mkdir build ;cd build; cmake -DBUILD_DIVSUFSORT64:BOOL=ON -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="/usr/local" .. ; make
 
 
 	
@@ -148,7 +150,7 @@ clean:
 	-rm -rf $(OBJ_LINUX) $(BIN_LINUX)
 
 cleantesting:
-	-rm -rf $(OBJ) $(BIN)
+	-rm -rf $(OBJ_TESTING) $(BIN)
 
 cleandebug:
 	-rm -rf $(OBJ_DEBUG) $(BIN_DEBUG)
@@ -179,6 +181,6 @@ rebuildtesting: cleantesting testing
 
 rebuildmac: cleanmac mac
 
-divsufsort:
-	cd libs; ./build-libdivsufsort.sh
+# divsufsort:
+# 	cd libs; ./build-libdivsufsort.sh
 

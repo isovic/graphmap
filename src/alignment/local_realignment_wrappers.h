@@ -18,7 +18,7 @@
 
 #include "utility/utility_general.h"
 #include "utility/program_parameters.h"
-#include "alignment/myers.h"
+#include "libs/myers.h"
 #include "alignment/cigargen.h"
 #include "log_system/log_system.h"
 #include "containers/region.h"
@@ -32,7 +32,7 @@
 #define ALIGNMENT_TYPE_NW   2     /// Global alignment (gaps at the beginning and the end are penalized).
 
 #ifndef RELEASE_VERSION
-  #include "alignment/opal.h"
+  #include "libs/opal.h"
 #endif
 
 int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,

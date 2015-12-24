@@ -17,7 +17,7 @@
 #include <cstdlib>
 
 #include "graphmap/graphmap.h"
-#include "utility/fenwick.h"
+#include "libs/fenwick.h"
 
 // Index of an anchor is packed in the lower bytes of a 128-bit integer.
 #define MASK_128_IDX        ((unsigned __int128) (0x000000000000000000000000FFFFFFFF))

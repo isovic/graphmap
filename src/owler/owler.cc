@@ -9,7 +9,7 @@
 
 #include <omp.h>
 #include <algorithm>
-#include "divsufsort64.h"
+#include "libs/libdivsufsort-2.0.1-64bit/divsufsort64.h"
 #include "index/index_hash.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"

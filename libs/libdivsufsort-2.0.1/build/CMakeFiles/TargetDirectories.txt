@@ -1,8 +1,0 @@
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/CMakeFiles/bwt.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/lib/CMakeFiles/divsufsort.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/lib/CMakeFiles/divsufsort64.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/CMakeFiles/mksary.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/CMakeFiles/sasearch.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/CMakeFiles/suftest.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/examples/CMakeFiles/unbwt.dir
-/home/isovic/work/eclipse-workspace/graphmap/libs/libdivsufsort-2.0.1/build/CMakeFiles/uninstall.dir
