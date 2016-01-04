@@ -56,16 +56,15 @@ bool CheckDistanceStep(const Vertices& registry_entries, int64_t index_first, in
 int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices, ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
   std::vector<ClusterAndIndices *> clusters;
 
-
-
   ClusterAndIndices *new_cluster = NULL;
   int64_t last_nonskipped_i = lcskpp_indices.size() + 1;
   for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
 //  for (int64_t i=0; i<(lcskpp_indices.size()); i++) {
     /// Skip anchors which might be too erroneous.
     int64_t current_lcskp_index = lcskpp_indices.at(i);
-    if (CheckDistanceTooBig(local_score->get_registry_entries(), current_lcskp_index, current_lcskp_index, parameters) == true)
+    if (CheckDistanceTooBig(local_score->get_registry_entries(), current_lcskp_index, current_lcskp_index, parameters) == true) {
       continue;
+    }
 
     if (new_cluster == NULL || last_nonskipped_i > lcskpp_indices.size()) {
 
@@ -99,13 +98,25 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
             //  +
 
           } else {
-//            printf ("[Cluster %ld]\n", ret_clusters.size());
+//            printf ("Deleted [Cluster %ld]\n", ret_clusters.size());
 //            printf ("(new_cluster->query.end - new_cluster->query.start + 1) = %ld\n", (new_cluster->query.end - new_cluster->query.start + 1));
 //            printf ("min_cluster_length = %ld\n", min_cluster_length);
 //            printf ("new_cluster->coverage = %ld\n", new_cluster->coverage);
 //            printf ("min_covered_bases = %ld\n", min_covered_bases);
 //            printf ("min_cluster_coverage = %f\n", min_cluster_coverage);
 //            fflush(stdout);
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Deleted Cluster %ld] (a)\n", clusters.size()), std::string(__FUNCTION__));
+//            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read,
+//                                         FormatString("(new_cluster->query.end - new_cluster->query.start + 1) = %ld\n", (new_cluster->query.end - new_cluster->query.start + 1)), std::string(__FUNCTION__));
+//            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read,
+//                                         FormatString("min_cluster_length = %ld\n", min_cluster_length), std::string(__FUNCTION__));
+//            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read,
+//                                         FormatString("new_cluster->coverage = %ld\n", new_cluster->coverage), std::string(__FUNCTION__));
+//            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read,
+//                                         FormatString("min_covered_bases = %ld\n", min_covered_bases), std::string(__FUNCTION__));
+//            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read,
+//                                         FormatString("min_cluster_coverage = %f\n", min_cluster_coverage), std::string(__FUNCTION__));
+
             delete new_cluster;
           }
           new_cluster = NULL;
@@ -143,6 +154,12 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
     new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[current_lcskp_index];
     new_cluster->lcskpp_indices.push_back(current_lcskp_index);
 
+//    printf ("i = %ld\n", i);
+//    printf ("new_cluster->query.start = %ld\n", new_cluster->query.start);
+//    printf ("new_cluster->query.end = %ld\n", new_cluster->query.end);
+//    printf ("\n");
+//    fflush(stdout);
+
     last_nonskipped_i = i;
     ///  +  }
 
@@ -152,6 +169,8 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
     int64_t min_covered_bases = (new_cluster->query.end - new_cluster->query.start + 1) * min_cluster_coverage;
     if ((new_cluster->query.end - new_cluster->query.start + 1) >= min_cluster_length && new_cluster->coverage >= min_covered_bases) {
       if (clusters.size() > 0 && (new_cluster->query.start <= clusters.back()->query.end || new_cluster->ref.start <= clusters.back()->ref.end)) {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Deleted Cluster %ld] (a)\n", clusters.size()), std::string(__FUNCTION__));
+
         delete new_cluster;
         new_cluster = NULL;
       } else {
@@ -159,6 +178,8 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
         new_cluster = NULL;
       }
     } else {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Deleted Cluster %ld] (a)\n", clusters.size()), std::string(__FUNCTION__));
+
       delete new_cluster;
       new_cluster = NULL;
     }

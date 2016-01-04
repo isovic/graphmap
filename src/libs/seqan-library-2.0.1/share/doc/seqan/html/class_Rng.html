@@ -1,0 +1,836 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" class="class_rng" data-page="Rng">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII" />
+    <title>Rng - SeqAn API Documentation</title>
+
+      
+
+      
+      <script type="text/javascript" charset="utf-8" src="js/jquery.js"></script>
+
+      <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.css" type="text/css" media="screen" charset="utf-8" />
+      <script type="text/javascript" charset="utf-8" src="lib/bootstrap/js/bootstrap.min.js"></script>
+
+      <link rel="stylesheet" href="lib/bootstrap-multiselect/css/bootstrap-multiselect.css" type="text/css" media="screen" charset="utf-8" />
+      <script type="text/javascript" charset="utf-8" src="lib/bootstrap-multiselect/js/bootstrap-multiselect.js"></script>
+
+      <script type="text/javascript" charset="utf-8" src="lib/ZeroClipboard/ZeroClipboard.min.js"></script>
+
+      <link rel="stylesheet" href="css/style.css" type="text/css" media="screen" charset="utf-8" />
+      <link rel="stylesheet" href="css/common.less.css" type="text/css" media="screen" charset="utf-8" />
+      <script type="text/javascript" charset="utf-8" src="js/less.min.js"></script>
+      
+
+
+
+    <script type="text/javascript" charset="utf-8">
+      hasFrames = window.top.frames.main ? true : false;
+      relpath = '/';
+      docsPrefix = 'docs/yard';
+      listPrefix = 'list/docs/yard';
+      searchPrefix = 'search/docs/yard';
+      framesUrl = '/docs/yard/frames/file/README.md';
+    </script>
+
+    <style type="text/css">
+    <!-- pygments not available -->
+    </style>
+
+    <style>
+      .link.error
+      {
+          color: red;
+      }
+    </style>
+
+      
+      
+      <script type="text/javascript" charset="utf-8" src="lib/jquery-bbq/jquery.ba-bbq.min.js"></script>
+      <script type="text/javascript" charset="utf-8" src="js/jquery.smooth-scroll.js"></script>
+
+      <script type="text/javascript" charset="utf-8" src="js/lang_entities.js"></script>
+      <script type="text/javascript" charset="utf-8" src="js/app.js"></script>
+      <script type="text/javascript" charset="utf-8" src="js/autocomplete.js"></script>
+      <script type="text/javascript" charset="utf-8" src="js/rubydoc_custom.js"></script>
+      <script type="text/javascript" charset="utf-8" src="js/common.js"></script>
+      
+  </head>
+  <body>
+    <a id="top" name="top"></a>
+
+    <div id="content">
+      
+
+<h1 data-lang-entity="class" data-pimped="true"><a href="page_LanguageEntities.html#class">Class</a>
+<span>Rng<div><div>Random Number Generator</div></div></span>
+</h1>
+
+
+<table class="overview">
+
+  
+
+  
+
+  
+
+  
+  <tr>
+    <th>All Subcl's</dt>
+    <td>
+    <a href="specialization_MersenneTwisterRng.html" data-lang-entity="specialization">MersenneTwisterRng</a>, 
+    <a href="specialization_RngFunctor.html" data-lang-entity="specialization">RngFunctor</a>
+    
+    </td>
+  </tr>
+  
+
+  
+  </tr>
+
+  <tr>
+    <th>Defined in</th>
+    <td>
+      
+      &lt;seqan/random.h&gt;
+      
+      
+    </td>
+  </tr>
+  
+  <tr>
+    <th>Signature</th>
+    <td>
+      <code>template &lt;[typename TSpec]&gt;
+class Rng;
+</code>
+    </td>
+  </tr>
+</table>
+
+
+<!-- Template Parameters -->
+
+
+
+
+<div data-lang-entity-container="template_parameter">
+<h2 data-lang-entity="template_parameter">Template Parameters</h2>
+
+<table class="overview">
+
+    <tr>
+        <th><code><a href="#" data-lang-entity="template_parameter">TSpec</a></code></th>
+        <td>Tag for selecting the specialization. Defaults to <a href="specialization_MersenneTwisterRng.html" data-lang-entity="specialization">MersenneTwisterRng</a>.</td>
+    </tr>
+
+</table>
+</div>
+
+
+
+
+
+
+<!--
+ =============================================================================
+  Member and Interface Overview
+ =============================================================================
+-->
+
+<!-- Member Functions Overview -->
+
+
+
+<div data-lang-entity-container="member_function">
+<h2 data-lang-entity="member_function">Member Function Overview</h2>
+
+<ul class="summary">
+  
+  <li class="public">
+    
+    <span class="summary_signature"><code><a href="#Rng%3A%3Aoperator%28%29" title="#Rng::operator() (interface function)" data-lang-entity="member_function">TValue Rng::operator();</a></code></span>
+    <span class="summary_desc"><div>Function all operator.</div></span>
+    
+  </li>
+  
+</ul>
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+<!-- Interface Functions Overview -->
+
+
+
+<div data-lang-entity-container="interface_function">
+<h2 data-lang-entity="interface_function">Interface Function Overview</h2>
+
+<ul class="summary">
+  
+  <li class="public">
+    
+    <span class="summary_signature"><code><a href="#Rng%23pickRandomNumber" title="#Rng#pickRandomNumber (interface function)" data-lang-entity="interface_function">TValue pickRandomNumber(rng[, pdf]);</a></code></span>
+    <span class="summary_desc"><div>Pick a random number using a random number generator, possibly using a probability density function.</div></span>
+    
+  </li>
+  
+</ul>
+
+
+
+
+
+
+
+
+</div>
+
+ 
+
+
+<!-- Member Typedefs Overview -->
+
+  
+
+
+<!-- Interface Metafunctions Overview -->
+
+
+
+<div data-lang-entity-container="interface_metafunction">
+<h2 data-lang-entity="interface_metafunction">Interface  Metafunction Overview</h2>
+
+<ul class="summary">
+  
+  <li class="public">
+    
+    <span class="summary_signature"><code><a href="#Rng%23MaxValue" title="#Rng#MaxValue (interface function)" data-lang-entity="interface_metafunction">MaxValue&lt;TRng&gt;::VALUE;</a></code></span>
+    <span class="summary_desc"><div>Largest value that a Rng can return.</div></span>
+    
+  </li>
+  
+  <li class="public">
+    
+    <span class="summary_signature"><code><a href="#Rng%23MinValue" title="#Rng#MinValue (interface function)" data-lang-entity="interface_metafunction">MinValue&lt;TRng&gt;::VALUE;</a></code></span>
+    <span class="summary_desc"><div>Smallest value that a Rng can return.</div></span>
+    
+  </li>
+  
+  <li class="public">
+    
+    <span class="summary_signature"><code><a href="#Rng%23Value" title="#Rng#Value (interface function)" data-lang-entity="interface_metafunction">Value&lt;TRng&gt;::Type</a></code></span>
+    <span class="summary_desc"><div>Value type of a Rng.</div></span>
+    
+  </li>
+  
+</ul>
+
+
+
+
+
+
+
+
+</div>
+
+  
+
+
+<!-- Member Variable Overview -->
+
+  
+
+
+<!--
+ =============================================================================
+  Detailed Description
+ =============================================================================
+-->
+
+
+<h2>Detailed Description</h2>
+<div class="docstring">
+  <div class="discussion">
+    <!-- @internal -->
+    
+
+    <!-- @deprecated -->
+    
+
+    <!-- @warning -->
+    
+
+    <!-- @note -->
+    
+
+    <!-- @aka -->
+    
+
+    <!-- paragraphs -->
+    
+<div><h3>Examples</h3><p>The following code shows how to generate random numbers and shuffle a text.</p><div data-src-path="demos/dox/random/random.cpp"><pre class="code">#include &lt;iostream&gt;
+
+#include &lt;seqan/basic.h&gt;
+#include &lt;seqan/stream.h&gt;
+#include &lt;seqan/random.h&gt;
+
+using namespace seqan;
+
+const int SEED = 42;
+
+int main()
+{
+    Rng&lt;MersenneTwister&gt; rng(SEED);
+    std::cout &lt;&lt; "pickRandomNumber(rng) == " &lt;&lt; pickRandomNumber(rng) &lt;&lt; std::endl;
+
+    Pdf&lt;Uniform&lt;double&gt; &gt; uniformDouble(0, 1);
+    std::cout &lt;&lt; "pickRandomNumber(rng, uniformDouble) == " &lt;&lt; pickRandomNumber(rng, uniformDouble) &lt;&lt; std::endl;
+
+    Pdf&lt;Uniform&lt;int&gt; &gt; uniformInt(0, 42);
+    std::cout &lt;&lt; "pickRandomNumber(rng, uniformInt) == " &lt;&lt; pickRandomNumber(rng, uniformInt) &lt;&lt; std::endl;
+
+    Pdf&lt;Normal&gt; normal(0, 1);
+    std::cout &lt;&lt; "pickRandomNumber(rng, normal) == " &lt;&lt; pickRandomNumber(rng, normal) &lt;&lt; std::endl;
+
+    Pdf&lt;LogNormal&gt; logNormal(0, 1);
+    std::cout &lt;&lt; "pickRandomNumber(rng, logNormal) == " &lt;&lt; pickRandomNumber(rng, logNormal) &lt;&lt; std::endl;
+
+    Pdf&lt;LogNormal&gt; logNormal2(0, 1, MuSigma());
+    std::cout &lt;&lt; "pickRandomNumber(rng, logNormal2) == " &lt;&lt; pickRandomNumber(rng, logNormal2) &lt;&lt; std::endl;
+
+    Pdf&lt;LogNormal&gt; logNormal3(0.1, 1, MeanStdDev());
+    std::cout &lt;&lt; "pickRandomNumber(rng, logNormal3) == " &lt;&lt; pickRandomNumber(rng, logNormal3) &lt;&lt; std::endl;
+
+    CharString container = "Hello World!";
+    shuffle(container, rng);
+    std::cout &lt;&lt; "shuffle(\"Hello World!\") == " &lt;&lt; container &lt;&lt; std::endl;
+
+    return 0;
+}
+</pre><div class="path_label"><span class="label">Demo:</span> <a href="demos/dox/random/random.cpp" target="_top">demos/dox/random/random.cpp</a></div></div><pre class="console" data-src-path="None">pickRandomNumber(rng) == 1608637542
+pickRandomNumber(rng, uniformDouble) == 0.950714
+pickRandomNumber(rng, uniformInt) == 27
+pickRandomNumber(rng, normal) == 0.419823
+pickRandomNumber(rng, logNormal) == 1.22431
+pickRandomNumber(rng, logNormal2) == 2.78004
+pickRandomNumber(rng, logNormal3) == 0.00155248
+shuffle("Hello World!") ==  o!reWlloHld</pre></div>
+
+  </div>
+</div>
+
+
+<!-- @see -->
+
+  <h2 class="clause_header">See Also</h2>
+  <ul class="summary compact">
+  
+  <li><a href="http://seqan.readthedocs.org/en/develop/Tutorial/Randomness.html" target="_top">http://seqan.readthedocs.org/en/develop/Tutorial/Randomness.html</a></li>
+  
+  </ul>
+
+
+<!--
+ =============================================================================
+  Member and Interface Details
+ =============================================================================
+-->
+
+<!-- Member Functions Details -->
+
+
+<div class="member_function_details" data-lang-entity-container="member_function">
+  <h2 data-lang-entity="member_function">Member Functions Detail</h2>
+
+  
+  <div class="method_details first">
+    <h3 data-toc="hidden" id="Rng::operator()" class="signature first" data-lang-entity="member_function">
+      <code>TValue Rng::operator();</code>
+    </h3>
+  </div>
+
+  
+
+  
+
+  
+
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      <div>Function all operator.</div>
+    </div>
+  </div>
+
+  
+
+  
+  
+  
+  <h4>Returns</h4>
+  <table class="overview">
+    
+    <tr>
+        <th><code>TValue</code></th>
+        <td>Random number, TValue can be retrieved with Rng#Value.</td>
+    </tr>
+    
+  </table>
+  
+
+	<!-- General description -->
+
+  <div class="docstring">
+    <div class="discussion">
+      
+<div></div>
+
+    </div>
+  </div>
+ 
+
+  <!-- Throws Section -->
+	
+  
+  
+  <!-- Data Races Section  -->
+  
+  <h4>Data Races</h4>
+  <div class="discussion">
+  
+    Thread safety unknown!
+  
+  </div>
+	
+	
+  <!-- Sees section -->
+  
+  
+  
+
+</div>
+
+
+
+
+<!-- Interface Functions Details -->
+
+<div class="interface_function_details" data-lang-entity-container="interface_function">
+  <h2 data-lang-entity="interface_function">Interface Functions Detail</h2>
+
+  
+  <div class="method_details first">
+    <h3 data-toc="hidden" id="Rng#pickRandomNumber" class="signature first" data-lang-entity="interface_function">
+      <code>TValue pickRandomNumber(rng[, pdf]);</code>
+    </h3>
+  </div>
+
+  
+
+  
+
+  
+
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      <div>Pick a random number using a random number generator, possibly using a probability density function.</div>
+    </div>
+  </div>
+
+  
+
+  
+  <h4>Parameters</h4>
+  <table class="overview">
+    
+    <tr>
+      <th>
+        
+            
+                <code data-param-type="in_out" title="IN/OUT parameters are read and also modified by the called function">rng</code>
+            
+        
+      </th>
+      <td>The Rng to use.</td>
+    </tr>
+    
+    <tr>
+      <th>
+        
+            
+                <code data-param-type="in" title="IN parameters are only read and not modified">pdf</code>
+            
+        
+      </th>
+      <td>The probability density function to use.</td>
+    </tr>
+    
+  </table>
+  
+  
+  
+  <h4>Returns</h4>
+  <table class="overview">
+    
+    <tr>
+        <th><code>TValue</code></th>
+        <td>A random number. TValue is the value type of the rng if pdf is not given. If pdf is given
+then it is of the value type of pdf.</td>
+    </tr>
+    
+  </table>
+  
+
+	<!-- General description -->
+
+  <div class="docstring">
+    <div class="discussion">
+      
+<div><h4>Remarks</h4><p>For more details see the <a href="http://seqan.readthedocs.org/en/develop/Tutorial/Randomness.html">SeqAn
+Tutorial on Randomness</a>.</p></div>
+
+    </div>
+  </div>
+ 
+
+  <!-- Throws Section -->
+	
+  
+  
+  <!-- Data Races Section  -->
+  
+  <h4>Data Races</h4>
+  <div class="discussion">
+  
+    Thread safety unknown!
+  
+  </div>
+	
+	
+  <!-- Sees section -->
+  
+  
+  
+
+</div>
+
+
+
+<!-- Member Typedefs Details -->
+
+
+
+
+<!-- Interface Metafunctions Details -->
+
+<div class="interface_metafunction_details" data-lang-entity-container="">
+<h2 data-lang-entity="interface_metafunction">Interface Metafunctions Detail</h2>
+
+
+<div class="method_details first">
+  <h3 data-toc="hidden" id="Rng#MaxValue" class="signature first" data-lang-entity="interface_metafunction">
+    <code>MaxValue&lt;TRng&gt;::VALUE;</code>
+  </h3>
+
+  
+
+  
+
+  
+
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      <div>Largest value that a Rng can return.</div>
+    </div>
+  </div>
+
+  
+  <h4>Template Parameters</h4>
+    <table class="overview">
+    
+        <tr>
+            <th><code>TRng</code></th>
+            <td>The Rng object to get the largest value for.</td>
+        </tr>
+    
+    </table>
+  
+
+  
+  <h4>Returns</h4>
+    <table class="overview">
+    
+        <tr>
+            <th><code>VALUE</code></th>
+            <td>The largest value a Rng can return.</td>
+        </tr>
+    
+    </table>
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      
+<div></div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="method_details">
+  <h3 data-toc="hidden" id="Rng#MinValue" class="signature" data-lang-entity="interface_metafunction">
+    <code>MinValue&lt;TRng&gt;::VALUE;</code>
+  </h3>
+
+  
+
+  
+
+  
+
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      <div>Smallest value that a Rng can return.</div>
+    </div>
+  </div>
+
+  
+  <h4>Template Parameters</h4>
+    <table class="overview">
+    
+        <tr>
+            <th><code>TRng</code></th>
+            <td>The Rng object to get the smallest value for.</td>
+        </tr>
+    
+    </table>
+  
+
+  
+  <h4>Returns</h4>
+    <table class="overview">
+    
+        <tr>
+            <th><code>VALUE</code></th>
+            <td>The smallest value a Rng can return.</td>
+        </tr>
+    
+    </table>
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      
+<div></div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="method_details">
+  <h3 data-toc="hidden" id="Rng#Value" class="signature" data-lang-entity="interface_metafunction">
+    <code>Value&lt;TRng&gt;::Type</code>
+  </h3>
+
+  
+
+  
+
+  
+
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      <div>Value type of a Rng.</div>
+    </div>
+  </div>
+
+  
+  <h4>Template Parameters</h4>
+    <table class="overview">
+    
+        <tr>
+            <th><code>TRng</code></th>
+            <td>the Rng to get the value type for.</td>
+        </tr>
+    
+    </table>
+  
+
+  
+  <h4>Returns</h4>
+    <table class="overview">
+    
+        <tr>
+            <th><code>Type</code></th>
+            <td>the value type for the Rng.</td>
+        </tr>
+    
+    </table>
+  
+
+  <div class="docstring">
+    <div class="discussion">
+      
+<div></div>
+
+    </div>
+  </div>
+</div>
+
+
+
+</div>
+
+
+
+<!-- Member Variable Details -->
+
+
+
+
+<!--
+ =============================================================================
+  Footer / Debug
+ =============================================================================
+-->
+
+
+
+<div class="modal fade" id="doxSources" tabindex="-1" role="dialog" aria-labelledby="doxSourcesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title" id="doxSourcesLabel">Dox Sources</h4>
+      </div>
+      <div class="modal-body">
+        <pre>/*!
+ * @class Rng
+ * 
+ * @headerfile &lt;seqan/random.h&gt;
+ * 
+ * @brief Random Number Generator
+ * 
+ * @signature template &lt;[typename TSpec]&gt; class Rng;
+ * 
+ * @tparam TSpec Tag for selecting the specialization. Defaults to @link
+ *               MersenneTwisterRng @endlink.
+ * 
+ * @section Examples
+ * 
+ * The following code shows how to generate random numbers and shuffle a text.
+ * 
+ * @include demos/dox/random/random.cpp
+ * 
+ * @code{.console}
+ * pickRandomNumber(rng) == 1608637542
+ * pickRandomNumber(rng, uniformDouble) == 0.950714
+ * pickRandomNumber(rng, uniformInt) == 27
+ * pickRandomNumber(rng, normal) == 0.419823
+ * pickRandomNumber(rng, logNormal) == 1.22431
+ * pickRandomNumber(rng, logNormal2) == 2.78004
+ * pickRandomNumber(rng, logNormal3) == 0.00155248
+ * shuffle(&#34;Hello World!&#34;) ==  o!reWlloHld
+ * @endcode
+ * 
+ * 
+ * @see http://seqan.readthedocs.org/en/develop/Tutorial/Randomness.html
+ * 
+ * @mfn Rng#Value
+ * 
+ * @brief Value type of a Rng.
+ * 
+ * @signature Value&lt;TRng&gt;::Type
+ * 
+ * @tparam TRng the Rng to get the value type for.
+ * 
+ * @return Type the value type for the Rng.
+ * 
+ * @mfn Rng#MinValue
+ * 
+ * @brief Smallest value that a Rng can return.
+ * 
+ * @signature MinValue&lt;TRng&gt;::VALUE;
+ * 
+ * @tparam TRng The Rng object to get the smallest value for.
+ * 
+ * @return VALUE The smallest value a Rng can return.
+ * 
+ * @mfn Rng#MaxValue
+ * 
+ * @brief Largest value that a Rng can return.
+ * 
+ * @signature MaxValue&lt;TRng&gt;::VALUE;
+ * 
+ * @tparam TRng The Rng object to get the largest value for.
+ * 
+ * @return VALUE The largest value a Rng can return.
+ * 
+ * @fn Rng::operator()
+ * 
+ * @brief Function all operator.
+ * 
+ * @signature TValue Rng::operator();
+ * 
+ * @return TValue Random number, TValue can be retrieved with Rng#Value.
+ * 
+ * @fn Rng#pickRandomNumber
+ * 
+ * @brief Pick a random number using a random number generator, possibly using a
+ *        probability density function.
+ * 
+ * @signature TValue pickRandomNumber(rng[, pdf]);
+ * 
+ * @param[in,out] rng The Rng to use.
+ * @param[in] pdf The probability density function to use.
+ * 
+ * @return TValue A random number. TValue is the value type of the rng if pdf is
+ *                not given. If pdf is given then it is of the value type of
+ *                pdf.
+ * 
+ * @section Remarks
+ * 
+ * For more details see the &lt;a
+ * href=&#34;http://seqan.readthedocs.org/en/develop/Tutorial/Randomness.html&#34;&gt;SeqAn
+ * Tutorial on Randomness&lt;/a&gt;.
+ */</pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+    </div>
+
+  </body>
+</html>

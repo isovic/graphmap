@@ -276,6 +276,7 @@ int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
   if (CheckAlignmentSaneSimple(ret_alignment))
     return ALIGNMENT_NOT_SANE;
 
+
   int64_t reconstructed_length = CalculateReconstructedLength((unsigned char *) &ret_alignment[0], ret_alignment.size());
 
   *ret_alignment_position_start = start_offset;
@@ -431,7 +432,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
   if (localized_end >= reference_length)
     localized_end = reference_length - 1;
 
-  seqan::Infix<char *>::Type inf_target = seqan::infix((char *) (reference_data + localized_start), 0, (localized_end - localized_start + 1));
+  seqan::Infix<char *>::Type inf_target = seqan::infix((char *) (reference_data + localized_start), 0, (localized_end - localized_start));
   seqan::Dna5String seq_target = inf_target;
   seqan::Infix<char *>::Type inf_query = seqan::infix((char *) read_data, 0, read_length);
   seqan::Dna5String seq_query = inf_query;
@@ -470,6 +471,9 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
 //  printf ("start_offset = %ld\n", start_offset);
 //  printf ("end_offset = %ld\n", end_offset);
 //  printf ("seqan_edit_distance = %ld\n", seqan_edit_distance);
+//  printf ("start_offset = %ld\n", start_offset);
+//  printf ("end_offset = %ld\n", end_offset);
+//  fflush(stdout);
 //  fflush(stdout);
 
   *ret_alignment_position_start = start_offset + localized_start;

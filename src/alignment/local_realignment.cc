@@ -256,8 +256,8 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
                                                  (alignment_position_end - l1_reference_start), MYERS_MODE_HW);
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                             FormatString("alignment_position_start = %ld\nalignment_position_end = %ld\nl1_reference_start = %ld\n",
-                                                          alignment_position_start, alignment_position_end, l1_reference_start), "LocalRealignmentLinear");
+                                             FormatString("alignment_position_start = %ld\nalignment_position_end = %ld\nl1_reference_start = %ld\nedit_distance = %ld\n",
+                                                          alignment_position_start, alignment_position_end, l1_reference_start, edit_distance), "LocalRealignmentLinear");
   }
 
   if (orientation == kForward) {
