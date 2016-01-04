@@ -245,10 +245,9 @@ void OwlerDPFilter(std::vector<int> &lcskpp_indices, std::vector<SeedHit2> &seed
     int64_t lcskpp_index_i = lcskpp_indices.at(i-1) + ref_hits_start;
 
     for (int32_t j=0; j<i; j++) {
-      int64_t lcskpp_index_j = lcskpp_indices.at(j-1) + ref_hits_start;
-
       float dp = 0;
       if (j > 0) {
+        int64_t lcskpp_index_j = lcskpp_indices.at(j-1) + ref_hits_start;
         dp = match + OwlerPenaltyAngular(len_ref, len_query, &seed_hits[lcskpp_index_i], &seed_hits[lcskpp_index_j]) + dp_max_val[j];
       } else {
         dp = OwlerPenaltyAngular(len_ref, len_query, &seed_hits[lcskpp_index_i], NULL);

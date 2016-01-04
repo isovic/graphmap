@@ -1162,19 +1162,9 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
         std::vector<int> lcskpp_indices;
         std::vector<int32_t> cluster_ids;
-//        int num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, ref_streak_end, seed_length, 0.01f*read->get_sequence_length(), 0.01f, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
-//        num_svs = 0;
-//        int Owler::FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices,
-//                                              int64_t ref_hits_start, int64_t ref_hits_end,
-//                                              int64_t seed_length, int64_t min_cluster_length,
-//                                              float min_cluster_coverage,
-//                                              OwlerData* owler_data, std::vector<Index*> &indexes,
-//                                              const SingleSequence* read, const ProgramParameters* parameters,
-//                                              std::vector<int> &ret_filtered_lcskpp_indices,
-//                                              std::vector<int32_t> *ret_cluster_ids)
-//        dp_filter(int32_t len_ref, int32_t len_query, const std::vector<Khit> &lcsk_hits, std::vector<int32_t> &filtered_indices)
-        OwlerDPFilter(raw_lcskpp_indices, owler_data->seed_hits2, ref_streak_start, ref_streak_end, seed_length, ref_len, read_len, lcskpp_indices);
         int num_svs = 0;
+//        num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, ref_streak_end, seed_length, 0.01f*read->get_sequence_length(), 0.01f, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
+        OwlerDPFilter(raw_lcskpp_indices, owler_data->seed_hits2, ref_streak_start, ref_streak_end, seed_length, ref_len, read_len, lcskpp_indices);
 
         int64_t A_start = 0, A_end = 0, query_overlap_length = 0, B_start = 0, B_end = 0, ref_overlap_length = 0;
         OverlapLength(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, ref_streak_end, &A_start, &A_end, &query_overlap_length, &B_start, &B_end, &ref_overlap_length);
