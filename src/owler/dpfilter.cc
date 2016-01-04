@@ -271,13 +271,7 @@ void OwlerDPFilter(std::vector<int> &lcskpp_indices, std::vector<SeedHit2> &seed
   filtered_indices.clear();
   int32_t recon_id = dp_max_id[n+1];
   while (recon_id > 0) {
-    printf ("[before] recon_id = %d\n", recon_id);
     filtered_indices.push_back(lcskpp_indices.at(recon_id-1));
     recon_id = dp_max_id[recon_id];
-    printf ("[after] recon_id = %d\n\n", recon_id);
   }
-
-  printf ("filtered_indices.size() = %d\n", filtered_indices.size());
-  for (int i=0; i<filtered_indices.size(); i++)
-    printf ("[%d] %d\n", i, filtered_indices[i]);
 }

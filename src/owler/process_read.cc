@@ -1162,9 +1162,11 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
         std::vector<int> lcskpp_indices;
         std::vector<int32_t> cluster_ids;
+        std::vector<int32_t> *cluster_ids_pntr = NULL;
+
         int num_svs = 0;
-        num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, ref_streak_end, seed_length, 0.01f*read->get_sequence_length(), 0.01f, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
-//        OwlerDPFilter(raw_lcskpp_indices, owler_data->seed_hits2, ref_streak_start, ref_streak_end, seed_length, ref_len, read_len, lcskpp_indices);
+//        num_svs = FilterAnchorBreakpoints(raw_lcskpp_indices, ref_streak_start, ref_streak_end, seed_length, 0.01f*read->get_sequence_length(), 0.01f, owler_data, indexes, read, parameters, lcskpp_indices, &cluster_ids);
+        OwlerDPFilter(raw_lcskpp_indices, owler_data->seed_hits2, ref_streak_start, ref_streak_end, seed_length, ref_len, read_len, lcskpp_indices);
 
         int64_t A_start = 0, A_end = 0, query_overlap_length = 0, B_start = 0, B_end = 0, ref_overlap_length = 0;
         OverlapLength(owler_data->seed_hits2, lcskpp_indices, ref_streak_start, ref_streak_end, &A_start, &A_end, &query_overlap_length, &B_start, &B_end, &ref_overlap_length);
@@ -1331,8 +1333,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
 
             WriteHits(FormatString("temp/overlaps/scores-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], NULL, NULL);
             WriteHits(FormatString("temp/overlaps/LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &raw_lcskpp_indices, NULL);
-            WriteHits(FormatString("temp/overlaps/LCSL1-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
-            WriteHits(FormatString("temp/overlaps/double_LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, &cluster_ids);
+            WriteHits(FormatString("temp/overlaps/LCSL1-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, cluster_ids_pntr);
+            WriteHits(FormatString("temp/overlaps/double_LCS-%ld.csv", current_ref_id), owler_data->seed_hits2, ref_streak_start, i, current_ref_id, std::string(read->get_header()), read->get_sequence_length(), reference_header, indexes[0]->get_reference_lengths()[current_ref_id], &lcskpp_indices, cluster_ids_pntr);
           }
       #endif
 
