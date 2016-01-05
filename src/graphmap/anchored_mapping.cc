@@ -53,7 +53,7 @@ bool CheckDistanceStep(const Vertices& registry_entries, int64_t index_first, in
   return false;
 }
 
-int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices, ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
+int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices, ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
   std::vector<ClusterAndIndices *> clusters;
 
   ClusterAndIndices *new_cluster = NULL;
@@ -259,7 +259,7 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
   return 0;
 }
 
-int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
@@ -281,7 +281,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   std::vector<ClusterAndIndices *> clusters;
   std::vector<int> cluster_indices;
   std::vector<int32_t> cluster_ids;
-  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, lcskpp_indices, local_score, mapping_data, index, indexsecondary_, read, parameters, clusters, cluster_indices, &cluster_ids);
+  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
 
   // Find the L1 parameters (median line and the confidence intervals).
   float l_diff = read->get_sequence_length() * parameters->error_rate;
@@ -349,7 +349,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   mapping_info.ref_coords.end = local_score->get_registry_entries().reference_ends[indexfirst];
   mapping_info.num_covering_kmers = num_covering_kmers;
   mapping_info.deviation = confidence_L1;
-  mapping_info.is_reverse = (local_score->get_region().reference_id >= index->get_num_sequences_forward());
+  mapping_info.is_reverse = (local_score->get_region().reference_id >= indexes[0]->get_num_sequences_forward());
   mapping_info.local_score_id = local_score->get_scores_id();
 
 #ifndef RELEASE_VERSION
@@ -366,7 +366,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
         mapping_cluster.ref = clusters[i]->ref;
         mapping_info.clusters.push_back(mapping_cluster);
 #ifndef RELEASE_VERSION
-      int64_t reference_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
+      int64_t reference_start = indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id];
       int64_t region_start = local_score->get_region().start;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("start(%ld, %ld), end(%ld, %ld)\tstart(%ld, %ld), end(%ld, %ld)\n", mapping_cluster.query.start, mapping_cluster.ref.start, mapping_cluster.query.end, mapping_cluster.ref.end,
                                                                                                                                     mapping_cluster.query.start, mapping_cluster.ref.start - reference_start, mapping_cluster.query.end, mapping_cluster.ref.end - reference_start), "");
@@ -387,16 +387,16 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   l1_info.l1_std = sigma_L2;
   l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
   l1_info.l1_rough_end = l1_info.l1_k * read->get_sequence_length() + l1_info.l1_lmax;
-  if (l1_info.l1_rough_start < index->get_reference_starting_pos()[local_score->get_region().reference_id])
-    l1_info.l1_rough_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
-  if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
-    l1_info.l1_rough_end = (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
+  if (l1_info.l1_rough_start < indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id])
+    l1_info.l1_rough_start = indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id];
+  if (l1_info.l1_rough_end >= (indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id] + indexes[0]->get_reference_lengths()[local_score->get_region().reference_id]))
+    l1_info.l1_rough_end = (indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id] + indexes[0]->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
 
 //  CheckMinimumMappingConditions_(&mapping_info, &l1_info, index, read, parameters);
 
   mapping_info.is_mapped = true;
 
-  PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
+  PathGraphEntry *new_entry = new PathGraphEntry(indexes[0], read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
   mapping_data->intermediate_mappings.push_back(new_entry);

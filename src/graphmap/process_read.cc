@@ -15,7 +15,11 @@
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 
-int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const Index *index_secondary, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+  if (indexes.size() == 0 || indexes[0] == NULL) {
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
+  }
+
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
 
@@ -27,30 +31,36 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     return 0;
   }
 
+  ////////////////////////////////////
+  ///// Perform Region Selection /////
+  ////////////////////////////////////
   clock_t begin_clock = clock();
   int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : read->get_sequence_length() / 3;
 
-//  RegionSelection_(bin_size, mapping_data, (const IndexSpacedHash *) index, (const IndexSpacedHash *) index_secondary, read, parameters);
-//  RegionSelectionSpacedHashv2_(bin_size, mapping_data, (const IndexSpacedHash *) index, (const IndexSpacedHash *) index_secondary, read, parameters);
-  RegionSelectionSpacedHashFastv2_(bin_size, mapping_data, (const IndexSpacedHashFast *) index, (const IndexSpacedHashFast *) index_secondary, read, parameters);
-//  ExperimentalRegionSelection_(bin_size, mapping_data, index, index_secondary, read, parameters);
+  RegionSelection_(bin_size, mapping_data, indexes, read, parameters);
 
   clock_t end_clock = clock();
   double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
   mapping_data->stats_time_region_selection = elapsed_secs;
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Region selection elapsed time: %f sec.\n\n", elapsed_secs), "ProcessRead");
 
-  begin_clock = clock();
-  // If the read length is too short, call it unmapped.
+  /// Sanity check.
   if (mapping_data->bins.size() <= 0 || (mapping_data->bins.size() > 0 && mapping_data->bins.front().bin_value == 0)) {
     std::stringstream ss;
-//    ss << "Unmapped_2.1_zero_top_n_indices" << "__readlength=" << read->get_sequence_length() << "__max_region_votes=" << mapped_data.bins.front().bin_value << "__num_region_iterations=" << mapped_data.num_region_iterations;
-    ss << "Unmapped_2.1_zero_top_n_indices" << "__readlength=" << read->get_sequence_length() << "__num_region_iterations=" << mapping_data->num_region_iterations;
-//    ss << "Unmapped_2_too_many_top_n_indices_" << selected_bins_chromosome.size() << "__readlength_" << readlength;
+    if (mapping_data->bins.size() <= 0) {
+      ss << "Unmapped_2.1_bins.size()=" << mapping_data->bins.size() << "_which_is_lte_0" << "__readlength=" << read->get_sequence_length() << "__num_region_iterations=" << mapping_data->num_region_iterations;
+    } else {
+      ss << "Unmapped_2.2_best_bin_has_count_0" << "__readlength=" << read->get_sequence_length() << "__num_region_iterations=" << mapping_data->num_region_iterations;
+    }
     mapping_data->unmapped_reason += ss.str();
     return 0;
   }
 
+  begin_clock = clock();
+
+  /////////////////////////////////////////////
+  ///// Create a hash index from the read /////
+  /////////////////////////////////////////////
   // Create the index for the current read. This index is used in graph construction.
   Index *index_read = NULL;
   if (parameters->k_graph < 10) {
@@ -61,14 +71,15 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
   }
   index_read->GenerateFromSingleSequenceOnlyForward(*read);
 
+  //////////////////////////////
+  ///// Initialize stuff.  /////
+  /////////////////////////////
+
   // Initialize the vertices of the graph.
-//  mapped_data.vertices.Clear();
   mapping_data->vertices.Resize(read->get_sequence_length());
 
   // Initialize the iteration counter and the value after which the counter should be reset.
   mapping_data->iteration = 0;
-
-  // TODO: Need to check if there is a zero value in the front bin, and report unmapped alignment!
 
   float threshold_step = 0.10f;
   float bin_value_threshold = mapping_data->bins.front().bin_value;
@@ -98,7 +109,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
       Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
       ScoreRegistry local_score(region, i);
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
     }
   }
 
@@ -106,13 +117,6 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
   // Process regions one by one.
   for (int64_t i = 0; i < mapping_data->bins.size() && i < max_num_regions; i++) {
-//    if (parameters->alignment_approach == "overlapper") {
-//      if (mapping_data->bins[i].reference_id % index->get_num_sequences_forward() == read->get_sequence_id()) {
-//        continue;
-//      }
-//    }
-
-//  for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
     // If the ret_check value is zero, then just continue as normal.
     int ret_check = 0;
 
@@ -135,11 +139,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
 
-    bool is_reverse = (region.start >= index_->get_data_length_forward());
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= index_->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+    bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
 
     // Perform the GraphMap on a single region.
-    GraphMap_(&local_score, index_read, mapping_data, index, index_secondary, read, parameters);
+    GraphMap_(&local_score, index_read, mapping_data, indexes, read, parameters);
 
     // Just verbose.
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
@@ -149,9 +153,9 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
     }
 
     if (parameters->alignment_algorithm == "myers" || parameters->alignment_algorithm == "gotoh") {
-      int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+      int ret_value_lcs = PostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
     } else {
-      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, index, index_secondary, read, parameters);
+      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
     }
 
     local_score.Clear();
@@ -175,7 +179,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const Index *index, const I
 
   begin_clock = clock();
 
-  GenerateAlignments_(mapping_data, index, read, parameters, evalue_params);
+  GenerateAlignments_(mapping_data, indexes[0], read, parameters, evalue_params);
 
   end_clock = clock();
   elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
@@ -208,10 +212,10 @@ Region GraphMap::CalcRegionFromBin_(int64_t sorted_bins_index, const MappingData
   int64_t bin_ref_id = mapping_data->bins[sorted_bins_index].reference_id;
   int64_t bin_id = mapping_data->bins[sorted_bins_index].bin_id;
   int64_t bin_value = mapping_data->bins[sorted_bins_index].bin_value;
-  int64_t reference_start = index_->get_reference_starting_pos()[bin_ref_id];
-  int64_t reference_length = index_->get_reference_lengths()[bin_ref_id];
+  int64_t reference_start = indexes_[0]->get_reference_starting_pos()[bin_ref_id];
+  int64_t reference_length = indexes_[0]->get_reference_lengths()[bin_ref_id];
 
-  std::string rname = index_->get_headers()[bin_ref_id % index_->get_num_sequences_forward()];
+  std::string rname = indexes_[0]->get_headers()[bin_ref_id % indexes_[0]->get_num_sequences_forward()];
 
   int64_t location_start = (mapping_data->bin_size > 0) ? bin_id * mapping_data->bin_size : 0;
   int64_t location_end = (mapping_data->bin_size > 0) ? location_start + mapping_data->bin_size : reference_length;
@@ -381,9 +385,9 @@ int GraphMap::EvaluateMappings_(bool evaluate_edit_distance, MappingData *mappin
     if (best_entry->get_alignment_primary().edit_distance <= 0) {
       int64_t alignment_position = 0, edit_distance = 0;
       if (best_entry->get_region_data().is_split == false || parameters->is_reference_circular == false)
-        CalcEditDistanceLinear(MyersEditDistanceWrapper, read, index_, *parameters, best_entry, &alignment_position, &edit_distance);
+        CalcEditDistanceLinear(MyersEditDistanceWrapper, read, indexes_[0], *parameters, best_entry, &alignment_position, &edit_distance);
       else
-        CalcEditDistanceCircular(MyersEditDistanceWrapper, read, index_, *parameters, best_entry, &alignment_position, &edit_distance);
+        CalcEditDistanceCircular(MyersEditDistanceWrapper, read, indexes_[0], *parameters, best_entry, &alignment_position, &edit_distance);
 
       best_entry->get_alignment_primary().edit_distance = edit_distance;
 
@@ -442,13 +446,13 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     // TODO: Promijeniti interface ove funkcije da ne vraca edit distance kao povratnu vrijednost, nego preko parametra, a da povratna vrijednost bude samo status o uspjehu.
 
     clock_t begin_clock = clock();
-    int edit_distance = HybridRealignment(read, index_, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
+    int edit_distance = HybridRealignment(read, index, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
     clock_t end_clock = clock();
     double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
 
-    CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index_->get_data_length_forward(), evalue_params, &evalue_left_part);
-    CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index_->get_data_length_forward(), evalue_params, &evalue_right_part);
+    CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index->get_data_length_forward(), evalue_params, &evalue_left_part);
+    CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index->get_data_length_forward(), evalue_params, &evalue_right_part);
 
     int64_t sum_of_error_ops = num_x_ops + num_i_ops + num_d_ops;
     float mismatch_rate = (((float) (num_x_ops + num_i_ops + num_d_ops)) / ((float) (num_eq_ops + num_x_ops + num_d_ops + num_i_ops)));
@@ -569,7 +573,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
   return 0;
 }
 
-int GraphMap::CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
+int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParameters *parameters, MappingData *mapping_data, std::string &ret_aln_lines) {
   std::stringstream ss;
 
   int64_t num_mapped_alignments = 0;
@@ -581,7 +585,14 @@ int GraphMap::CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_d
     }
     if (ss.str().size() > 0)
       ss << "\n";
-    ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
+
+    if (parameters->outfmt == "sam") {
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
+    } else if (parameters->outfmt == "afg") {
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
+    } else {  // Default to SAM output if the specified format is unknown.
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
+    }
     num_mapped_alignments += 1;
   }
 
@@ -600,60 +611,17 @@ int GraphMap::CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_d
   }
 
   if (mapping_data->unmapped_reason.size() > 0) {
-    ret_sam_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
-    return STATE_UNMAPPED;
-  }
-
-  ret_sam_lines = ss.str();
-
-  return STATE_MAPPED;
-}
-
-int GraphMap::CollectAMOSLines(std::string &ret_amos_lines, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
-  std::stringstream ss;
-
-  int64_t num_mapped_alignments = 0;
-  int64_t num_unmapped_alignments = 0;
-  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
-    if (mapping_data->final_mapping_ptrs.at(i)->get_alignment_primary().is_aligned == false) {
-      num_unmapped_alignments += 1;
-      continue;
+    if (parameters->outfmt == "sam") {
+      ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
+    } else if (parameters->outfmt == "afg") {
+      // In AFG format there is no need to report 'unmapped' (or non-overlapping) reads).
+    } else {  // Default to SAM output if the specified format is unknown.
+      ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
     }
-    if (ss.str().size() > 0)
-      ss << "\n";
-    ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAMOS();
-    num_mapped_alignments += 1;
-  }
-
-//  int64_t num_mapped_alignments = 0;
-//  int64_t num_unmapped_alignments = 0;
-//  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
-//    if (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false) {
-//      num_unmapped_alignments += 1;
-//      continue;
-//    }
-//    if (ss.str().size() > 0)
-//      ss << "\n";
-//    ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAMOS();
-//    num_mapped_alignments += 1;
-//  }
-
-  // If all reported alignments have been declared unmapped for some reason, output one of them to be consistent
-  // and provide an alignment line for each read.
-  // Also, there will always be at leas one final_mapping_ptrs_ entry, because we have handled the size() == 0 case
-  // a little bit up.
-  if (num_unmapped_alignments == mapping_data->final_mapping_ptrs.size() || mapping_data->unmapped_reason.size() > 0) {
-    std::stringstream temp_ss;
-    temp_ss << "__num_region_iterations=" << mapping_data->num_region_iterations;
-    mapping_data->unmapped_reason += FormatString("__num_unmapped_alignments=%ld", num_unmapped_alignments) + temp_ss.str();
-  }
-
-  if (mapping_data->unmapped_reason.size() > 0) {
-//    ret_sam_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
     return STATE_UNMAPPED;
   }
 
-  ret_amos_lines = ss.str();
+  ret_aln_lines = ss.str();
 
   return STATE_MAPPED;
 }

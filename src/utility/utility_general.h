@@ -142,6 +142,15 @@ T* reverse_data(const T* data, int64_t data_len) {
 
 int GetClippingOpsFromCigar(const std::string &cigar, char *clip_op_front, int64_t *clip_count_front, char *clip_op_back, int64_t *clip_count_back);
 
+// Retrieves a file list from the given folder.
+bool GetFileList(std::string folder, std::vector<std::string> &ret_files);
+
+// Check if string ends with the given suffix (parameter 'ending'), and returns true if so.
+bool StringEndsWith(std::string const &full_string, std::string const &ending);
+
+// Returns only files with one of the following extensions: fasta, fastq, fa, fq, sam.
+void FilterFileList(std::vector<std::string> &files, std::vector<std::string> &ret_read_files, std::vector<std::string> &ret_sam_files);
+
 
 
 #endif /* UTILITY_GENERAL_H_ */

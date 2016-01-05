@@ -313,7 +313,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   return 0;
 }
 
-int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const Index* index, const Index* indexsecondary_, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "PostProcessRegionWithLCS_");
 
   int lcskpp_length = 0;
@@ -414,7 +414,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   mapping_info.ref_coords.end = local_score->get_registry_entries().reference_ends[indexfirst];
   mapping_info.num_covering_kmers = num_covering_kmers;
   mapping_info.deviation = confidence_L1;
-  mapping_info.is_reverse = (local_score->get_region().reference_id >= index->get_num_sequences_forward());
+  mapping_info.is_reverse = (local_score->get_region().reference_id >= indexes[0]->get_num_sequences_forward());
   mapping_info.local_score_id = local_score->get_scores_id();
 
   InfoL1 l1_info;
@@ -426,14 +426,14 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   l1_info.l1_std = sigma_L2;
   l1_info.l1_rough_start = l1_info.l1_k * 0 + l1_info.l1_lmin;
   l1_info.l1_rough_end = ((double) l1_info.l1_k * read->get_sequence_length()) + l1_info.l1_lmax;
-  if (l1_info.l1_rough_start < index->get_reference_starting_pos()[local_score->get_region().reference_id])
-    l1_info.l1_rough_start = index->get_reference_starting_pos()[local_score->get_region().reference_id];
-  if (l1_info.l1_rough_end >= (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]))
-    l1_info.l1_rough_end = (index->get_reference_starting_pos()[local_score->get_region().reference_id] + index->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
+  if (l1_info.l1_rough_start < indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id])
+    l1_info.l1_rough_start = indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id];
+  if (l1_info.l1_rough_end >= (indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id] + indexes[0]->get_reference_lengths()[local_score->get_region().reference_id]))
+    l1_info.l1_rough_end = (indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id] + indexes[0]->get_reference_lengths()[local_score->get_region().reference_id]) - 1;
 
-  CheckMinimumMappingConditions_(&mapping_info, &l1_info, index, read, parameters);
+  CheckMinimumMappingConditions_(&mapping_info, &l1_info, indexes[0], read, parameters);
 
-  PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
+  PathGraphEntry *new_entry = new PathGraphEntry(indexes[0], read, parameters, (Region &) local_score->get_region(), &mapping_info, &l1_info);
 
   float ratio = new_entry->CalcDistanceRatio();
   float ratio_suppress = new_entry->CalcDistanceRatioSuppress();
