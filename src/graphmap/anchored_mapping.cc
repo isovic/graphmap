@@ -444,7 +444,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                            int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part, int64_t *ret_nonclipped_left_part,
                            int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part, int64_t *ret_nonclipped_right_part,
                            SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
-                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
+                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op) {
 
   if (best_path->get_mapping_data().clusters.size() <= 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "No valid anchors exist!", "LocalRealignmentCircular");
@@ -863,13 +863,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       index->RawPositionConverterWithRefId(alignment_position_start, absolute_reference_id, 0, NULL, &best_aligning_position, NULL);
     } else {
       index->RawPositionConverterWithRefId(alignment_position_end, absolute_reference_id, 0, NULL, &best_aligning_position, NULL);
-      if (perform_reverse_complement == true) {
-  //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
-  //      read->ReverseComplement();
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                                 FormatString("ERROR! Tried to explicitly reverse complement a read! This functionality is no longer allowed!"), "LocalRealignmentLinear");
-        exit(1);
-      }
       reference_id -= index->get_num_sequences_forward();
     }
 
@@ -943,9 +936,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         index->RawPositionConverterWithRefId(left_alignment_start, absolute_reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
       } else {
         index->RawPositionConverterWithRefId(left_alignment_end, absolute_reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
-        if (perform_reverse_complement == true) {
-          *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
-        }
       }
     } else {
       *ret_cigar_left_part = "";
@@ -960,9 +950,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         index->RawPositionConverterWithRefId(right_alignment_start, absolute_reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
       } else {
         index->RawPositionConverterWithRefId(right_alignment_end, absolute_reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
-        if (perform_reverse_complement == true) {
-          *ret_cigar_right_part = ReverseCigarString((*ret_cigar_right_part));
-        }
       }
     } else {
       *ret_cigar_right_part = "";
@@ -1127,7 +1114,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
                            int64_t *ret_alignment_position_left_part, std::string *ret_cigar_left_part, int64_t *ret_AS_left_part, int64_t *ret_nonclipped_left_part,
                            int64_t *ret_alignment_position_right_part, std::string *ret_cigar_right_part, int64_t *ret_AS_right_part, int64_t *ret_nonclipped_right_part,
                            SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
-                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op, bool perform_reverse_complement) {
+                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op) {
 
   if (best_path->get_mapping_data().clusters.size() <= 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "No valid anchors exist!", "LocalRealignmentCircular");
@@ -1580,13 +1567,6 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
       index->RawPositionConverterWithRefId(alignment_position_start, absolute_reference_id, 0, NULL, &best_aligning_position, NULL);
     } else {
       index->RawPositionConverterWithRefId(alignment_position_end, absolute_reference_id, 0, NULL, &best_aligning_position, NULL);
-      if (perform_reverse_complement == true) {
-  //      *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
-  //      read->ReverseComplement();
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                                 FormatString("ERROR! Tried to explicitly reverse complement a read! This functionality is no longer allowed!"), "LocalRealignmentLinear");
-        exit(1);
-      }
       reference_id -= index->get_num_sequences_forward();
     }
 
@@ -1659,9 +1639,6 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
         index->RawPositionConverterWithRefId(left_alignment_start, absolute_reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
       } else {
         index->RawPositionConverterWithRefId(left_alignment_end, absolute_reference_id, 0, NULL, &best_aligning_position_left_part, NULL);
-        if (perform_reverse_complement == true) {
-          *ret_cigar_left_part = ReverseCigarString((*ret_cigar_left_part));
-        }
       }
     } else {
       *ret_cigar_left_part = "";
@@ -1676,9 +1653,6 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
         index->RawPositionConverterWithRefId(right_alignment_start, absolute_reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
       } else {
         index->RawPositionConverterWithRefId(right_alignment_end, absolute_reference_id, 0, NULL, &best_aligning_position_right_part, NULL);
-        if (perform_reverse_complement == true) {
-          *ret_cigar_right_part = ReverseCigarString((*ret_cigar_right_part));
-        }
       }
     } else {
       *ret_cigar_right_part = "";

@@ -446,7 +446,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     // TODO: Promijeniti interface ove funkcije da ne vraca edit distance kao povratnu vrijednost, nego preko parametra, a da povratna vrijednost bude samo status o uspjehu.
 
     clock_t begin_clock = clock();
-    int edit_distance = HybridRealignment(read, index, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops, false);
+    int edit_distance = HybridRealignment(read, index, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops);
     clock_t end_clock = clock();
     double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
