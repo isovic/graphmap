@@ -403,7 +403,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
     #endif
   }
 
-  InfoMapping mapping_info;
+  MappingResults mapping_info;
   mapping_info.lcs_length = lcskpp_length;
   mapping_info.cov_bases_query = covered_bases_query;
   mapping_info.cov_bases_ref = covered_bases_reference;
@@ -417,7 +417,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   mapping_info.is_reverse = (local_score->get_region().reference_id >= indexes[0]->get_num_sequences_forward());
   mapping_info.local_score_id = local_score->get_scores_id();
 
-  InfoL1 l1_info;
+  L1Results l1_info;
   l1_info.l1_l = l;
   l1_info.l1_k = 1.0f;
   l1_info.l1_lmin = ((double) l) - ((double) l_diff);
@@ -455,7 +455,7 @@ int GraphMap::PostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData*
   return 0;
 }
 
-int GraphMap::CheckMinimumMappingConditions_(InfoMapping *mapping_data, InfoL1 *l1_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters) {
+int GraphMap::CheckMinimumMappingConditions_(MappingResults *mapping_data, L1Results *l1_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters) {
   mapping_data->is_mapped = true;
 
 //  if (mapping_data->cov_bases_query < 0.005f* read->get_sequence_length())

@@ -338,7 +338,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
     return 1;
   }
 
-  InfoMapping mapping_info;
+  MappingResults mapping_info;
   mapping_info.lcs_length = lcskpp_length;
   mapping_info.cov_bases_query = covered_bases_query;
   mapping_info.cov_bases_ref = covered_bases_reference;
@@ -378,7 +378,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
 
 
 
-  InfoL1 l1_info;
+  L1Results l1_info;
   l1_info.l1_l = l;
   l1_info.l1_k = 1.0f;
   l1_info.l1_lmin = l - l_diff;

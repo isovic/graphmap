@@ -64,7 +64,7 @@ PathGraphEntry::~PathGraphEntry() {
 //  Set(local_scores_id, region_id, source_node, sink_node, lcs_length, covered_bases, region_kmer_count, deviation, query_start, query_end, reference_start, reference_end, actual_query_start,
 //      actual_query_end, actual_reference_start, actual_reference_end);
 PathGraphEntry::PathGraphEntry(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region,
-                               InfoMapping *mapping_data, InfoL1 *l1_data, InfoAlignment *alignment_data) {
+                               MappingResults *mapping_data, L1Results *l1_data, AlignmentResults *alignment_data) {
   fpfilter_ = 0.0f;
   fpfilter_cov_bases_ = 0.0f;
   fpfilter_query_len_ = 0.0f;
@@ -72,47 +72,10 @@ PathGraphEntry::PathGraphEntry(const Index *index, const SingleSequence *read, c
   fpfilter_read_len_ = 0.0f;
 
   Set(index, read, parameters, region, mapping_data, l1_data, alignment_data);
-
-//  l1_l = 0;
-//  l1_k = 0.0;
-//  l1_lmin = 0;
-//  l1_lmax = 0;
-//  l1_confidence_abs = 0;
-//  l1_std = 0;
-//  l1_rough_start = 0;
-//  l1_rough_end = 0;
-//  edit_distance = -1;
-//  edit_distance_end_pos = -1;
-//  fpfilter = 0.0f;
-//  fpfilter_score_std = 0.0f;
-//  fpfilter_score_cov_bases = 0.0f;
-//  fpfilter_score_read_len = 0.0f;
-//  fpfilter_score_query_len = 0.0f;
-//  num_covering_kmers = 0;
 }
 
-
-
-//void PathGraphEntry::Set(int64_t local_scores_id, int64_t region_id,
-//                         int64_t source_node, int64_t sink_node,
-//                         int64_t lcs_length, int64_t covered_bases,
-//                         int64_t region_kmer_count, float deviation,
-//                         int64_t query_start, int64_t query_end,
-//                         int64_t reference_start, int64_t reference_end,
-//                         int64_t actual_query_start, int64_t actual_query_end,
-//                         int64_t actual_reference_start,
-//                         int64_t actual_reference_end) {
-//void PathGraphEntry::Set(Index *index, SingleSequence *read, ProgramParameters *parameters, Region &region,
-//                         int64_t lcs_length, int64_t cov_bases_query, int64_t cov_bases_ref, float deviation,
-//                         int64_t query_start, int64_t query_end, int64_t reference_start, int64_t reference_end) {
 void PathGraphEntry::Set(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region,
-                         InfoMapping *mapping_data, InfoL1 *l1_data, InfoAlignment *alignment_data) {
-
-//  this->local_scores_id = local_scores_id;
-//  this->region_id = region_id;
-//  this->source_node = source_node;
-//  this->sink_node = sink_node;
-
+                         MappingResults *mapping_data, L1Results *l1_data, AlignmentResults *alignment_data) {
   index_ = index;
   read_ = read;
   parameters_ = parameters;
@@ -124,48 +87,9 @@ void PathGraphEntry::Set(const Index *index, const SingleSequence *read, const P
     set_l1_data((*l1_data));
   if (alignment_data != NULL)
     AddSecondaryAlignmentData((*alignment_data));
-
-//  mapping_data.lcs_length = lcs_length;
-//  mapping_data.cov_bases_query = cov_bases_query;
-//  mapping_data.cov_bases_ref = cov_bases_ref;
-//  mapping_data.cov_bases_max = std::max(cov_bases_query, cov_bases_ref);
-//  mapping_data.num_covering_kmers = num_covering_kmers;
-//  l1_data.deviation = deviation;
-//
-//  this->lcs_length = lcs_length;
-//  this->covered_bases = covered_bases;
-//  this->region_kmer_count = region_kmer_count;
-//  this->deviation = deviation;
-//  this->query.start = query_start;
-//  this->query.end = query_end;
-//  this->reference.start = reference_start;
-//  this->reference.end = reference_end;
-//  this->actual_query.start = actual_query_start;
-//  this->actual_query.end = actual_query_end;
-//  this->actual_reference.start = actual_reference_start;
-//  this->actual_reference.end = actual_reference_end;
-//
-//  this->distance.start = actual_query_end - actual_query_start;
-//  this->distance.end = actual_reference_end - actual_reference_start;
-////    this->ratio = ((float) this->distance.start) / ((float) this->distance.end);
-//  if ((float) this->distance.start != 0)
-////    this->ratio = ((float) this->distance.end) / ((float) this->distance.start);
-//    this->ratio = ((float) std::min(this->distance.start, this->distance.end)) / ((float) std::max(this->distance.start, this->distance.end));
-//  else
-//    this->ratio = 1.0f;
-//
-//  this->ratio_suppress = (this->ratio < 1.0f) ? (1.0f - this->ratio) : (this->ratio - 1.0f);
-//
-////  this->alignment_score = 0.0f;
-////  this->alignment_score_test1 = 0.0f;
-////  this->alignment_score_test2 = 0.0f;
-////  this->alignment_score_test3 = 0.0f;
-////  this->alignment_score_test4 = 0.0f;
 }
 
 void PathGraphEntry::Verbose(FILE *fp) const {
-//    fprintf (fp, "Source = %ld, Sink = %ld, depth = %ld, local_scores_id = %ld, q[%ld, %ld], r[%ld, %ld], d[%ld, %ld], p[%f], sup[%f]",
-//             source_node, sink_node, depth, local_scores_id, query.start, query.end, reference.start, reference.end, distance.start, distance.end, ratio, ratio_suppress);
   fprintf (fp, "%s", VerboseToString().c_str());
 }
 
@@ -183,39 +107,6 @@ std::string PathGraphEntry::VerboseInfoToString(std::string delimiter) const {
 
 std::string PathGraphEntry::VerboseToString(std::string delimiter) const {
   std::stringstream ss;
-
-//  ss << "Source" << actual_delimiter << source_node << actual_delimiter <<
-//        "Sink" << actual_delimiter << sink_node << actual_delimiter <<
-//        "lcs_length=" << lcs_length << actual_delimiter <<
-//        "cov_bases=" << covered_bases << actual_delimiter <<
-//        "reg_kmer_count=" << region_kmer_count << actual_delimiter <<
-//        "local_scores_id" << actual_delimiter << local_scores_id << actual_delimiter <<
-//        "region_id" << actual_delimiter << region_id << actual_delimiter <<
-//        "q[" << query.start << "," << query.end << "]" << actual_delimiter <<
-//        "r[" << reference.start << "," << reference.end << "]" << actual_delimiter <<
-//        "d[" << distance.start << "," << distance.end << "]" << actual_delimiter <<
-//        "p[" << actual_delimiter << ratio << "]" << actual_delimiter <<
-//        "act_q[" << actual_query.start << "," << actual_query.end << "]" << actual_delimiter <<
-//        "act_r[" << actual_reference.start << "," << actual_reference.end << "]" << actual_delimiter <<
-//        "act_d[" << (actual_query.end - actual_query.start) << "," << (actual_reference.end - actual_reference.start) << "]" << actual_delimiter <<
-//        "supp[" << ratio_suppress << "]" << actual_delimiter <<
-//        "std[" << deviation << "]" << actual_delimiter;
-
-//  ss << "lcs_length=" << lcs_length << actual_delimiter <<
-//        "cov_bases=" << covered_bases << actual_delimiter <<
-//        "num_kmers=" << num_covering_kmers << actual_delimiter <<
-////        "local_scores_id" << actual_delimiter << local_scores_id << actual_delimiter <<
-//        "act_q[" << actual_query.start << "," << actual_query.end << "]" << actual_delimiter <<
-//        "act_r[" << actual_reference.start << "," << actual_reference.end << "]" << actual_delimiter <<
-//        "act_d[" << (actual_query.end - actual_query.start) << "," << (actual_reference.end - actual_reference.start) << "]" << actual_delimiter <<
-//        "p[" << actual_delimiter << ratio << "]" << actual_delimiter <<
-//        "supp[" << ratio_suppress << "]" << actual_delimiter <<
-//        "std[" << deviation << "]" << actual_delimiter <<
-//        "AS[" << FormatString("%.4f", fpfilter) << "]" << actual_delimiter <<
-//        "AS_std[" << FormatString("%.4f", fpfilter_score_std) << "]" << actual_delimiter <<
-//        "AS_cov_bases[" << FormatString("%.4f", fpfilter_score_cov_bases) << "]" << actual_delimiter <<
-//        "AS_read_len[" << FormatString("%.4f", fpfilter_score_read_len) << "]" << actual_delimiter <<
-//        "AS_query_len[" << FormatString("%.4f", fpfilter_score_query_len) << "]";
 
   std::string actual_delimiter = delimiter;
   if (delimiter == "\r")
@@ -293,7 +184,7 @@ float PathGraphEntry::CalcFPFilter() const {
   return fpfilter;
 }
 
-float PathGraphEntry::CalcFPFilterStatic(const InfoMapping &mapping_info, const Index *index, const SingleSequence *read, const ProgramParameters *parameters) {
+float PathGraphEntry::CalcFPFilterStatic(const MappingResults &mapping_info, const Index *index, const SingleSequence *read, const ProgramParameters *parameters) {
   int64_t query_start = mapping_info.query_coords.start;
   int64_t query_end = (mapping_info.query_coords.end + parameters->k_graph);
   int64_t read_length = read->get_sequence_length();
@@ -344,19 +235,19 @@ void PathGraphEntry::set_fpfilter(float fpfilter) {
   fpfilter_ = fpfilter;
 }
 
-const InfoL1& PathGraphEntry::get_l1_data() const {
+const L1Results& PathGraphEntry::get_l1_data() const {
   return l1_info_;
 }
 
-void PathGraphEntry::set_l1_data(InfoL1& l1Data) {
+void PathGraphEntry::set_l1_data(L1Results& l1Data) {
   l1_info_ = l1Data;
 }
 
-const InfoMapping& PathGraphEntry::get_mapping_data() const {
+const MappingResults& PathGraphEntry::get_mapping_data() const {
   return mapping_info_;
 }
 
-void PathGraphEntry::set_mapping_data(InfoMapping& mappingData) {
+void PathGraphEntry::set_mapping_data(MappingResults& mappingData) {
   mapping_info_ = mappingData;
 
   int64_t query_start = mapping_info_.query_coords.start;
@@ -382,11 +273,11 @@ void PathGraphEntry::set_region_data(Region& regionData) {
   region_info_ = regionData;
 }
 
-void PathGraphEntry::AddSecondaryAlignmentData(InfoAlignment alignment_info) {
+void PathGraphEntry::AddSecondaryAlignmentData(AlignmentResults alignment_info) {
   alignments_secondary_.push_back(alignment_info);
 }
 
-std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const InfoAlignment &alignment_info, bool is_primary, int64_t verbose_sam_output) const {
+std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
   std::stringstream ss;
 
   std::string qname = ((std::string) (read_->get_header()));
@@ -435,7 +326,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const InfoAlignment &a
   std::stringstream ss_optional1;
   ss_optional1 << "NM:i:" << alignment_info.edit_distance << "\t"; // Specified by SAM format.
   ss_optional1 << "AS:i:" << alignment_info.alignment_score << "\t";
-  ss_optional1 << "H0:i:" << alignment_info.num_same_mappings << "\t"; // Specified by SAM format.
+  ss_optional1 << "H0:i:" << alignment_info.num_secondary_alns << "\t"; // Specified by SAM format.
   ss_optional1 << "ZE:f:" << alignment_info.evalue << "\t";
   ss_optional1 << "ZF:f:" << fpfilter_ << "\t";
   ss_optional1 << "ZQ:i:" << read_->get_sequence_length() << "\t";
@@ -455,7 +346,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const InfoAlignment &a
     ss << "\tX3:Z:" << X3_ss.str();
 
     std::stringstream X4_ss;
-    X4_ss << "Timings(sec)__regionselection=" << alignment_info.stats_time_region_selection << "__mapping=" << alignment_info.stats_time_mapping << "__alignment=" << alignment_info.stats_time_alignment;
+    X4_ss << "Timings(sec)__regionselection=" << mapping_metadata.stats_time_region_selection << "__mapping=" << mapping_metadata.stats_time_mapping << "__alignment=" << mapping_metadata.stats_time_alignment;
     ss << "\tX4:Z:" << X4_ss.str();
   }
 
@@ -465,11 +356,11 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const InfoAlignment &a
 std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_output) const {
   std::stringstream ss;
 
-  ss << GenerateSAMFromInfoAlignment_(alignment_primary_, is_primary, verbose_sam_output);
+  ss << GenerateSAMFromInfoAlignment_(alignment_primary_, mapping_metadata_, is_primary, verbose_sam_output);
 
   for (int64_t i=0; i<alignments_secondary_.size(); i++) {
     ss << "\n";
-    ss << GenerateSAMFromInfoAlignment_(alignments_secondary_[i], false, verbose_sam_output);
+    ss << GenerateSAMFromInfoAlignment_(alignments_secondary_[i], mapping_metadata_, false, verbose_sam_output);
   }
 
 //  uint32_t reverse = (orientation == kForward) ? 0 : SAM_THIS_SEG_REVERSED;
@@ -549,7 +440,7 @@ std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_out
   return ss.str();
 }
 
-std::string PathGraphEntry::GenerateAMOSFromInfoMappping(const InfoMapping &mapping_info) const {
+std::string PathGraphEntry::GenerateAMOSFromInfoMappping(const MappingResults &mapping_info) const {
   std::stringstream ss;
 
   int64_t l = l1_info_.l1_l - ((int64_t) index_->get_reference_starting_pos()[region_info_.reference_id]);
@@ -594,7 +485,7 @@ std::string PathGraphEntry::GenerateAMOS() const {
   return ss.str();
 }
 
-std::string PathGraphEntry::GenerateAMOSFromInfoAlignment_(const InfoAlignment &alignment_info) const {
+std::string PathGraphEntry::GenerateAMOSFromInfoAlignment_(const AlignmentResults &alignment_info) const {
   std::stringstream ss;
 
 //  int64_t l = l1_info_.l1_l - ((int64_t) index_->get_reference_starting_pos()[region_info_.reference_id]);
@@ -670,20 +561,28 @@ void PathGraphEntry::set_fpfilter_std(float fpfilterStd) {
   fpfilter_std_ = fpfilterStd;
 }
 
-InfoAlignment& PathGraphEntry::get_alignment_primary() {
+AlignmentResults& PathGraphEntry::get_alignment_primary() {
   return alignment_primary_;
 }
 
-void PathGraphEntry::set_alignment_primary(InfoAlignment& alignmentPrimary) {
+void PathGraphEntry::set_alignment_primary(AlignmentResults& alignmentPrimary) {
   alignment_primary_ = alignmentPrimary;
 }
 
-std::vector<InfoAlignment>& PathGraphEntry::get_alignments_secondary() {
+std::vector<AlignmentResults>& PathGraphEntry::get_alignments_secondary() {
   return alignments_secondary_;
 }
 
-void PathGraphEntry::set_alignments_secondary(std::vector<InfoAlignment>& alignmentsSecondary) {
+void PathGraphEntry::set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary) {
   alignments_secondary_ = alignmentsSecondary;
+}
+
+MappingMetadata& PathGraphEntry::get_mapping_metadata() {
+  return mapping_metadata_;
+}
+
+void PathGraphEntry::set_mapping_metadata(MappingMetadata& mappingMetadata) {
+  mapping_metadata_ = mappingMetadata;
 }
 
 float PathGraphEntry::CalcFPFactorStd_(float std, int64_t read_length, float error_rate) {

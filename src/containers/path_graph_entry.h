@@ -18,6 +18,7 @@
 #include "utility/program_parameters.h"
 //#include "sam/sam_entry.h"
 #include "containers/vertices.h"
+#include "containers/results.h"
 
 // N(ormal) would indicate both sequences are in the same orientation.
 #define OVERLAP_NORMAL          "N"
@@ -28,89 +29,14 @@
 
 
 
-typedef struct Cluster {
-  Range query;
-  Range ref;
-} Cluster;
-
-typedef struct InfoMapping {
-  int64_t lcs_length = 0;
-  int64_t cov_bases_max = 0;
-  int64_t cov_bases_query = 0;
-  int64_t cov_bases_ref = 0;
-  int64_t num_covering_kmers = 0;
-  float deviation = 0.0f;
-  Range query_coords;
-  Range ref_coords;
-  bool is_mapped = false;
-  bool is_reverse = false;
-  int64_t local_score_id = 0;
-
-  std::vector<Cluster> clusters;
-//  Range distance;
-//  float ratio;
-//  float ratio_suppress;
-
-//  Range actual_query;
-//  Range actual_reference;
-//  int64_t query_id;
-//  int64_t query_length;
-//  std::string qname;
-//  std::string rname;      // Ovo dodati u Region!
-
-//  float fpfilter;
-//  float fpfilter_score_std;
-//  float fpfilter_score_cov_bases;
-//  float fpfilter_score_read_len;
-//  float fpfilter_score_query_len;
-
-} InfoMapping;
-
-typedef struct InfoL1 {
-  int64_t l1_l = 0;
-  double l1_k = 1.0f;
-  int64_t l1_lmin = 0;
-  int64_t l1_lmax = 0;
-  double l1_confidence_abs = 0;
-  double l1_std = 0;
-  int64_t l1_rough_start = 0;
-  int64_t l1_rough_end = 0;
-} InfoL1;
-
-typedef struct InfoAlignment {
-//  bool is_mapped = false;
-  bool is_aligned = false;
-  bool is_reverse = false;
-  int64_t pos_start = 0;
-  int64_t pos_end = 0;
-  std::string cigar = "*";
-  int64_t edit_distance = 0;
-  int64_t alignment_score = 0;
-  int64_t mapping_quality = 0;
-  double evalue = 0.0f;
-  int64_t num_same_mappings = 0;      // How many mapping positions have exactly the same score.
-
-  int64_t num_eq_ops = 0;
-  int64_t num_x_ops = 0;
-  int64_t num_i_ops = 0;
-  int64_t num_d_ops = 0;
-  int64_t nonclipped_length = 0;
-
-  std::string unmapped_reason = "Not processed.";
-
-  double stats_time_region_selection = 0.0;
-  double stats_time_mapping = 0.0;
-  double stats_time_alignment = 0.0;
-
-} InfoAlignment;
 
 class PathGraphEntry {
  public:
-  PathGraphEntry(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, InfoMapping *mapping_data=NULL, InfoL1 *l1_data=NULL, InfoAlignment *alignment_data=NULL);
+  PathGraphEntry(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
   ~PathGraphEntry();
 
-  void Set(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, InfoMapping *mapping_data=NULL, InfoL1 *l1_data=NULL, InfoAlignment *alignment_data=NULL);
-  void AddSecondaryAlignmentData(InfoAlignment alignment_info);
+  void Set(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
+  void AddSecondaryAlignmentData(AlignmentResults alignment_info);
 
   std::string GenerateSAM(bool is_primary, int64_t verbose_sam_output) const;
   std::string GenerateAMOS() const;
@@ -118,7 +44,7 @@ class PathGraphEntry {
   float CalcDistanceRatio() const;
   float CalcDistanceRatioSuppress() const;
   float CalcFPFilter() const;
-  static float CalcFPFilterStatic(const InfoMapping &mapping_info, const Index *index, const SingleSequence *read, const ProgramParameters *parameters);
+  static float CalcFPFilterStatic(const MappingResults &mapping_info, const Index *index, const SingleSequence *read, const ProgramParameters *parameters);
 
   void Verbose(FILE *fp) const;
 
@@ -127,10 +53,10 @@ class PathGraphEntry {
 
   float get_fpfilter() const;
   void set_fpfilter(float fpfilter);
-  const InfoL1& get_l1_data() const;
-  void set_l1_data(InfoL1& l1Data);
-  const InfoMapping& get_mapping_data() const;
-  void set_mapping_data(InfoMapping& mappingData);
+  const L1Results& get_l1_data() const;
+  void set_l1_data(L1Results& l1Data);
+  const MappingResults& get_mapping_data() const;
+  void set_mapping_data(MappingResults& mappingData);
   const Region& get_region_data() const;
   void set_region_data(Region& regionData);
   float get_fpfilter_cov_bases();
@@ -141,49 +67,25 @@ class PathGraphEntry {
   void set_fpfilter_read_len(float fpfilterReadLen);
   float get_fpfilter_std();
   void set_fpfilter_std(float fpfilterStd);
-  InfoAlignment& get_alignment_primary();
-  void set_alignment_primary(InfoAlignment& alignmentPrimary);
-  std::vector<InfoAlignment>& get_alignments_secondary();
-  void set_alignments_secondary(std::vector<InfoAlignment>& alignmentsSecondary);
-
-//  inline bool IsLessThan(const PathGraphEntry &op1);
-//
-//  int64_t lcs_length;
-//  int64_t covered_bases;
-//  int64_t region_kmer_count;
-//  Range query;
-//  Range reference;
-//  Range distance;
-//  float ratio;
-//  float ratio_suppress;
-////  int64_t local_scores_id;
-////  int64_t region_id;
-////  int64_t source_node;
-////  int64_t sink_node;
-//  Range actual_query;
-//  Range actual_reference;
-//  float deviation;
-//  Region region;
-//  int64_t query_id;
-//  int64_t query_length;
-//  std::string qname;
-//  std::string rname;
-
-//  int64_t num_covering_kmers;
-
-
+  AlignmentResults& get_alignment_primary();
+  void set_alignment_primary(AlignmentResults& alignmentPrimary);
+  std::vector<AlignmentResults>& get_alignments_secondary();
+  void set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary);
+  MappingMetadata& get_mapping_metadata();
+  void set_mapping_metadata(MappingMetadata& mappingMetadata);
 
  private:
   const SingleSequence *read_;
   const Index *index_;
   const ProgramParameters *parameters_;
 
-  InfoMapping mapping_info_;
+  MappingResults mapping_info_;
   // Parameters holding the L1 results
-  InfoL1 l1_info_;
+  L1Results l1_info_;
 //  std::vector<InfoAlignment> alignments_;
-  InfoAlignment alignment_primary_;
-  std::vector<InfoAlignment> alignments_secondary_;
+  AlignmentResults alignment_primary_;
+  std::vector<AlignmentResults> alignments_secondary_;
+  MappingMetadata mapping_metadata_;
 
   Region region_info_;
 
@@ -193,39 +95,9 @@ class PathGraphEntry {
   float fpfilter_std_;
   float fpfilter_read_len_;
 
-  std::string GenerateSAMFromInfoAlignment_(const InfoAlignment &alignment_info, bool is_primary, int64_t verbose_sam_output) const;
-  std::string GenerateAMOSFromInfoAlignment_(const InfoAlignment &alignment_info) const;
-  std::string GenerateAMOSFromInfoMappping(const InfoMapping &mapping_info) const;
-
-
-
-//  int64_t l1_l;
-//  float l1_k;
-//  int64_t l1_lmin;
-//  int64_t l1_lmax;
-//  int64_t l1_confidence_abs;
-//  int64_t l1_std;
-//  int64_t l1_rough_start;
-//  int64_t l1_rough_end;
-//
-//  int64_t edit_distance;
-//  int64_t edit_distance_end_pos;
-//  float fpfilter;
-//  float fpfilter_score_std;
-//  float fpfilter_score_cov_bases;
-//  float fpfilter_score_read_len;
-//  float fpfilter_score_query_len;
-//
-//  int64_t num_eq_ops;
-//  int64_t num_x_ops;
-//  int64_t num_i_ops;
-//  int64_t num_d_ops;
-//
-//  SamEntry sam;
-
-
-
-//  OverlapEntry ovl;
+  std::string GenerateSAMFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const;
+  std::string GenerateAMOSFromInfoAlignment_(const AlignmentResults &alignment_info) const;
+  std::string GenerateAMOSFromInfoMappping(const MappingResults &mapping_info) const;
 
 // private:
   static float CalcFPFactorReadLength_(int64_t read_length, int64_t db_size);
@@ -236,57 +108,6 @@ class PathGraphEntry {
   static float CalcFPFactorStd_(float std, int64_t read_length, float error_rate);
 };
 
-// Used until 27.01.2015.
-//struct less_than_key
-//{
-//    inline bool operator() (const PathGraphEntry& op1, const PathGraphEntry& op2) {
-////      if (op1.lcs_length < op2.lcs_length)
-////        return true;
-////      else if (op1.lcs_length > op2.lcs_length)
-////        return false;
-////      else {
-////        if (op1.covered_bases != op2.covered_bases)
-////          return (op1.covered_bases < op2.covered_bases);
-////        else
-////          return (op1.region_kmer_count < op2.region_kmer_count);
-////      }
-//
-//      if (op1.covered_bases < op2.covered_bases)
-//        return true;
-//      else if (op1.covered_bases > op2.covered_bases)
-//        return false;
-//      else {
-//        if (op1.lcs_length != op2.lcs_length)
-//          return (op1.lcs_length < op2.lcs_length);
-//        else
-//          return (op1.region_kmer_count < op2.region_kmer_count);
-//      }
-//
-////      return (op1.depth < op2.depth);
-////        return (op1.ratio_suppress > op2.ratio_suppress);
-//      return false;
-//    }
-//};
-
-///// Used until 11.03.2015.
-//struct path_graph_entry_greater_than_key
-//{
-//    inline bool operator() (const PathGraphEntry* op1, const PathGraphEntry* op2) {
-//      if (op1->num_covering_kmers > op2->num_covering_kmers)
-//        return true;
-//      else if (op1->num_covering_kmers < op2->num_covering_kmers)
-//        return false;
-//      else {
-//        if (op1->lcs_length != op2->lcs_length) {
-//          return (op1->lcs_length > op2->lcs_length);
-//        } else {
-//            return (op1->fpfilter > op2->fpfilter);
-//        }
-//      }
-//
-//      return false;
-//    }
-//};
 
 struct path_graph_entry_greater_than_key
 {
