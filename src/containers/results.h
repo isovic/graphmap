@@ -45,16 +45,27 @@ typedef struct L1Results {
 
 typedef struct AlignmentResults {
   bool is_aligned = false;
-  bool is_reverse = false;
-  int64_t pos_start = 0;
-  int64_t pos_end = 0;
-  std::string cigar = "*";
-  std::vector<int8_t> alignment;
+  bool is_reverse = false;            // This should be deprecated and replaced with 'orientation'.
+  int64_t pos_start = 0;              // Starting position of the alignment on the reference. If orientation == kReverse, this assumes that the read should be reverse complemented and the reference stays fwd. pos_start is adjusted accordingly to denote the starting position of the alignment of the reversed read.
+  int64_t pos_end = 0;                // See pos_start. This is the end position of the alignment.
+  std::string cigar = "*";            // In case orientation == kReverse, 'cigar' contains the reverse of the 'alignment' operations.
   int64_t edit_distance = 0;
   int64_t alignment_score = 0;
   int64_t mapping_quality = 0;
   double evalue = 0.0f;
-  int64_t num_secondary_alns = 0;      // How many mapping positions have exactly the same score.
+  int64_t num_secondary_alns = 0;      // How many mapping positions have similar score.
+
+  int64_t raw_pos_start = 0;          // Internally, the fwd read is mapped to a reference and its reverse complement (which have been joined in a single massive sequence). The raw_pos_start then holds the absolute coordinate of the alignment in such joined sequence data.
+  int64_t raw_pos_end = 0;            // See raw_pos_start. This is the end position of the alignment in global coordinates.
+  std::vector<uint8_t> raw_alignment;     // Hold the alignment in the global coordinate space (between raw_pos_start and raw_pos_end). Cannot be used with pos_start and pos_end in case the read should be reverse complemented. In this case, the alignment needs to be reversed.
+
+  SeqOrientation orientation = kForward;
+  int64_t ref_id = -1;
+  std::string ref_header = "*";
+  int64_t ref_len = 0;
+  int64_t query_id = -1;
+  std::string query_header = "*";
+  int64_t query_len = 0;
 
   int64_t num_eq_ops = 0;
   int64_t num_x_ops = 0;
@@ -62,40 +73,21 @@ typedef struct AlignmentResults {
   int64_t num_d_ops = 0;
   int64_t nonclipped_length = 0;
 
-//  std::string unmapped_reason = "Not processed.";
-//
-//  double stats_time_region_selection = 0.0;
-//  double stats_time_mapping = 0.0;
-//  double stats_time_alignment = 0.0;
+  // These are parameters of alignment which were used to produce the results.
+  int64_t aln_window_start = 0;       // Start position of the region which was used for alignment, e.g. l1_ref_start, in global coordinates.
+  int64_t aln_window_end = 0;         // End position of the region which was used for alignment, e.g. l1_ref_start, in global coordinates.
+  int32_t aln_mode_code = 0;          // Type of alignment which was performed to produce the results stored in this structure.
 
 } AlignmentResults;
 
 
 
-//class AlignmentResult {
-// public:
-//  std::vector<int8_t> query_seq;
-//  std::vector<int8_t> target_seq;
-//  int64_t aln_pos_start;
-//  int64_t aln_pos_end;
-
-//  int64_t edit_dist;
-//  int64_t aln_score;
-//  double evalue;
-//
-//  int64_t query_id;
-//  std::string query_header;
-//  int64_t ref_id;
-//  std::string ref_header;
-//};
-
-
 typedef struct MappingMetadata {
   std::string unmapped_reason = "Not processed.";
 
-  double stats_time_region_selection = 0.0;
-  double stats_time_mapping = 0.0;
-  double stats_time_alignment = 0.0;
+  double time_region_selection = 0.0;
+  double time_mapping = 0.0;
+  double time_alignment = 0.0;
 
 } MappingMetadata;
 

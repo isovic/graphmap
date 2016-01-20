@@ -32,9 +32,9 @@ MappingData::MappingData() {
   mapping_quality = 0;
   metagen_alignment_score = 0;
 
-  stats_time_region_selection = 0.0;
-  stats_time_mapping = 0.0;
-  stats_time_alignment = 0.0;
+  time_region_selection = 0.0;
+  time_mapping = 0.0;
+  time_alignment = 0.0;
 }
 
 MappingData::~MappingData() {
@@ -50,6 +50,20 @@ MappingData::~MappingData() {
   num_region_iterations = 0;
   mapping_quality = 0;
   metagen_alignment_score = 0;
+}
+
+bool MappingData::IsMapped() {
+  for (int32_t i=0; i<final_mapping_ptrs.size(); i++) {
+    if (final_mapping_ptrs[i]->IsMapped() == true) { return true; };
+  }
+  return false;
+}
+
+bool MappingData::IsAligned() {
+  for (int32_t i=0; i<final_mapping_ptrs.size(); i++) {
+    if (final_mapping_ptrs[i]->IsAligned() == true) { return true; };
+  }
+  return false;
 }
 
 std::string MappingData::VerboseMappingDataToString_(const std::vector<PathGraphEntry *> *mapping_data, const Index *index, const SingleSequence *read) const {
@@ -83,10 +97,13 @@ std::string MappingData::VerboseMappingDataToString_(const std::vector<PathGraph
     int64_t reference_end;
     index->RawPositionConverter(mapping_data->at(i)->get_mapping_data().ref_coords.end, 0, &absolute_position, &reference_end, &orientation);
 
-    ss << "\n      ° r_id = " << mapping_data->at(i)->get_region_data().reference_id << ", region_index = " << mapping_data->at(i)->get_region_data().region_index << ", region_votes = " << mapping_data->at(i)->get_region_data().region_votes << ", position = " << relative_position << ", r1[" << reference_start << ", " << reference_end << "], " << ((orientation == kForward) ? "forward" : "reverse");
-    ss << ", sam_NM = " << mapping_data->at(i)->get_alignment_primary().edit_distance << ", sam_AS = " << mapping_data->at(i)->get_alignment_primary().alignment_score << ", sam_evalue = " << mapping_data->at(i)->get_alignment_primary().evalue << ", sam_pos = " << mapping_data->at(i)->get_alignment_primary().pos_start << ", sam_mapq = " << ((int64_t) mapping_data->at(i)->get_alignment_primary().mapping_quality) << ", relative_position = " << relative_position;
-    ss << "\n      ° r_len = " << index->get_reference_lengths()[mapping_data->at(i)->get_region_data().reference_id] << ", l1_l = " << mapping_data->at(i)->get_l1_data().l1_l << ", match_rate = " << ((float) mapping_data->at(i)->get_alignment_primary().num_eq_ops) / ((float) read->get_sequence_length()) << ", error_rate = " << ((float) mapping_data->at(i)->get_alignment_primary().num_x_ops + mapping_data->at(i)->get_alignment_primary().num_d_ops + mapping_data->at(i)->get_alignment_primary().num_i_ops) / ((float) read->get_sequence_length());
-    ss << "\n      ° \"" << index->get_headers()[mapping_data->at(i)->get_region_data().reference_id % index->get_num_sequences_forward()] << "\"";
+    for (int64_t j = 0; j < mapping_data->at(i)->get_alignments().size(); j++) {
+      ss << "\n      ° Alignment " << j << " / " << mapping_data->at(i)->get_alignments().size() << "\n";
+      ss << "\n      ° r_id = " << mapping_data->at(i)->get_region_data().reference_id << ", region_index = " << mapping_data->at(i)->get_region_data().region_index << ", region_votes = " << mapping_data->at(i)->get_region_data().region_votes << ", position = " << relative_position << ", r1[" << reference_start << ", " << reference_end << "], " << ((orientation == kForward) ? "forward" : "reverse");
+      ss << ", sam_NM = " << mapping_data->at(i)->get_alignments()[j].edit_distance << ", sam_AS = " << mapping_data->at(i)->get_alignments()[j].alignment_score << ", sam_evalue = " << mapping_data->at(i)->get_alignments()[j].evalue << ", sam_pos = " << mapping_data->at(i)->get_alignments()[j].pos_start << ", sam_mapq = " << ((int64_t) mapping_data->at(i)->get_alignments()[j].mapping_quality) << ", relative_position = " << relative_position;
+      ss << "\n      ° r_len = " << index->get_reference_lengths()[mapping_data->at(i)->get_region_data().reference_id] << ", l1_l = " << mapping_data->at(i)->get_l1_data().l1_l << ", match_rate = " << ((float) mapping_data->at(i)->get_alignments()[j].num_eq_ops) / ((float) read->get_sequence_length()) << ", error_rate = " << ((float) mapping_data->at(i)->get_alignments()[j].num_x_ops + mapping_data->at(i)->get_alignments()[j].num_d_ops + mapping_data->at(i)->get_alignments()[j].num_i_ops) / ((float) read->get_sequence_length());
+      ss << "\n      ° \"" << index->get_headers()[mapping_data->at(i)->get_region_data().reference_id % index->get_num_sequences_forward()] << "\"";
+    }
     ss << "\n-----------";
     if (i == 0) {
       ss << "\n";

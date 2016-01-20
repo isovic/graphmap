@@ -36,7 +36,7 @@ class PathGraphEntry {
   ~PathGraphEntry();
 
   void Set(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
-  void AddSecondaryAlignmentData(AlignmentResults alignment_info);
+//  void AddSecondaryAlignmentData(AlignmentResults alignment_info);
 
   std::string GenerateSAM(bool is_primary, int64_t verbose_sam_output) const;
   std::string GenerateAMOS() const;
@@ -50,6 +50,13 @@ class PathGraphEntry {
 
   std::string VerboseToString(std::string delimiter="\r") const;
   std::string VerboseInfoToString(std::string delimiter="\t") const;
+
+  void SetMapped(bool is_mapped);
+  bool IsMapped();
+  void SetAligned(bool is_aligned);
+  bool IsAligned();
+
+  void AddAlignmentData(AlignmentResults alignment_info);
 
   float get_fpfilter() const;
   void set_fpfilter(float fpfilter);
@@ -67,10 +74,12 @@ class PathGraphEntry {
   void set_fpfilter_read_len(float fpfilterReadLen);
   float get_fpfilter_std();
   void set_fpfilter_std(float fpfilterStd);
-  AlignmentResults& get_alignment_primary();
-  void set_alignment_primary(AlignmentResults& alignmentPrimary);
-  std::vector<AlignmentResults>& get_alignments_secondary();
-  void set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary);
+  std::vector<AlignmentResults>& get_alignments();
+  void set_alignments(std::vector<AlignmentResults>& alignments);
+//  AlignmentResults& get_alignment_primary();
+//  void set_alignment_primary(AlignmentResults& alignmentPrimary);
+//  std::vector<AlignmentResults>& get_alignments_secondary();
+//  void set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary);
   MappingMetadata& get_mapping_metadata();
   void set_mapping_metadata(MappingMetadata& mappingMetadata);
 
@@ -83,8 +92,9 @@ class PathGraphEntry {
   // Parameters holding the L1 results
   L1Results l1_info_;
 //  std::vector<InfoAlignment> alignments_;
-  AlignmentResults alignment_primary_;
-  std::vector<AlignmentResults> alignments_secondary_;
+  std::vector<AlignmentResults> alignments_;
+//  AlignmentResults alignment_primary_;
+//  std::vector<AlignmentResults> alignments_secondary_;
   MappingMetadata mapping_metadata_;
 
   Region region_info_;

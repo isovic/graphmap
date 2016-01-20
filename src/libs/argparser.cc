@@ -210,6 +210,9 @@ void ArgumentParser::ProcessArguments(int argc, char* argv[], int offset) {
 
           } else {
             arguments_[argument_index].value = "1";
+            if (arguments_[argument_index].value_type == VALUE_TYPE_BOOL) {
+              SetArgumentTarget_(arguments_[argument_index].target, arguments_[argument_index].value_type, arguments_[argument_index].value);
+            }
           }
         }
        /////////////////////////////////////////////////////////
@@ -370,8 +373,12 @@ std::string ArgumentParser::VerboseUsage() {
         ss << WrapString_(description_starting_char, wrap_width, arguments_[it->second.at(i)].description);
         num_chars += num_empty_chars + arguments_[it->second.at(i)].description.size();
       }
-      if (arguments_[it->second.at(i)].value_type != VALUE_TYPE_NONE && arguments_[it->second.at(i)].value_type != VALUE_TYPE_BOOL && arguments_[it->second.at(i)].default_value != "") {
-        ss << " [" << arguments_[it->second.at(i)].default_value << "]";
+      if (arguments_[it->second.at(i)].value_type != VALUE_TYPE_NONE && arguments_[it->second.at(i)].default_value != "") {
+        if (arguments_[it->second.at(i)].value_type != VALUE_TYPE_BOOL) {
+          ss << " [" << arguments_[it->second.at(i)].default_value << "]";
+        } else {
+          ss << " [" << ((arguments_[it->second.at(i)].default_value == "0" || arguments_[it->second.at(i)].default_value == "false") ? "false" : "true") << "]";
+        }
       }
 
       if (arguments_[it->second.at(i)].arg_short != "" || arguments_[it->second.at(i)].arg_long != "") {
@@ -504,9 +511,9 @@ void ArgumentParser::SetArgumentTarget_(void *target, ValueType value_type, std:
   if (value_type == VALUE_TYPE_BOOL) {
     std::string ss_str = ss.str();
     if (ss_str == "0" || ss_str == "false") {
-      *((int32_t *) target) = false;
+      *((bool *) target) = false;
     } else {
-      *((int32_t *) target) = true;
+      *((bool *) target) = true;
     }
   } else if (value_type == VALUE_TYPE_INT32) {
     int32_t value = 0;

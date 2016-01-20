@@ -36,8 +36,9 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->mismatch_penalty, VALUE_TYPE_INT64, "X", "mismatch", "4", "Mismatch penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
   argparser.AddArgument(&parameters->gap_open_penalty, VALUE_TYPE_INT64, "G", "gapopen", "8", "Gap open penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
   argparser.AddArgument(&parameters->gap_extend_penalty, VALUE_TYPE_INT64, "E", "gapext", "6", "Gap extend penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
-  argparser.AddArgument(&parameters->evalue_threshold, VALUE_TYPE_DOUBLE, "z", "evalue", "-1", "Threshold for E-value. If E-value > FLT, read will be called unmapped. If FLT < 0.0, thredhold not applied.", 0, "Alignment options");
-  argparser.AddArgument(&parameters->mapq_threshold, VALUE_TYPE_INT64, "c", "mapq", "0", "Threshold for mapping quality. If mapq < INT, read will be called unmapped.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->evalue_threshold, VALUE_TYPE_DOUBLE, "z", "evalue", "1e0", "Threshold for E-value. If E-value > FLT, read will be called unmapped. If FLT < 0.0, thredhold not applied.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->mapq_threshold, VALUE_TYPE_INT64, "c", "mapq", "1", "Threshold for mapping quality. If mapq < INT, read will be called unmapped.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->use_extended_cigar, VALUE_TYPE_BOOL, "", "extcigar", "0", "Use the extended CIGAR format for output alignments.", 0, "Alignment options");
 #ifndef RELEASE_VERSION
   argparser.AddArgument(&parameters->mex_score, VALUE_TYPE_INT64, "T", "mex", "1", "Mex score.", 0, "Alignment options");
 #endif

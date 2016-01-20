@@ -35,6 +35,9 @@
   #include "libs/opal.h"
 #endif
 
+typedef int (*AlignmentFunctionType)(const int8_t*, int64_t, const int8_t*, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t*, int64_t*, int64_t*, std::vector<unsigned char> &);
+typedef int (*EditDistanceFunctionType)(const int8_t*, int64_t, const int8_t*, int64_t, int64_t*, int64_t*, int);
+
 int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                   const int8_t *reference_data, int64_t reference_length,
                                   int64_t rough_reference_start, int64_t rough_reference_end,
@@ -45,19 +48,19 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
 
 int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
                            const int8_t *reference_data, int64_t reference_length,
-                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                            int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                            int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 
 int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
-                   int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 
 int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
                    const int8_t *reference_data, int64_t reference_length,
-                   int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                   int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                    int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                    int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 
@@ -77,12 +80,12 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
 
 int SeqAnSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
                            const int8_t *reference_data, int64_t reference_length,
-                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                            int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                            int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t read_length,
                                                 const int8_t *reference_data, int64_t reference_length,
-                                                int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                                                int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                                                 int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                                                 int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 
@@ -93,12 +96,12 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
 
 int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
                            const int8_t *reference_data, int64_t reference_length,
-                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                            int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                            int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
                            const int8_t *reference_data, int64_t reference_length,
-                           int64_t band_width, int64_t match_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
+                           int64_t band_width, int64_t match_score, int64_t mex_score, int64_t mismatch_penalty, int64_t gap_open_penalty, int64_t gap_extend_penalty,
                            int64_t* ret_alignment_position_start, int64_t *ret_alignment_position_end,
                            int64_t *ret_edit_distance, std::vector<unsigned char> &ret_alignment);
 

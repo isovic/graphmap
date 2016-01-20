@@ -73,9 +73,12 @@ class MappingData {
   int8_t mapping_quality;
   int64_t metagen_alignment_score;
 
-  double stats_time_region_selection;
-  double stats_time_mapping;
-  double stats_time_alignment;
+  double time_region_selection;
+  double time_mapping;
+  double time_alignment;
+
+  bool IsMapped();
+  bool IsAligned();
 
   std::string VerboseFinalMappingsToString(const Index *index, const SingleSequence *read) const;
   std::string VerboseIntermediateMappingsToString(const Index *index, const SingleSequence *read) const;

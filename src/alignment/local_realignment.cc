@@ -57,7 +57,8 @@ int HybridRealignment(const SingleSequence *read, const Index *index, const Prog
       bool extend_to_end = false;
       bool is_linear = best_path->get_region_data().is_split == false || parameters.is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
-      return AnchoredAlignmentMex(is_linear, extend_to_end, OpalNWWrapper, OpalSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
+//      return AnchoredAlignmentMex(is_linear, extend_to_end, OpalNWWrapper, OpalSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
+      return AnchoredAlignment(is_linear, extend_to_end, OpalNWWrapper, OpalSHWWrapper, read, index, parameters, best_path, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
 #endif
 
     } else {
@@ -219,7 +220,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   std::vector<unsigned char> alignment;
   int ret_code = AlignmentFunction(read->get_data(), read->get_sequence_length(),
                                    (int8_t *) (index->get_data() + l1_reference_start), reference_data_length,
-                                   -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                                   -1, parameters.match_score, parameters.mex_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                    &alignment_position_start, &alignment_position_end,
                                    &edit_distance, alignment);
   alignment_position_start += l1_reference_start;
@@ -229,7 +230,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
     return ret_code;
 
   ConvertInsertionsToClipping((unsigned char *) &(alignment[0]), alignment.size());
-  *ret_cigar_left_part = AlignmentToCigar((unsigned char *) &(alignment[0]), alignment.size());
+  *ret_cigar_left_part = AlignmentToCigar((unsigned char *) &(alignment[0]), alignment.size(), parameters.use_extended_cigar);
 //  *ret_AS_left_part = RescoreAlignment((unsigned char *) &(alignment[0]), alignment.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
   *ret_cigar_right_part = "";
 
@@ -357,7 +358,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
   std::vector<unsigned char> alignment_left_part;
   int ret_code = AlignmentFunction(read->get_data(), read->get_sequence_length(),
                    (int8_t *) &(data_copy[l1_reference_start]), (l1_reference_end - l1_reference_start + 1),
-                   -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
+                   -1, parameters.match_score, parameters.mex_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                    &best_aligning_position_start, &best_aligning_position_end,
                    &edit_distance, alignment_left_part);
   best_aligning_position_start += l1_reference_start;
@@ -408,7 +409,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
   int64_t best_aligning_position_left_part = 0;
   if (alignment_left_part.size() > 0) {
-    *ret_cigar_left_part = AlignmentToCigar((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size());
+    *ret_cigar_left_part = AlignmentToCigar((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size(), parameters.use_extended_cigar);
 //    *ret_AS_left_part = RescoreAlignment((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
 
     if (orientation == kForward) {
@@ -422,7 +423,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
   int64_t best_aligning_position_right_part = 0;
   if (alignment_right_part.size() > 0) {
-    *ret_cigar_right_part = AlignmentToCigar((unsigned char *) &(alignment_right_part[0]), alignment_right_part.size());
+    *ret_cigar_right_part = AlignmentToCigar((unsigned char *) &(alignment_right_part[0]), alignment_right_part.size(), parameters.use_extended_cigar);
 //    *ret_AS_right_part = RescoreAlignment((unsigned char *) &(alignment_right_part[0]), alignment_right_part.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
 
     if (orientation == kForward) {
@@ -495,73 +496,6 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
 
   if (data_copy)
     delete[] data_copy;
-
-  return 0;
-}
-
-
-
-int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start, SeqOrientation orientation,
-                             int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
-                             int64_t* ret_eq, int64_t* ret_x, int64_t* ret_i, int64_t* ret_d, int64_t *ret_alignment_score, int64_t *ret_nonclipped_length) {
-  unsigned char last_move = -1;  // Code of last move.
-  int64_t num_same_moves = 0;
-  int64_t read_position = 0;
-  int64_t ref_position = 0;
-
-  int64_t num_eq = 0;
-  int64_t num_x = 0;
-  int64_t num_i = 0;
-  int64_t num_d = 0;
-  int64_t alignment_score = 0;
-
-  int64_t nonclipped_length = 0;
-
-  for (int i = 0; i < alignment.size(); i++) {
-    char align_op = 255;
-    align_op = alignment[i];
-
-    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X) {
-      if (read_data[read_position] == ref_data[alignment_position_start + ref_position]) {
-        num_eq += 1;
-        alignment_score += match;
-
-      } else {
-        num_x += 1;
-        alignment_score -= mismatch;
-      }
-
-      nonclipped_length += 1;
-
-    } else if (align_op == EDLIB_I) {
-      num_i += 1;
-      /// This is for the (gap_open + (N) * gap_extend).
-      ///      alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open + gap_extend) : gap_extend);
-      /// This is for the (gap_open + (N - 1) * gap_extend).
-      alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open) : gap_extend);
-      nonclipped_length += 1;
-
-    } else if (align_op == EDLIB_D) {
-      num_d += 1;
-      /// This is for the (gap_open + (N) * gap_extend).
-      ///      alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open + gap_extend) : gap_extend);
-      /// This is for the (gap_open + (N - 1) * gap_extend).
-      alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open) : gap_extend);
-    }
-
-    // Increase coordinates.
-    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X || align_op == EDLIB_I || align_op == EDLIB_S)
-      read_position += 1;
-    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X || align_op == EDLIB_D)
-      ref_position += 1;
-  }
-
-  *ret_eq = num_eq;
-  *ret_x = num_x;
-  *ret_i = num_i;
-  *ret_d = num_d;
-  *ret_alignment_score = alignment_score;
-  *ret_nonclipped_length = nonclipped_length;
 
   return 0;
 }

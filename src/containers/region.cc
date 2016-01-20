@@ -41,33 +41,6 @@ int ConcatenateSplitRegion(const Index *index_reference, const Region &region, i
     position_of_ref_end = region.end - region.start;
     start_offset = region.start;
 
-//    printf ("Left part:\n");
-//    for (int i=0; i<region_length_first; i++) {
-//      printf ("%c", data_copy[i]);
-//    }
-//    printf ("\n");
-//    printf ("Right part:\n");
-//    for (int i=0; i<region_length_second; i++) {
-//      printf ("%c", (data_copy + region_length_first)[i]);
-//    }
-//    printf ("\n");
-//    printf ("All together:\n");
-//    for (int i=0; i<(region_length_first+region_length_second); i++) {
-//      printf ("%c", data_copy[i]);
-//    }
-//    printf ("\n");
-//
-//    printf ("Tu sam 1!\n");
-//    for (int i=0; i<5; i++)
-//      printf ("[%ld] %c\n", i, data_copy[position_of_ref_end + i]);
-//    fflush(stdout);
-//    printf ("\n");
-//    for (int i=(position_of_ref_end-10); i<=(position_of_ref_end); i++)
-//      printf ("[%ld] %c\t %d\n", ((start_offset + i)%index_reference->get_data_length_forward()), data_copy[i], index_reference->get_data_length_forward());
-//    fflush(stdout);
-//    printf ("\n");
-//
-//    printf ("\n----------------------\n\n");
   }
 
   data_copy[region_length_joined] = '\0';
@@ -91,7 +64,6 @@ std::string VerboseRegionAsString(Region &region) {
   ss << ", is_split = " << ((int) region.is_split);
   ss << ", split_start = " << region.split_start;
   ss << ", split_end = " << region.split_end;
-//  ss << ", reverse = " << region.reverse;
 
   return ss.str();
 }

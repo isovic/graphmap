@@ -54,7 +54,8 @@
 //}
 
 PathGraphEntry::~PathGraphEntry() {
-  alignments_secondary_.clear();
+//  alignments_secondary_.clear();
+  alignments_.clear();
 }
 
 //PathGraphEntry::PathGraphEntry(Index *index, SingleSequence *read, ProgramParameters *parameters,
@@ -86,7 +87,8 @@ void PathGraphEntry::Set(const Index *index, const SingleSequence *read, const P
   if (l1_data != NULL)
     set_l1_data((*l1_data));
   if (alignment_data != NULL)
-    AddSecondaryAlignmentData((*alignment_data));
+    AddAlignmentData(*alignment_data);
+  //    AddSecondaryAlignmentData((*alignment_data));
 }
 
 void PathGraphEntry::Verbose(FILE *fp) const {
@@ -273,8 +275,12 @@ void PathGraphEntry::set_region_data(Region& regionData) {
   region_info_ = regionData;
 }
 
-void PathGraphEntry::AddSecondaryAlignmentData(AlignmentResults alignment_info) {
-  alignments_secondary_.push_back(alignment_info);
+//void PathGraphEntry::AddSecondaryAlignmentData(AlignmentResults alignment_info) {
+//  alignments_secondary_.push_back(alignment_info);
+//}
+
+void PathGraphEntry::AddAlignmentData(AlignmentResults alignment_info) {
+  alignments_.push_back(alignment_info);
 }
 
 std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
@@ -297,7 +303,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << qname_for_out << "\t";
   ss << flag << "\t";
   ss << rname_for_out << "\t";
-  ss << alignment_info.pos_start << "\t";
+  ss << alignment_info.pos_start + 1 << "\t";
   ss << ((int64_t) alignment_info.mapping_quality) << "\t";      // To avoid confusion with the definition of mapping quality, we will use the value of 255, and report the actual quality as AS optional parameter.
   ss << alignment_info.cigar << "\t";
   ss << rnext << "\t";
@@ -341,12 +347,12 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
     std::stringstream X3_ss;
     X3_ss << VerboseToString("_");
     X3_ss << "__region_votes=" << get_region_data().region_votes; // << "__max_region_votes=" << get_region_data()..bin_value << "__num_region_iterations=" << num_region_iterations_;
-    X3_ss << "__num_eq_ops=" << alignment_info.num_eq_ops << "__num_x_ops=" << alignment_info.num_x_ops << "__num_i_ops=" << alignment_info.num_i_ops << "__num_d_ops=" << alignment_info.num_d_ops << "__nonclippedlen=" << alignment_info.nonclipped_length << "__match_rate=" << FormatString("%.2f", match_rate) << "__mismatch_rate=" << FormatString("%.2f", mismatch_rate);
+    X3_ss << "__num_eq_ops=" << alignment_info.num_eq_ops << "__num_x_ops=" << alignment_info.num_x_ops << "__num_i_ops=" << alignment_info.num_i_ops << "__num_d_ops=" << alignment_info.num_d_ops << "__nonclippedlen=" << alignment_info.nonclipped_length << "__match_rate=" << FormatString("%.2f", match_rate) << "__error_rate=" << FormatString("%.2f", mismatch_rate);
 
     ss << "\tX3:Z:" << X3_ss.str();
 
     std::stringstream X4_ss;
-    X4_ss << "Timings(sec)__regionselection=" << mapping_metadata.stats_time_region_selection << "__mapping=" << mapping_metadata.stats_time_mapping << "__alignment=" << mapping_metadata.stats_time_alignment;
+    X4_ss << "Timings(sec)__regionselection=" << mapping_metadata.time_region_selection << "__mapping=" << mapping_metadata.time_mapping << "__alignment=" << mapping_metadata.time_alignment;
     ss << "\tX4:Z:" << X4_ss.str();
   }
 
@@ -356,86 +362,12 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
 std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_output) const {
   std::stringstream ss;
 
-  ss << GenerateSAMFromInfoAlignment_(alignment_primary_, mapping_metadata_, is_primary, verbose_sam_output);
-
-  for (int64_t i=0; i<alignments_secondary_.size(); i++) {
-    ss << "\n";
-    ss << GenerateSAMFromInfoAlignment_(alignments_secondary_[i], mapping_metadata_, false, verbose_sam_output);
+  for (int64_t i=0; i<alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) {
+      if (i > 0) { ss << "\n"; }
+      ss << GenerateSAMFromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
+    }
   }
-
-//  uint32_t reverse = (orientation == kForward) ? 0 : SAM_THIS_SEG_REVERSED;
-//  uint32_t mapped = 0;  // This means that the segment is mapped.
-//  uint32_t secondary_alignment = ((i == 0) ? (0) : (SAM_SECONDARY_ALIGNMENT));
-//  uint32_t flag = reverse | mapped | secondary_alignment;
-//
-//  std::stringstream X1_ss;
-//  X1_ss << metagen_alignment_score_;
-//  std::stringstream X2_ss;
-//  X2_ss << read_->get_sequence_length();
-//  std::stringstream X3_ss;
-//  X3_ss << final_mapping_ptrs_.at(i)->VerboseToString("_");
-//  X3_ss << "__region_votes=" << final_mapping_ptrs_.at(i)->get_region_data().region_votes << "__max_region_votes=" << bins_.front().bin_value << "__num_region_iterations=" << num_region_iterations_;
-////    X3_ss << "__num_eq_ops=" << num_eq_ops << "__num_x_ops=" << num_x_ops << "__num_i_ops=" << num_i_ops << "__num_d_ops=" << num_d_ops << "__match_rate=" << FormatString("%.2f", (((float) num_eq_ops) / ((float) read_->get_sequence_length()))) << "__mismatch_rate=" << FormatString("%.2f", (((float) (num_x_ops + num_i_ops + num_d_ops)) / ((float) (num_eq_ops + num_x_ops + num_d_ops))));
-//  X3_ss << "__num_eq_ops=" << num_eq_ops << "__num_x_ops=" << num_x_ops << "__num_i_ops=" << num_i_ops << "__num_d_ops=" << num_d_ops << "__match_rate=" << FormatString("%.2f", match_rate) << "__mismatch_rate=" << FormatString("%.2f", mismatch_rate);
-//  std::stringstream X5_ss;
-////    X5_ss << fp_filter;
-//  X5_ss << final_mapping_ptrs_.at(i)->fpfilter;
-//
-//  final_mapping_ptrs_.at(i)->sam.qname = std::string(read_->get_header());
-//  final_mapping_ptrs_.at(i)->sam.flag = flag;
-//  final_mapping_ptrs_.at(i)->sam.rname = index_->get_headers()[reference_id];
-//  final_mapping_ptrs_.at(i)->sam.pos = relative_position_left_part + 1;
-//  final_mapping_ptrs_.at(i)->sam.mapq = mapping_quality_;
-//  final_mapping_ptrs_.at(i)->sam.cigar = (orientation == kForward) ? (cigar_left_part) : (ReverseCigarString(cigar_left_part));
-//  final_mapping_ptrs_.at(i)->sam.seq = (orientation == kForward) ? (std::string((char *) read_->get_data())) : (read_->GetReverseComplementAsString());
-//
-//  final_mapping_ptrs_.at(i)->sam.NM = edit_distance;
-//  final_mapping_ptrs_.at(i)->sam.H0 = num_same_mappings_;
-//  final_mapping_ptrs_.at(i)->sam.AS = AS_left_part;
-//  final_mapping_ptrs_.at(i)->sam.X1 = X1_ss.str();
-//  final_mapping_ptrs_.at(i)->sam.X2 = X2_ss.str();
-//  final_mapping_ptrs_.at(i)->sam.X3 = X3_ss.str();
-//  final_mapping_ptrs_.at(i)->sam.evalue = evalue_left_part;
-//
-//  final_mapping_ptrs_.at(i)->num_eq_ops = num_eq_ops;
-//  final_mapping_ptrs_.at(i)->num_x_ops = num_x_ops;
-//  final_mapping_ptrs_.at(i)->num_i_ops = num_i_ops;
-//  final_mapping_ptrs_.at(i)->num_d_ops = num_d_ops;
-//  final_mapping_ptrs_.at(i)->sam.cigar_split_part = "";
-//  final_mapping_ptrs_.at(i)->sam.pos_split_part = 0;
-//  final_mapping_ptrs_.at(i)->sam.AS_split_part = 0;
-//
-////    final_mapping_ptrs_.at(i)->sam.ZF = X5_ss.str();
-//  final_mapping_ptrs_.at(i)->sam.fpfilter = final_mapping_ptrs_.at(i)->fpfilter;
-//
-//  if (cigar_right_part.size() > 0) {
-//    final_mapping_ptrs_.at(i)->sam.cigar_split_part = (orientation == kForward) ? (cigar_right_part) : (ReverseCigarString(cigar_right_part));
-//    final_mapping_ptrs_.at(i)->sam.pos_split_part = relative_position_right_part + 1;
-//    final_mapping_ptrs_.at(i)->sam.AS_split_part = AS_right_part;
-//    final_mapping_ptrs_.at(i)->sam.evalue_split_part = evalue_right_part;
-//    final_mapping_ptrs_.at(i)->sam.fpfilter_split_part = final_mapping_ptrs_.at(i)->fpfilter;
-//  }
-//
-//  if (read_->get_quality_length() > 0) {
-//    if (orientation == kForward) {
-////        printf ("Forward!\n");
-////        fflush(stdout);
-//      if (read_->get_quality() != NULL)
-//        final_mapping_ptrs_.at(i)->sam.qual = std::string((char *) read_->get_quality());  // GetSubstring((char *) read_->get_quality(), read_->get_quality_length());
-//      else
-//        final_mapping_ptrs_.at(i)->sam.qual = std::string("*");
-//    } else {
-////        printf ("Reverse!\n");
-////        fflush(stdout);
-//      std::string reverse_quality = read_->GetReverseQualityAsString();
-//      if (reverse_quality.size() > 0)
-//        final_mapping_ptrs_.at(i)->sam.qual = (reverse_quality);
-//      else
-//        final_mapping_ptrs_.at(i)->sam.qual = std::string("*");
-//    }
-//
-////      final_mapping_ptrs_.at(i)->sam.qual = (orientation == kForward) ? (std::string((char *) read_->get_quality())) : (read_->GetReverseQualityAsString());
-//  }
 
   return ss.str();
 }
@@ -475,11 +407,11 @@ std::string PathGraphEntry::GenerateAMOSFromInfoMappping(const MappingResults &m
 std::string PathGraphEntry::GenerateAMOS() const {
   std::stringstream ss;
 
-  ss << GenerateAMOSFromInfoAlignment_(alignment_primary_);
-
-  for (int64_t i=0; i<alignments_secondary_.size(); i++) {
-    ss << "\n";
-    ss << GenerateAMOSFromInfoAlignment_(alignments_secondary_[i]);
+  for (int64_t i=0; i<alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) {
+      if (i > 0) { ss << "\n"; }
+      ss << GenerateAMOSFromInfoAlignment_(alignments_[i]);
+    }
   }
 
   return ss.str();
@@ -561,21 +493,29 @@ void PathGraphEntry::set_fpfilter_std(float fpfilterStd) {
   fpfilter_std_ = fpfilterStd;
 }
 
-AlignmentResults& PathGraphEntry::get_alignment_primary() {
-  return alignment_primary_;
+std::vector<AlignmentResults>& PathGraphEntry::get_alignments() {
+  return alignments_;
 }
 
-void PathGraphEntry::set_alignment_primary(AlignmentResults& alignmentPrimary) {
-  alignment_primary_ = alignmentPrimary;
+void PathGraphEntry::set_alignments(std::vector<AlignmentResults>& alignments) {
+  alignments_ = alignments;
 }
 
-std::vector<AlignmentResults>& PathGraphEntry::get_alignments_secondary() {
-  return alignments_secondary_;
-}
-
-void PathGraphEntry::set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary) {
-  alignments_secondary_ = alignmentsSecondary;
-}
+//AlignmentResults& PathGraphEntry::get_alignment_primary() {
+//  return alignment_primary_;
+//}
+//
+//void PathGraphEntry::set_alignment_primary(AlignmentResults& alignmentPrimary) {
+//  alignment_primary_ = alignmentPrimary;
+//}
+//
+//std::vector<AlignmentResults>& PathGraphEntry::get_alignments_secondary() {
+//  return alignments_secondary_;
+//}
+//
+//void PathGraphEntry::set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary) {
+//  alignments_secondary_ = alignmentsSecondary;
+//}
 
 MappingMetadata& PathGraphEntry::get_mapping_metadata() {
   return mapping_metadata_;
@@ -583,6 +523,27 @@ MappingMetadata& PathGraphEntry::get_mapping_metadata() {
 
 void PathGraphEntry::set_mapping_metadata(MappingMetadata& mappingMetadata) {
   mapping_metadata_ = mappingMetadata;
+}
+
+void PathGraphEntry::SetMapped(bool is_mapped) {
+  mapping_info_.is_mapped = is_mapped;
+}
+
+void PathGraphEntry::SetAligned(bool is_aligned) {
+  for (int32_t i = 0; i < alignments_.size(); i++) {
+    alignments_[i].is_aligned = is_aligned;
+  }
+}
+
+bool PathGraphEntry::IsMapped() {
+  return mapping_info_.is_mapped;
+}
+
+bool PathGraphEntry::IsAligned() {
+  for (int32_t i = 0; i < alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) return true;
+  }
+  return false;
 }
 
 float PathGraphEntry::CalcFPFactorStd_(float std, int64_t read_length, float error_rate) {
