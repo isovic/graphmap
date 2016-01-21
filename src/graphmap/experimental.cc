@@ -14,6 +14,8 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
     LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
   }
 
+  clock_t begin_clock = clock();
+
   int64_t readlength = read->get_sequence_length();
   int64_t num_fwd_seqs = indexes[0]->get_num_sequences_forward();
   bool self_overlap = (parameters->alignment_approach == "overlapper" && parameters->reference_path == parameters->reads_path);
@@ -91,9 +93,17 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
     }
   }
 
+  double elapsed_secs_lookup = double(clock() - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->time_region_seed_lookup = elapsed_secs_lookup;
+  begin_clock = clock();
+
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Finished fetching seed hits. Sorting."), std::string(__FUNCTION__));
 
   std::sort(hit_coords.begin(), hit_coords.end());
+
+  double elapsed_secs_hitsort = double(clock() - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->time_region_hitsort = elapsed_secs_hitsort;
+  begin_clock = clock();
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld, hit_coords.size() = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit, hit_coords.size()), std::string(__FUNCTION__));
 
@@ -128,6 +138,10 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
 
   // Sort the bins in the descending order of bins_[i].bin_value;
   std::sort(mapping_data->bins.begin(), mapping_data->bins.end(), bins_greater_than_key());
+
+  double elapsed_secs_conversion = double(clock() - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->time_region_conversion = elapsed_secs_conversion;
+  begin_clock = clock();
 
 //  for (int64_t i=0; i<mapping_data->bins.size(); i++) {
 //    printf ("[%ld] ref_id = %ld\tbin_id = %ld\tbin_value = %.2f\n", i, mapping_data->bins[i].reference_id, mapping_data->bins[i].bin_id, mapping_data->bins[i].bin_value);

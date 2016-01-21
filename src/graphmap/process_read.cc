@@ -461,6 +461,9 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
     region_data->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
     region_data->get_mapping_metadata().time_mapping = mapping_data->time_mapping;
     region_data->get_mapping_metadata().time_alignment = elapsed_secs;
+    region_data->get_mapping_metadata().time_region_seed_lookup = mapping_data->time_region_seed_lookup;
+    region_data->get_mapping_metadata().time_region_hitsort = mapping_data->time_region_hitsort;
+    region_data->get_mapping_metadata().time_region_conversion = mapping_data->time_region_conversion;
     mapping_data->time_alignment = elapsed_secs;
 
     /// Check if something went wrong and the read is unmapped.

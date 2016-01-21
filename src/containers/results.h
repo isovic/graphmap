@@ -88,6 +88,9 @@ typedef struct MappingMetadata {
   double time_region_selection = 0.0;
   double time_mapping = 0.0;
   double time_alignment = 0.0;
+  double time_region_seed_lookup;
+  double time_region_hitsort;
+  double time_region_conversion;
 
 } MappingMetadata;
 

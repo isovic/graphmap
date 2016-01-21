@@ -76,6 +76,9 @@ class MappingData {
   double time_region_selection;
   double time_mapping;
   double time_alignment;
+  double time_region_seed_lookup;
+  double time_region_hitsort;
+  double time_region_conversion;
 
   bool IsMapped();
   bool IsAligned();

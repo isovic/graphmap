@@ -352,7 +352,13 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
     ss << "\tX3:Z:" << X3_ss.str();
 
     std::stringstream X4_ss;
-    X4_ss << "Timings(sec)__regionselection=" << mapping_metadata.time_region_selection << "__mapping=" << mapping_metadata.time_mapping << "__alignment=" << mapping_metadata.time_alignment;
+    X4_ss << "Timings(sec)__regionselection=" << mapping_metadata.time_region_selection <<
+             "_(lookup=" << mapping_metadata.time_region_seed_lookup <<
+             "_sort=" << mapping_metadata.time_region_hitsort <<
+             "_conv=" << mapping_metadata.time_region_conversion <<
+             ")" <<
+             "__mapping=" << mapping_metadata.time_mapping <<
+             "__alignment=" << mapping_metadata.time_alignment;
     ss << "\tX4:Z:" << X4_ss.str();
   }
 

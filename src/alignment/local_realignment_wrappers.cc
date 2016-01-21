@@ -731,7 +731,7 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
   uint8_t *converted_data = new uint8_t[read_length];
   if (converted_data == NULL) {
     LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
-    return ALIGNMENT_OPAL_OVERFLOW_ERROR;
+    return 1;
   }
   for (int64_t i=0; i<read_length; i++) {
     converted_data[i] = kBaseToBwaUnsigned[read_data[i]];
