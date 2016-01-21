@@ -11,6 +11,8 @@ from scipy.optimize import curve_fit
 
 USE_MATPLOTLIB = True;
 try:
+	# import matplotlib;
+	# matplotlib.use('Agg')
 	import matplotlib.pyplot as plt;
 	from matplotlib.font_manager import FontProperties;
 	import seaborn as sns;
