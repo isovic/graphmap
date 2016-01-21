@@ -92,6 +92,10 @@ class GraphMap {
 
   int AnchoredPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
 //  int FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t seed_length, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<Index*> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids=NULL);
+
+  /// Experimental functionality:
+  int RegionSelectionNoBins_(int64_t bin_size, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
+
 };
 
 #endif /* TREEMAP_SE_H_ */

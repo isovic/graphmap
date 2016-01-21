@@ -501,22 +501,6 @@ void PathGraphEntry::set_alignments(std::vector<AlignmentResults>& alignments) {
   alignments_ = alignments;
 }
 
-//AlignmentResults& PathGraphEntry::get_alignment_primary() {
-//  return alignment_primary_;
-//}
-//
-//void PathGraphEntry::set_alignment_primary(AlignmentResults& alignmentPrimary) {
-//  alignment_primary_ = alignmentPrimary;
-//}
-//
-//std::vector<AlignmentResults>& PathGraphEntry::get_alignments_secondary() {
-//  return alignments_secondary_;
-//}
-//
-//void PathGraphEntry::set_alignments_secondary(std::vector<AlignmentResults>& alignmentsSecondary) {
-//  alignments_secondary_ = alignmentsSecondary;
-//}
-
 MappingMetadata& PathGraphEntry::get_mapping_metadata() {
   return mapping_metadata_;
 }
@@ -552,46 +536,3 @@ float PathGraphEntry::CalcFPFactorStd_(float std, int64_t read_length, float err
     factor_std = std::max(0.0f, (float) (1.0f - (std) / (error_rate / sqrt(2.0f) * read_length)));
   return factor_std;
 }
-
-//void PathGraphEntry::GenerateFPFilter(Index *index, SingleSequence *read_, ProgramParameters &parameters_) {
-//  int64_t read_length = read->get_sequence_length();
-//
-//    float factor_std = 1.0f;
-//    if (parameters.error_rate > 0.0f && read_length > 0)
-//      factor_std = std::max(0.0f, (float) (1.0f - (deviation) / (parameters.error_rate / sqrt(2.0f) * read_length)));
-//
-//    float factor_query_coverage = 1.0f;
-//    if (read_length > 0)
-//      factor_query_coverage = ((float) (actual_query.end - actual_query.start)) / ((float) read_length);
-//    factor_query_coverage = std::min(((float) 1.0f), factor_query_coverage);
-//    factor_query_coverage = std::max(((float) 0.0f), factor_query_coverage);
-//
-//    float factor_covered_bases = 1.0f;
-//    if (((float) (actual_query.end - actual_query.start + parameters.k_graph) * (1.0f - parameters.error_rate)) != 0.0f)
-//      factor_covered_bases = (((float) covered_bases) / ((float) (actual_query.end - actual_query.start + parameters.k_graph) * (1.0f - parameters.error_rate)));
-//    factor_covered_bases = std::min(((float) 1.0f), factor_covered_bases);
-//    factor_covered_bases = std::max(((float) 0.0f), factor_covered_bases);
-//
-//    float factor_read_length = 0.0f;
-//    if (read->get_sequence_length() > 0 && index->get_data_length_forward() > 0)
-//      factor_read_length = log(read->get_sequence_length()) / log(index->get_data_length_forward());
-//
-//    this->fpfilter = factor_std * factor_query_coverage * factor_covered_bases* factor_read_length; // * (1.0f - ratio_suppress);
-//    this->fpfilter_score_std = factor_std;
-//    this->fpfilter_score_cov_bases = factor_covered_bases;
-//    this->fpfilter_score_read_len = factor_read_length;
-//    this->fpfilter_score_query_len = factor_query_coverage;
-//
-//    this->fpfilter = std::min(((float) 1.0f), this->fpfilter);
-//    this->fpfilter = std::max(((float) 0.0f), this->fpfilter);
-//}
-//
-//bool PathGraphEntry::IsLessThan(PathGraphEntry &op1)
-//{
-//  if (this->covered_bases < op1.covered_bases)
-//    return true;
-//  else if (this->covered_bases > op1.covered_bases)
-//    return false;
-//  else
-//    return (this->ratio_suppress > op1.ratio_suppress);
-//}

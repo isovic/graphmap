@@ -38,7 +38,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   clock_t begin_clock = clock();
   int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : read->get_sequence_length() / 3;
 
-  RegionSelection_(bin_size, mapping_data, indexes, read, parameters);
+//  RegionSelection_(bin_size, mapping_data, indexes, read, parameters);
+  RegionSelectionNoBins_(bin_size, mapping_data, indexes, read, parameters);
 
   clock_t end_clock = clock();
   double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
@@ -110,7 +111,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
       Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
       ScoreRegistry local_score(region, i);
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld (%lX), location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
     }
   }
 
