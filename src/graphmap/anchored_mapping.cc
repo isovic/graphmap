@@ -835,6 +835,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                         alignment_position_start, alignment_position_end), "LocalRealignmentLinear");
   }
 
+  alignment = FixAlignment((unsigned char *) &(alignment[0]), alignment.size());
   ConvertInsertionsToClipping((unsigned char *) &(alignment[0]), alignment.size());
 
   CountAlignmentOperations(alignment, read->get_data(), ref_data, reference_id, alignment_position_start, orientation,
@@ -849,6 +850,12 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                                (0), MYERS_MODE_NW);
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
+
+
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Alignment array:\n"), "[]");
+    for (int i1=0; i1<alignment.size(); i1++) {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
+    }
   }
 
 
@@ -897,8 +904,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   } else {
     *ret_AS_right_part = *ret_AS_left_part;
     *ret_nonclipped_right_part = *ret_nonclipped_left_part;
-
-
 
     int64_t best_aligning_position = 0;
 

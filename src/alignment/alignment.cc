@@ -133,6 +133,7 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
 
   aln_pos_start += l1_ref_start;
   aln_pos_end += l1_ref_start;
+  aln.raw_alignment = FixAlignment((unsigned char *) &(aln.raw_alignment), aln.raw_alignment.size());
   ConvertInsertionsToClipping((unsigned char *) &(aln.raw_alignment[0]), aln.raw_alignment.size());
 
   /// This part converts the global alignment coordinates to local. 'Global' meaning the coordinates on the entire data array from the index.

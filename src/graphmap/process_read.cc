@@ -635,6 +635,9 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
     mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
     mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_mapping = mapping_data->time_mapping;
     mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_alignment = elapsed_secs;
+    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_seed_lookup = mapping_data->time_region_seed_lookup;
+    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_hitsort = mapping_data->time_region_hitsort;
+    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_conversion = mapping_data->time_region_conversion;
 
     if (parameters->evalue_threshold >= ((double) 0.0) && primary_alignment.evalue > parameters->evalue_threshold) {
       primary_alignment.is_aligned = false;

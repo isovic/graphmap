@@ -229,6 +229,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   if (ret_code != 0 || alignment.size() == 0)
     return ret_code;
 
+  alignment = FixAlignment((unsigned char *) &(alignment[0]), alignment.size());
   ConvertInsertionsToClipping((unsigned char *) &(alignment[0]), alignment.size());
   *ret_cigar_left_part = AlignmentToCigar((unsigned char *) &(alignment[0]), alignment.size(), parameters.use_extended_cigar);
 //  *ret_AS_left_part = RescoreAlignment((unsigned char *) &(alignment[0]), alignment.size(), parameters.match_score, parameters.mismatch_penalty, parameters.gap_open_penalty, parameters.gap_extend_penalty);
@@ -369,7 +370,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
     reference_id -= index->get_num_sequences_forward();
   }
 
-
+  alignment_left_part = FixAlignment((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size());
   ConvertInsertionsToClipping((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size());
   CountAlignmentOperations(alignment_left_part, read->get_data(), data_copy, reference_id, best_aligning_position_start, orientation,
                            parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,

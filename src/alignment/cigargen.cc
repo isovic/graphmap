@@ -91,6 +91,113 @@ int ConvertInsertionsToClipping(unsigned char* alignment, int alignmentLength) {
   return 0;
 }
 
+std::vector<unsigned char> FixAlignment(unsigned char* alignment, int alignmentLength) {
+  int move_type = -1, prev_move_type = -1;
+  int64_t num_moves = 0, prev_num_moves = 0;
+  std::vector<unsigned char> new_alignment;
+  new_alignment.reserve(alignmentLength);
+//  return new_alignment;
+
+  for (int64_t i=0; i<alignmentLength; i++) {
+//    printf ("[%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", i, prev_num_moves, num_moves, prev_move_type, move_type);
+//    fflush(stdout);
+
+    if (i == 0) {
+      // This is the first op.
+      move_type = alignment[i];
+      num_moves = 1;
+    } else if (alignment[i] != alignment[i-1]) {
+      // Operation changed. Check if there was another one before it, or was the current streak the first one in the alignment.
+      if (prev_move_type != -1) {
+        if ((move_type == EDLIB_D && prev_move_type == EDLIB_I) || (move_type == EDLIB_I && prev_move_type == EDLIB_D)) {
+          if (prev_num_moves < num_moves) {
+            std::vector<int> temp_op(prev_num_moves, EDLIB_X);
+            new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//            printf ("-> (1) [%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", i, prev_num_moves, num_moves, prev_move_type, move_type);
+//            fflush(stdout);
+            num_moves = num_moves - prev_num_moves;
+
+          } else if (prev_num_moves > num_moves) {
+            std::vector<int> temp_op(prev_num_moves - num_moves, prev_move_type);
+            new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//            printf ("-> (2) [%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", i, prev_num_moves, num_moves, prev_move_type, move_type);
+//            fflush(stdout);
+            move_type = EDLIB_X;
+
+          } else {
+            std::vector<int> temp_op(prev_num_moves, EDLIB_X);
+            new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//            printf ("-> (3) [%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", i, prev_num_moves, num_moves, prev_move_type, move_type);
+//            fflush(stdout);
+            num_moves = 0;
+            move_type = -1;
+          }
+        } else {
+          std::vector<int> temp_op(prev_num_moves, prev_move_type);
+          new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//          printf ("-> (4) [%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", i, prev_num_moves, num_moves, prev_move_type, move_type);
+//          fflush(stdout);
+        }
+      } else {
+//        std::vector<int> temp_op(prev_num_moves, prev_move_type);
+//        new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//        printf ("-> (4) [%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", i, prev_num_moves, num_moves, prev_move_type, move_type);
+//        fflush(stdout);
+      }
+      prev_move_type = move_type;
+      prev_num_moves = num_moves;
+      move_type = alignment[i];
+      num_moves = 1;
+    } else {
+      num_moves += 1;
+    }
+  }
+  if (alignmentLength > 0) {
+//    std::vector<int> temp_op(prev_num_moves, prev_move_type);
+//    new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+    if ((move_type == EDLIB_D && prev_move_type == EDLIB_I) || (move_type == EDLIB_I && prev_move_type == EDLIB_D)) {
+      if (prev_num_moves < num_moves) {
+        std::vector<int> temp_op(prev_num_moves, EDLIB_X);
+        new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//        printf ("-> (1) prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", prev_num_moves, num_moves, prev_move_type, move_type);
+//        fflush(stdout);
+        num_moves = num_moves - prev_num_moves;
+        std::vector<int> temp_op2(num_moves, move_type);
+        new_alignment.insert(new_alignment.end(), temp_op2.begin(), temp_op2.end());
+
+      } else if (prev_num_moves > num_moves) {
+        std::vector<int> temp_op(prev_num_moves - num_moves, prev_move_type);
+        new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//        printf ("-> (2) prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", prev_num_moves, num_moves, prev_move_type, move_type);
+//        fflush(stdout);
+        move_type = EDLIB_X;
+        std::vector<int> temp_op2(num_moves, move_type);
+        new_alignment.insert(new_alignment.end(), temp_op2.begin(), temp_op2.end());
+
+      } else {
+        std::vector<int> temp_op(prev_num_moves, EDLIB_X);
+        new_alignment.insert(new_alignment.end(), temp_op.begin(), temp_op.end());
+//        printf ("-> (3) prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", prev_num_moves, num_moves, prev_move_type, move_type);
+//        fflush(stdout);
+        num_moves = 0;
+        move_type = -1;
+      }
+    } else {
+      std::vector<int> temp_op1(prev_num_moves, prev_move_type);
+      new_alignment.insert(new_alignment.end(), temp_op1.begin(), temp_op1.end());
+
+      std::vector<int> temp_op2(num_moves, move_type);
+      new_alignment.insert(new_alignment.end(), temp_op2.begin(), temp_op2.end());
+
+//      printf ("-> (4) [%ld] prev_num_moves = %ld, num_moves == %ld\tprev_move_type = %d\tmove_type = %d\n", prev_num_moves, num_moves, prev_move_type, move_type);
+//      fflush(stdout);
+    }
+
+  }
+
+  return new_alignment;
+}
+
 int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength,
                           char** cigar_) {
 

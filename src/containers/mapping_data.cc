@@ -35,6 +35,9 @@ MappingData::MappingData() {
   time_region_selection = 0.0;
   time_mapping = 0.0;
   time_alignment = 0.0;
+  time_region_seed_lookup = 0.0;
+  time_region_hitsort = 0.0;
+  time_region_conversion = 0.0;
 }
 
 MappingData::~MappingData() {
