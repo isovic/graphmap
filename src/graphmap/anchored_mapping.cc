@@ -856,6 +856,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     for (int i1=0; i1<alignment.size(); i1++) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
     }
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "\n\n", "[]");
   }
 
 
@@ -887,7 +888,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       for (int i1=0; i1<alignment.size(); i1++) {
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
       }
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("\n"), "[]");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "\n\n", "[]");
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
 
     }

@@ -97,7 +97,7 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
   mapping_data->time_region_seed_lookup = elapsed_secs_lookup;
   begin_clock = clock();
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Finished fetching seed hits. Sorting."), std::string(__FUNCTION__));
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Finished fetching seed hits. Sorting %ld hits.\n", hit_coords.size()), std::string(__FUNCTION__));
 
   std::sort(hit_coords.begin(), hit_coords.end());
 
