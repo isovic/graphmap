@@ -330,6 +330,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   }
 
   std::stringstream ss_optional1;
+  if (alignment_info.md != "") ss_optional1 << "MD:Z:" << alignment_info.md << "\t";
   ss_optional1 << "NM:i:" << alignment_info.edit_distance << "\t"; // Specified by SAM format.
   ss_optional1 << "AS:i:" << alignment_info.alignment_score << "\t";
   ss_optional1 << "H0:i:" << alignment_info.num_secondary_alns << "\t"; // Specified by SAM format.

@@ -67,18 +67,11 @@ class IndexSpacedHashFast : public Index {
 
   void Clear();
   int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **entire_sa, uint64_t *start_hit, uint64_t *num_hits) const;
-
-  int64_t GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const;
-  int64_t CalcNumHashKeysFromShape(const char *shape, int64_t shape_length) const;
-  void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
-
   void Verbose(FILE *fp) const;
   std::string VerboseToString() const;
-
   int IsManualCleanupRequired(std::string function_name) const;
 
   int InitShapes(std::string shape_for_indexing, std::vector<std::string> &shapes_for_search);
-
   int FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const;
 
   char* get_shape_index() const;
@@ -118,6 +111,10 @@ class IndexSpacedHashFast : public Index {
   int DeserializeIndex_(FILE *fp_in);
 
   int InitShapesPredefined(uint32_t shape_type);
+  int64_t GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const;
+  int64_t CalcNumHashKeysFromShape(const char *shape, int64_t shape_length) const;
+  void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
+
 };
 
 #endif /* INDEX_SPACED_HASH_H_ */

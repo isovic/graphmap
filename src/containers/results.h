@@ -49,6 +49,7 @@ typedef struct AlignmentResults {
   int64_t pos_start = 0;              // Starting position of the alignment on the reference. If orientation == kReverse, this assumes that the read should be reverse complemented and the reference stays fwd. pos_start is adjusted accordingly to denote the starting position of the alignment of the reversed read.
   int64_t pos_end = 0;                // See pos_start. This is the end position of the alignment.
   std::string cigar = "*";            // In case orientation == kReverse, 'cigar' contains the reverse of the 'alignment' operations.
+  std::string md = "";
   int64_t edit_distance = 0;
   int64_t alignment_score = 0;
   int64_t mapping_quality = 0;

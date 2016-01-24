@@ -175,10 +175,12 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
     /// In case alignment needs to be reversed now. This is because previously we mapped to the reverse complement of the reference, but in the output the read is reversed, so the alignment is backwards.
     if (curr_aln->orientation == kForward) {
       curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->raw_alignment[0]), curr_aln->raw_alignment.size(), parameters->use_extended_cigar);
+      curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), ref_id, aln_pos_start);
 
     } else {
       std::vector<int8_t> alignment_reverse (curr_aln->raw_alignment.rbegin(), curr_aln->raw_alignment.rend());
       curr_aln->cigar = AlignmentToCigar((unsigned char *) &(alignment_reverse[0]), alignment_reverse.size(), parameters->use_extended_cigar);
+      curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) alignment_reverse, read->get_data(), index->get_data(), ref_id, aln_pos_start);
     }
 
     CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), ref_id, aln_pos_start, orientation,

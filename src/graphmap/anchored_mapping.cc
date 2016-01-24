@@ -835,7 +835,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                         alignment_position_start, alignment_position_end), "LocalRealignmentLinear");
   }
 
-  alignment = FixAlignment((unsigned char *) &(alignment[0]), alignment.size());
+  /// This should be here, needs to be returned after commit is done!  alignment = FixAlignment((unsigned char *) &(alignment[0]), alignment.size());
   ConvertInsertionsToClipping((unsigned char *) &(alignment[0]), alignment.size());
 
   CountAlignmentOperations(alignment, read->get_data(), ref_data, reference_id, alignment_position_start, orientation,

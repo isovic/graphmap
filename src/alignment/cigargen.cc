@@ -473,3 +473,46 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
 
   return 0;
 }
+
+std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start) {
+  int64_t num_same_moves = 0;
+  int64_t read_position = 0;
+  int64_t ref_position = 0;
+
+  int64_t num_eq = 0;
+  int64_t num_d = 0;
+
+  std::stringstream md;
+
+  for (int i = 0; i < alignment.size(); i++) {
+    char align_op = alignment[i];
+
+    if (align_op == EDLIB_S) {
+      num_eq = 0;
+      num_d = 0;
+      continue;
+    }
+
+    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL) {
+      num_eq += 1;
+      num_d = 0;
+      ref_position += 1;
+    } else {
+      if (num_eq > 0) { md << num_eq; num_eq = 0; }
+      if (align_op == EDLIB_X) {
+        md << ref_data[alignment_position_start + ref_position];
+        num_d = 0;
+        ref_position += 1;
+      } else if (align_op == EDLIB_D) {
+        if (num_d == 0) { md << "^"; }
+        md << ref_data[alignment_position_start + ref_position];
+        num_d += 1;
+        ref_position += 1;
+      } else if (align_op == EDLIB_I) {
+        num_d = 0;
+      }
+    }
+  }
+
+  return md.str();
+}
