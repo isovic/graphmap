@@ -96,6 +96,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
 
   if (parameters.outfmt != "sam" &&
       parameters.outfmt != "afg" &&
+      parameters.outfmt != "m5" &&
       parameters.outfmt != "mhap") {
     LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to SAM output.", parameters.outfmt.c_str()));
   }

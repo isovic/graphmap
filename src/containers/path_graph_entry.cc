@@ -6,6 +6,7 @@
  */
 
 #include "containers/path_graph_entry.h"
+#include "alignment/cigargen.h"
 
 
 
@@ -303,7 +304,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << qname_for_out << "\t";
   ss << flag << "\t";
   ss << rname_for_out << "\t";
-  ss << alignment_info.pos_start + 1 << "\t";
+  ss << alignment_info.ref_start + 1 << "\t";
   ss << ((int64_t) alignment_info.mapping_quality) << "\t";      // To avoid confusion with the definition of mapping quality, we will use the value of 255, and report the actual quality as AS optional parameter.
   ss << alignment_info.cigar << "\t";
   ss << rnext << "\t";
@@ -379,7 +380,7 @@ std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_out
   return ss.str();
 }
 
-std::string PathGraphEntry::GenerateAMOSFromInfoMappping(const MappingResults &mapping_info) const {
+std::string PathGraphEntry::GenerateAFGFromInfoMappping(const MappingResults &mapping_info) const {
   std::stringstream ss;
 
   int64_t l = l1_info_.l1_l - ((int64_t) index_->get_reference_starting_pos()[region_info_.reference_id]);
@@ -411,26 +412,26 @@ std::string PathGraphEntry::GenerateAMOSFromInfoMappping(const MappingResults &m
   return ss.str();
 }
 
-std::string PathGraphEntry::GenerateAMOS() const {
+std::string PathGraphEntry::GenerateAFG() const {
   std::stringstream ss;
 
   for (int64_t i=0; i<alignments_.size(); i++) {
     if (alignments_[i].is_aligned == true) {
       if (i > 0) { ss << "\n"; }
-      ss << GenerateAMOSFromInfoAlignment_(alignments_[i]);
+      ss << GenerateAFGFromInfoAlignment_(alignments_[i]);
     }
   }
 
   return ss.str();
 }
 
-std::string PathGraphEntry::GenerateAMOSFromInfoAlignment_(const AlignmentResults &alignment_info) const {
+std::string PathGraphEntry::GenerateAFGFromInfoAlignment_(const AlignmentResults &alignment_info) const {
   std::stringstream ss;
 
 //  int64_t l = l1_info_.l1_l - ((int64_t) index_->get_reference_starting_pos()[region_info_.reference_id]);
 //  int64_t alignment_end = l1_info_.l1_k * ((float) read_->get_sequence_length()) + l;
 
-  int64_t alignment_start = alignment_info.pos_start - 1; /// -1 because the variable holds the 1-offset position for alignment as is supposed to be in the SAM format.
+  int64_t alignment_start = alignment_info.ref_start - 1; /// -1 because the variable holds the 1-offset position for alignment as is supposed to be in the SAM format.
   int64_t alignment_end = alignment_start + alignment_info.nonclipped_length;
 
   char clip_op_front=0, clip_op_back=0;
@@ -464,6 +465,70 @@ std::string PathGraphEntry::GenerateAMOSFromInfoAlignment_(const AlignmentResult
   ss << "ahg:" << ahang << "\n";
   ss << "bhg:" << bhang << "\n";
   ss << "}";
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateM5(bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  for (int64_t i=0; i<alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) {
+      if (i > 0) { ss << "\n"; }
+      ss << GenerateM5FromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
+    }
+  }
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateM5FromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  std::string qname = ((std::string) (read_->get_header()));
+  std::string qname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(qname)) : (qname);
+  std::string rname = region_info_.rname;
+  std::string rname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(rname)) : (rname);
+
+  int64_t qlen = read_->get_sequence_length();
+  int64_t rlen = index_->get_reference_lengths()[region_info_.reference_id];
+
+  /// TODO: The aligned sequences and the match_pattern need to be calculated!
+  std::string aligned_q = "", match_pattern = "", aligned_t = "";
+  if (alignment_info.is_reverse == false) {
+    GetAlignmentPatterns((unsigned char *) read_->get_data(), read_->get_sequence_length(),
+                         (unsigned char *) &(index_->get_data()[index_->get_reference_starting_pos()[alignment_info.ref_id] + alignment_info.ref_start]), (alignment_info.ref_end - alignment_info.ref_start + 1),
+                         (unsigned char *) &alignment_info.alignment[0], alignment_info.alignment.size(),
+                         aligned_q, aligned_t, match_pattern);
+  } else {
+    std::string rev = read_->GetReverseComplementAsString();
+    GetAlignmentPatterns((unsigned char *) &(rev[0]), rev.size(),
+                         (unsigned char *) &(index_->get_data()[index_->get_reference_starting_pos()[alignment_info.ref_id] + alignment_info.ref_start]), (alignment_info.ref_end - alignment_info.ref_start + 1),
+                         (unsigned char *) &alignment_info.alignment[0], alignment_info.alignment.size(),
+                         aligned_q, aligned_t, match_pattern);
+  }
+
+  ss << qname_for_out << " ";
+  ss << qlen << " ";
+  ss << alignment_info.query_start << " ";
+  ss << alignment_info.query_end << " ";
+  ss << ((alignment_info.orientation == kForward) ? "+" : "-") << " ";
+
+  ss << rname_for_out << " ";
+  ss << rlen << " ";
+  ss << alignment_info.ref_start << " ";
+  ss << alignment_info.ref_end << " ";
+  ss << "+" << " ";
+
+  ss << alignment_info.alignment_score << " ";
+  ss << alignment_info.num_eq_ops << " ";
+  ss << alignment_info.num_x_ops << " ";
+  ss << alignment_info.num_i_ops << " ";
+  ss << alignment_info.num_d_ops << " ";
+  ss << alignment_info.mapping_quality << " ";
+  ss << aligned_q << " ";
+  ss << match_pattern << " ";
+  ss << aligned_t;
 
   return ss.str();
 }

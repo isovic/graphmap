@@ -39,7 +39,8 @@ class PathGraphEntry {
 //  void AddSecondaryAlignmentData(AlignmentResults alignment_info);
 
   std::string GenerateSAM(bool is_primary, int64_t verbose_sam_output) const;
-  std::string GenerateAMOS() const;
+  std::string GenerateAFG() const;
+  std::string GenerateM5(bool is_primary, int64_t verbose_sam_output) const;
 
   float CalcDistanceRatio() const;
   float CalcDistanceRatioSuppress() const;
@@ -106,8 +107,9 @@ class PathGraphEntry {
   float fpfilter_read_len_;
 
   std::string GenerateSAMFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const;
-  std::string GenerateAMOSFromInfoAlignment_(const AlignmentResults &alignment_info) const;
-  std::string GenerateAMOSFromInfoMappping(const MappingResults &mapping_info) const;
+  std::string GenerateAFGFromInfoAlignment_(const AlignmentResults &alignment_info) const;
+  std::string GenerateAFGFromInfoMappping(const MappingResults &mapping_info) const;
+  std::string GenerateM5FromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const;
 
 // private:
   static float CalcFPFactorReadLength_(int64_t read_length, int64_t db_size);

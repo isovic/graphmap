@@ -29,7 +29,7 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
   mapping_data->num_seeds_errors = 0;
 
   std::vector<uint128_t> hit_coords;
-  hit_coords.reserve(100000);
+  hit_coords.reserve(10000);
 
   for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
     IndexSpacedHash *index = (IndexSpacedHash *) indexes[index_id];

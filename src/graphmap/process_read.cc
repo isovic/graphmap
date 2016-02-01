@@ -181,8 +181,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
   begin_clock = clock();
 
-  GenerateAlignments_(mapping_data, indexes[0], read, parameters, evalue_params);
-//  GenerateAlignments2_(mapping_data, indexes[0], read, parameters, evalue_params);
+//  GenerateAlignments_(mapping_data, indexes[0], read, parameters, evalue_params);
+  GenerateAlignments2_(mapping_data, indexes[0], read, parameters, evalue_params);
 
   end_clock = clock();
   elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
@@ -616,8 +616,8 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
 
     primary_alignment.is_aligned = true;
     primary_alignment.is_reverse = (orientation == kForward) ? false : true;
-    primary_alignment.pos_start = relative_position_left_part; // + 1;
-    primary_alignment.pos_end = relative_position_left_part; // + 1;
+    primary_alignment.ref_start = relative_position_left_part; // + 1;
+    primary_alignment.ref_end = relative_position_left_part; // + 1;
     primary_alignment.cigar = (orientation == kForward) ? (cigar_left_part) : (ReverseCigarString(cigar_left_part));
 
     primary_alignment.mapping_quality = mapping_data->mapping_quality;
@@ -655,8 +655,8 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
       secondary_alignment = primary_alignment;
       secondary_alignment.is_aligned = true;
       secondary_alignment.cigar = (orientation == kForward) ? (cigar_right_part) : (ReverseCigarString(cigar_right_part));
-      secondary_alignment.pos_start = relative_position_right_part; // + 1;
-      secondary_alignment.pos_end = relative_position_right_part; // + 1;
+      secondary_alignment.ref_start = relative_position_right_part; // + 1;
+      secondary_alignment.ref_end = relative_position_right_part; // + 1;
       secondary_alignment.alignment_score = AS_right_part;
       secondary_alignment.evalue = evalue_right_part;
       secondary_alignment.nonclipped_length = nonclipped_length_right_part;
@@ -705,7 +705,9 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
     if (parameters->outfmt == "sam") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
     } else if (parameters->outfmt == "afg") {
-      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAFG();
+    } else if (parameters->outfmt == "m5") {
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateM5((num_mapped_alignments == 0), parameters->verbose_sam_output);
     } else {  // Default to SAM output if the specified format is unknown.
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
     }
@@ -731,6 +733,8 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
       ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
     } else if (parameters->outfmt == "afg") {
       // In AFG format there is no need to report 'unmapped' (or non-overlapping) reads).
+    } else if (parameters->outfmt == "m5") {
+
     } else {  // Default to SAM output if the specified format is unknown.
       ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
     }

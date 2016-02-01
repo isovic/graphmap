@@ -39,7 +39,7 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingDa
 
   } else {
     int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
-    ConcatenateSplitRegion(indexes[0], (Region &) local_score->get_region(), &data_copy, &region_length_joined, &start_offset, &position_of_ref_end);
+    ConcatenateSplitRegion(indexes[0], (Region *) &(local_score->get_region()), &data_copy, &region_length_joined, &start_offset, &position_of_ref_end);
     local_score->Reserve((region_length_joined * 2));
     data_ptr = data_copy;
     data_start = 0;

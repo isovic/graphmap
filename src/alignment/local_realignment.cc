@@ -341,7 +341,7 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
 
   int8_t *data_copy = NULL;
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
-  ConcatenateSplitRegion(index, (Region &) best_path->get_region_data(), &data_copy, &region_length_joined, &start_offset, &position_of_ref_end);
+  ConcatenateSplitRegion(index, (Region *) &(best_path->get_region_data()), &data_copy, &region_length_joined, &start_offset, &position_of_ref_end);
 
   int64_t absolute_reference_id = best_path->get_region_data().reference_id;
   int64_t reference_id = best_path->get_region_data().reference_id;
@@ -469,7 +469,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
 
   int8_t *data_copy = NULL;
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
-  ConcatenateSplitRegion(index, best_path->get_region_data(), &data_copy, &region_length_joined, &start_offset, &position_of_ref_end);
+  ConcatenateSplitRegion(index, &(best_path->get_region_data()), &data_copy, &region_length_joined, &start_offset, &position_of_ref_end);
 
 
   int64_t absolute_reference_id = best_path->get_region_data().reference_id;

@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <numeric> 
 
-
 enum SeqOrientation {
   kForward = 0,
   kReverse = 1,
@@ -138,6 +137,17 @@ T* reverse_data(const T* data, int64_t data_len) {
   for (int64_t i=0; i<data_len; i++)
     ret_data[i] = data[data_len - i - 1];
   return ret_data;
+}
+
+/// Reverses an array in place.
+template <typename T>
+void ReverseArray(std::vector<T> & array) {
+  int64_t len = array.size();
+  for (int64_t i=0; i<len/2; i++) {
+    T temp = array[i];
+    array[i] = array[len-i-1];
+    array[len-i-1] = temp;
+  }
 }
 
 int GetClippingOpsFromCigar(const std::string &cigar, char *clip_op_front, int64_t *clip_count_front, char *clip_op_back, int64_t *clip_count_back);

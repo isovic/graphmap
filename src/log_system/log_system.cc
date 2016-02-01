@@ -15,7 +15,7 @@
 LogSystem::LogSystem() {
   LOG_FILE = "graphmap.log";
   LOG_VERBOSE_TYPE = 0;
-  PROGRAM_VERBOSE_LEVEL = 0;
+  PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_ALL_DEBUG;
 }
 
 LogSystem::~LogSystem() {
@@ -171,11 +171,7 @@ int LogSystem::Error(int severity, std::string function, std::string message) {
   return 0;
 }
 
-//ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL,
-//                                         true,
-//                                         FormatString(""));
-
-int LogSystem::Log(uint32_t verbose_level, bool trigger_condition, std::string message, std::string message_header) {
+int LogSystem::Log(uint32_t verbose_level, bool trigger_condition, std::string message, std::string calling_func, std::string calling_file, int32_t calling_line) {
 
   if (trigger_condition == false)
     return 1;
@@ -197,44 +193,56 @@ int LogSystem::Log(uint32_t verbose_level, bool trigger_condition, std::string m
 
   std::string timestamp = GetLocalTime();
 
-  if (!(PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_ALL)) {
-    if ((verbose_level & VERBOSE_LEVEL_FORCE) != 0) {
-      if (message_header == "[]") {
-        fprintf (fp, "%s", message.c_str());
-      }
-      else {
-        if (message_header.size() > 0)
-          message_header += " ";
-
-        if (message[0] != '\r')
-          fprintf (fp, "[%s%s] %s", message_header.c_str(), timestamp.c_str(), message.c_str());
-        else
-          fprintf (fp, "\r[%s%s] %s", message_header.c_str(), timestamp.c_str(), message.substr(1).c_str());
-
-      }
-      fflush(fp);
-    }
-
-    return 0;
+  std::stringstream header;
+  if (calling_func != "[]") {
+    header << timestamp;
+    if (calling_file != "")
+      header << " " << calling_file;
+    if (calling_func != "")
+      header << " " << calling_func;
+    if (calling_line >= 0)
+      header << " LN:" << calling_line;
   }
 
-  if (((verbose_level & VERBOSE_LEVEL_LOW) && (PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_LOW)) ||
+//  if (!(PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_ALL)) {
+//    if ((verbose_level & VERBOSE_LEVEL_FORCE) != 0) {
+//      if (calling_func == "[]") {
+//        fprintf (fp, "%s", message.c_str());
+//      }
+//      else {
+//        if (calling_func.size() > 0)
+//          calling_func += " ";
+//
+//        if (message[0] != '\r')
+//          fprintf (fp, "[%s%s%s] %s", timestamp.c_str(), calling_func.c_str(), file_and_line.str().c_str(), message.c_str());
+//        else
+//          fprintf (fp, "\r[%s%s%s] %s", timestamp.c_str(), calling_func.c_str(), file_and_line.str().c_str(), message.substr(1).c_str());
+//
+//      }
+//      fflush(fp);
+//    }
+//
+//    return 0;
+//  }
+
+  if ((!(PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_ALL) && (verbose_level & VERBOSE_LEVEL_FORCE) != 0) ||
+      ((verbose_level & VERBOSE_LEVEL_LOW) && (PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_LOW)) ||
       ((verbose_level & VERBOSE_LEVEL_MED) && (PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_MED)) ||
       ((verbose_level & VERBOSE_LEVEL_HIGH) && (PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_HIGH))) {
     if ((PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_DEBUG) ||      // In debug mode output everything.
         ((PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_DEBUG) == (verbose_level & VERBOSE_LEVEL_DEBUG))) { //Otherwise, only output those that aren't debug messages.
 //    if (((PROGRAM_VERBOSE_LEVEL & VERBOSE_LEVEL_DEBUG) == (verbose_level & VERBOSE_LEVEL_DEBUG))) { //Otherwise, only output those that aren't debug messages.
-      if (message_header == "[]") {
+      if (calling_func == "[]") {
         fprintf (fp, "%s", message.c_str());
       }
       else {
-        if (message_header.size() > 0)
-          message_header += " ";
+        if (calling_func.size() > 0)
+          calling_func += " ";
 
         if (message[0] != '\r')
-          fprintf (fp, "[%s%s] %s", message_header.c_str(), timestamp.c_str(), message.c_str());
+          fprintf (fp, "[%s] %s", header.str().c_str(), message.c_str());
         else
-          fprintf (fp, "\r[%s%s] %s", message_header.c_str(), timestamp.c_str(), message.substr(1).c_str());
+          fprintf (fp, "\r[%s] %s", header.str().c_str(), message.substr(1).c_str());
       }
       fflush(fp);
     }
@@ -268,6 +276,69 @@ void LogSystem::SetProgramVerboseLevelFromInt(int64_t verbose_level) {
 //#endif
   else
     PROGRAM_VERBOSE_LEVEL = VERBOSE_LEVEL_ALL | VERBOSE_FREQ_ALL;
+}
+
+std::string LogSystem::GetLocalTime() {
+  char outstr[200];
+
+  time_t rawtime;
+  struct tm * timeinfo;
+  time (&rawtime);
+  timeinfo = localtime (&rawtime);
+  sprintf(outstr, "%0.2d:%0.2d:%0.2d", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+
+  return std::string(outstr);
+}
+
+std::string LogSystem::GetUTCTime(std::string fmt) {
+  char outstr[200];
+  time_t t;
+  struct tm *tmp;
+
+  t = time(NULL);
+  tmp = gmtime(&t);
+
+  if (tmp == NULL) {
+    fprintf (stderr, "ERROR: gmtime returned with error!\n");
+    fflush (stderr);
+    return std::string("[no_time]");
+  }
+
+  if (strftime(outstr, sizeof(outstr), fmt.c_str(), tmp) == 0) {
+    fprintf (stderr, "ERROR: Problem formatting time into string!\n");
+    fflush (stderr);
+    return std::string("[no_time]");
+  }
+
+  return std::string(outstr);
+}
+
+std::string LogSystem::FormatString(const char* additional_message, ...) {
+  char *formatted_string = NULL;
+  std::string return_message("");
+
+  va_list args;
+  va_start(args, additional_message);
+  int ret_va = vasprintf(&formatted_string, additional_message, args);
+  if (ret_va == -1) {
+    fprintf (stderr, "ERROR: Could not format the string!\n");
+    va_end(args);
+    return std::string("");
+  }
+  va_end(args);
+
+  if (formatted_string == NULL) {
+//    LOG(FATAL) << ErrorReporting::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Allocation of memory for variable 'formatted_string'.");
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Allocation of memory for variable 'formatted_string'."));
+    return ((std::string) "");
+  }
+
+  return_message = std::string(formatted_string);
+  if (formatted_string)
+    free(formatted_string);
+  formatted_string = NULL;
+
+  return return_message;
 }
 
 //std::string ErrorReporting::GenerateMessage(const char *message, ...) {

@@ -46,8 +46,10 @@ typedef struct L1Results {
 typedef struct AlignmentResults {
   bool is_aligned = false;
   bool is_reverse = false;            // This should be deprecated and replaced with 'orientation'.
-  int64_t pos_start = 0;              // Starting position of the alignment on the reference. If orientation == kReverse, this assumes that the read should be reverse complemented and the reference stays fwd. pos_start is adjusted accordingly to denote the starting position of the alignment of the reversed read.
-  int64_t pos_end = 0;                // See pos_start. This is the end position of the alignment.
+  int64_t ref_start = 0;              // Starting position of the alignment on the reference. If orientation == kReverse, this assumes that the read should be reverse complemented and the reference stays fwd. pos_start is adjusted accordingly to denote the starting position of the alignment of the reversed read.
+  int64_t ref_end = 0;                // See pos_start. This is the end position of the alignment.
+  int64_t query_start = 0;            // Starting position of the alignment on the read. Everything before this position should be clipped.
+  int64_t query_end = 0;              // Ending position of the alignment on the read. Everything after this position should be clipped.
   std::string cigar = "*";            // In case orientation == kReverse, 'cigar' contains the reverse of the 'alignment' operations.
   std::string md = "";
   int64_t edit_distance = 0;
@@ -59,6 +61,7 @@ typedef struct AlignmentResults {
   int64_t raw_pos_start = 0;          // Internally, the fwd read is mapped to a reference and its reverse complement (which have been joined in a single massive sequence). The raw_pos_start then holds the absolute coordinate of the alignment in such joined sequence data.
   int64_t raw_pos_end = 0;            // See raw_pos_start. This is the end position of the alignment in global coordinates.
   std::vector<uint8_t> raw_alignment;     // Hold the alignment in the global coordinate space (between raw_pos_start and raw_pos_end). Cannot be used with pos_start and pos_end in case the read should be reverse complemented. In this case, the alignment needs to be reversed.
+  std::vector<uint8_t> alignment;     // Hold the alignment in the local coordinate space (between ref_start and ref_end). If orientation == kForward, alignment == raw_alignment. Otherwise it's the reverse complement.
 
   SeqOrientation orientation = kForward;
   int64_t ref_id = -1;
@@ -74,10 +77,14 @@ typedef struct AlignmentResults {
   int64_t num_d_ops = 0;
   int64_t nonclipped_length = 0;
 
+//  int8_t *ref_data = NULL;
+//  int8_t *read_data = NULL;
+
   // These are parameters of alignment which were used to produce the results.
-  int64_t aln_window_start = 0;       // Start position of the region which was used for alignment, e.g. l1_ref_start, in global coordinates.
-  int64_t aln_window_end = 0;         // End position of the region which was used for alignment, e.g. l1_ref_start, in global coordinates.
   int32_t aln_mode_code = 0;          // Type of alignment which was performed to produce the results stored in this structure.
+
+  int64_t reg_pos_start = 0;          // Local coordinates of the alignment's start and end positions within the region determined by GetRegionData() function.
+  int64_t reg_pos_end = 0;            // Local coordinates of the alignment's start and end positions within the region determined by GetRegionData() function.
 
 } AlignmentResults;
 

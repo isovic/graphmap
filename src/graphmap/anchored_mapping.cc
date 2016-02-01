@@ -469,7 +469,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     }
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Concatenating regions for circular alignment.\n", "AnchoredAlignment");
-    ConcatenateSplitRegion(index, (Region &) best_path->get_region_data(), &ref_data, &region_length_joined, &start_offset, &position_of_ref_end);
+    ConcatenateSplitRegion(index, (Region *) &(best_path->get_region_data()), &ref_data, &region_length_joined, &start_offset, &position_of_ref_end);
     reference_start = 0;
     reference_length = region_length_joined;
   }

@@ -25,6 +25,8 @@
 #define EDLIB_I 1
 #define EDLIB_D 2
 #define EDLIB_S 4
+#define EDLIB_H 5     /// Not used in GraphMap currently (26.01.2016.)
+#define EDLIB_NOP 6
 
 std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength, bool extended_format);
 int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength, char** cigar_);
@@ -35,6 +37,8 @@ std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *r
 std::vector<unsigned char> FixAlignment(unsigned char* alignment, int alignmentLength);
 /// In case an alignment has leading/trailing EDLIB_I operations, they will be replaced with EDLIB_S.
 int ConvertInsertionsToClipping(unsigned char* alignment, int alignmentLength);
+/// Counts the number of leading and trailing clipped bases (or insertions).
+int CountClippedBases(unsigned char* alignment, int alignmentLength, int64_t *ret_num_clipped_front, int64_t *ret_num_clipped_back);
 /// Sums up the bases on the reference the alignment spans through (EDLIB_M and EDLIB_D operations).
 int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLength);
 /// Counts each operation type, and calculates the alignment score as well (while rescoring the alignment with the given scores/penalties).
@@ -48,5 +52,10 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
                     const unsigned char* target, const int targetLength,
                     const unsigned char* alignment, const int alignmentLength,
                     const int position, const int modeCode, int row_width=100);
+
+int GetAlignmentPatterns(const unsigned char* query, const int64_t queryLength,
+                         const unsigned char* target, const int64_t targetLength,
+                         const unsigned char* alignment, const int64_t alignmentLength,
+                         std::string &ret_query, std::string &ret_target, std::string &ret_match_pattern);
 
 #endif /* CIGARGEN_H_ */

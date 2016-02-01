@@ -11,11 +11,22 @@
 #include <stdarg.h>
 #include <string>
 #include <fstream>
+#include <time.h>
+#include <stdarg.h>
+
+#define LOG_NEWLINE         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, LogSystem::FormatString("\n"), std::string("[]"));
+#define LOG_NOHEADER(...)         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, LogSystem::FormatString(__VA_ARGS__), std::string("[]"));
+#define LOG_ALL(...)        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, LogSystem::FormatString(__VA_ARGS__), std::string(__FUNCTION__)); // , std::string(__FILE__), __LINE__);
+#define LOG_DEBUG(...)      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, LogSystem::FormatString(__VA_ARGS__), std::string(__FUNCTION__), std::string(__FILE__), __LINE__);
+#define LOG_DEBUG_SPEC(...) LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::FormatString(__VA_ARGS__), std::string(__FUNCTION__), std::string(__FILE__), __LINE__);
+
+
+
 //#include <glog/logging.h>
 //#include <glog/log_severity.h>
 
 //#include "utility/utility_basic_defines.h"
-#include "utility/utility_general.h"
+//#include "utility/utility_general.h"
 //#include "utility/utility_string.h"
 
 //#define COMPACT_GOOGLE_LOG_INFO google::LogMessage( \
@@ -42,9 +53,16 @@ class LogSystem {
                                           const char *additional_message, ...);
   int WriteLog(std::string log_entry, bool always_output_to_std=false);
   int Error(int severity, std::string function, std::string message);
-  int Log(uint32_t verbose_level, bool trigger_condition, std::string message, std::string message_header="");
+  int Log(uint32_t verbose_level, bool trigger_condition, std::string message, std::string calling_func="", std::string calling_file="", int32_t calling_line=-1);
   void SetProgramVerboseLevelFromInt(int64_t verbose_level);
 //  std::string GenerateMessage(const char *message, ...);
+
+  std::string GetLocalTime();
+  std::string GetUTCTime(std::string fmt="%a, %d %b %y %T %z");
+  // The function uses vasprintf for formatting the function arguments.
+  // This option was chosen because it preallocates the memory needed to store
+  // the output formatted string, unlike most other *printf alternatives
+  static std::string FormatString(const char* additional_message, ...);
 
   std::string LOG_FILE;
   uint32_t LOG_VERBOSE_TYPE;

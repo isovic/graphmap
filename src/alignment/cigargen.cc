@@ -28,25 +28,6 @@ std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength, bool
 
   return ss.str();
 }
-//
-//std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength) {
-//  if (alignment == NULL || alignmentLength == 0)
-//    return (std::string("*-"));
-//
-//  std::stringstream ss;
-//
-//  char* cigar = NULL;
-//#ifdef USE_EXTENDED_CIGAR_FORMAT
-//  AlignmentToExtendedCigar(alignment, alignmentLength, &cigar);
-//#else
-//  AlignmentToBasicCigar(alignment, alignmentLength, &cigar);
-//#endif
-//  ss << cigar;
-//  if (cigar)
-//    free(cigar);
-//
-//  return ss.str();
-//}
 
 std::string ReverseCigarString(std::string &cigar) {
   std::stringstream ret_cigar;
@@ -91,7 +72,42 @@ int ConvertInsertionsToClipping(unsigned char* alignment, int alignmentLength) {
   return 0;
 }
 
+int CountClippedBases(unsigned char* alignment, int alignmentLength, int64_t *ret_num_clipped_front, int64_t *ret_num_clipped_back) {
+  if (ret_num_clipped_front == NULL || ret_num_clipped_back == NULL)
+    return 1;
+
+  int64_t num_clipped_front = 0, num_clipped_back = 0;
+  for (int64_t i=0; i<alignmentLength; i++) {
+    if (alignment[i] == EDLIB_S || alignment[i] == EDLIB_I)
+      num_clipped_front += 1;
+    else break;
+  }
+  for (int64_t i=(((int64_t) alignmentLength) - 1); i>=0; i--) {
+    if (alignment[i] == EDLIB_S || alignment[i] == EDLIB_I)
+      num_clipped_back += 1;
+    else break;
+  }
+
+  *ret_num_clipped_front = num_clipped_front;
+  *ret_num_clipped_back = num_clipped_back;
+
+  return 0;
+}
+
 std::vector<unsigned char> FixAlignment(unsigned char* alignment, int alignmentLength) {
+  int move_type = -1, prev_move_type = -1;
+  int64_t num_moves = 0, prev_num_moves = 0;
+  std::vector<unsigned char> new_alignment;
+  new_alignment.reserve(alignmentLength);
+
+  for (int64_t i=0; i<alignmentLength; i++) {
+
+  }
+
+  return new_alignment;
+}
+
+std::vector<unsigned char> FixAlignment1(unsigned char* alignment, int alignmentLength) {
   int move_type = -1, prev_move_type = -1;
   int64_t num_moves = 0, prev_num_moves = 0;
   std::vector<unsigned char> new_alignment;
@@ -497,22 +513,72 @@ std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *r
       num_eq += 1;
       num_d = 0;
       ref_position += 1;
+    } else if (align_op == EDLIB_I) {
+      continue;
     } else {
-      if (num_eq > 0) { md << num_eq; num_eq = 0; }
+//      if (num_eq > 0) {
+        md << num_eq; num_eq = 0;
+//      }
       if (align_op == EDLIB_X) {
-        md << ref_data[alignment_position_start + ref_position];
+        md << ((char) ref_data[alignment_position_start + ref_position]);
         num_d = 0;
         ref_position += 1;
       } else if (align_op == EDLIB_D) {
         if (num_d == 0) { md << "^"; }
-        md << ref_data[alignment_position_start + ref_position];
+        md << ((char) ref_data[alignment_position_start + ref_position]);
         num_d += 1;
         ref_position += 1;
       } else if (align_op == EDLIB_I) {
         num_d = 0;
+        num_eq = 0;
       }
     }
   }
 
   return md.str();
+}
+
+int GetAlignmentPatterns(const unsigned char* query, const int64_t queryLength,
+                         const unsigned char* target, const int64_t targetLength,
+                         const unsigned char* alignment, const int64_t alignmentLength,
+                         std::string& ret_query, std::string& ret_target, std::string& ret_match_pattern) {
+  std::stringstream ss_query, ss_target, ss_pattern;
+  int64_t qpos = 0, tpos = 0;
+  for (int64_t i=0; i<alignmentLength; i++) {
+    if (alignment[i] == EDLIB_H) {
+      continue;
+
+    } else if (alignment[i] == EDLIB_S) {
+      qpos += 1;
+      continue;
+
+    } else if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X) {
+      ss_query << query[qpos];
+      ss_target << target[tpos];
+      ss_pattern << ((alignment[i] == EDLIB_X) ? "*" : "|");
+      qpos += 1;
+      tpos += 1;
+
+    } else if (alignment[i] == EDLIB_I) {
+      ss_query << query[qpos];
+      ss_target << "-";
+      ss_pattern << "*";
+      qpos += 1;
+
+    } else if (alignment[i] == EDLIB_D) {
+      ss_query << "-";
+      ss_target << target[tpos];
+      ss_pattern << "*";
+      tpos += 1;
+
+    } else {
+      fprintf (stderr, "ERROR: Unknown EDLIB operation %d!\n", alignment[i]);
+    }
+  }
+
+  ret_query = ss_query.str();
+  ret_target = ss_target.str();
+  ret_match_pattern = ss_pattern.str();
+
+  return 0;
 }
