@@ -7,6 +7,81 @@
 
 #include "alignment/alignment.h"
 
+// pos_of_ref_end is the distance from the beginning of the region to the last base of the reference, before the beginning of the reference is concatenated.
+int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, AlignmentResults *aln_l, AlignmentResults *aln_r) {
+  *aln_l = *aln;
+  *aln_r = *aln;
+
+  if (aln->reg_pos_start > pos_of_ref_end) {
+    // The entire alignment is on the right part of the circular region.
+    aln_l->is_aligned = false;
+    return 0;
+
+  } else if (aln->reg_pos_end <= pos_of_ref_end) {
+    // The entire alignment is on the left part of the circular region.
+    aln_r->is_aligned = false;
+    return 0;
+  }
+
+  int64_t end_on_aln = 0, end_on_read = 0, end_on_ref = 0;
+  int64_t start_on_aln = 0, start_on_read = 0, start_on_ref = 0;
+
+  FindCircularEnd(aln->raw_alignment, pos_of_ref_end - aln->reg_pos_start,
+                  &end_on_aln, &end_on_read, &end_on_ref,
+                  &start_on_aln, &start_on_read, &start_on_ref);
+
+  // Trim the left part of the alignment.
+  aln_l->raw_pos_end = aln_l->raw_pos_start + end_on_ref - 1;
+  LOG_DEBUG("pos_of_ref_end = %ld\n", pos_of_ref_end);
+  LOG_DEBUG("pos_of_ref_end - aln->reg_pos_start = %ld\n", pos_of_ref_end - aln->reg_pos_start);
+  LOG_DEBUG("end_on_aln = %ld\n", end_on_aln);
+  LOG_DEBUG("end_on_read = %ld\n", end_on_read);
+  LOG_DEBUG("end_on_ref = %ld\n", end_on_ref);
+  LOG_DEBUG("start_on_aln = %ld\n", start_on_aln);
+  LOG_DEBUG("start_on_read = %ld\n", start_on_read);
+  LOG_DEBUG("start_on_ref = %ld\n", start_on_ref);
+  LOG_DEBUG("aln_l->query_len - (end_on_read + 1) = %ld\n", aln_l->query_len - (end_on_read + 1));
+
+  int64_t clip_l = aln_l->query_len - (end_on_read + 1) + 1;
+  uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
+  memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
+  memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
+  aln_l->raw_alignment.clear();
+  aln_l->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+
+//  // Trim the right part of the alignment.
+//  aln_r->raw_pos_start = aln_r->raw_pos_start + end_on_ref - 1;
+//  int64_t clip_l = aln_r->query_len - (end_on_read + 1) + 1;
+//  uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
+//  memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
+//  memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
+//  aln_r->raw_alignment.clear();
+//  aln_r->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+
+
+
+  printf ("Before:\n");
+  for (int64_t i=0; i<aln->raw_alignment.size(); i++) {
+    printf ("%d", aln->raw_alignment[i]);
+  }
+  printf ("\n");
+  printf ("\n");
+  fflush(stdout);
+
+  printf ("After:\n");
+  for (int64_t i=0; i<aln_l->raw_alignment.size(); i++) {
+    printf ("%d", aln_l->raw_alignment[i]);
+  }
+  printf ("\n");
+  printf ("\n");
+  fflush(stdout);
+
+//  LOG_DEBUG_SPEC("end_on_read = %ld\n", end_on_read);
+//  LOG_DEBUG_SPEC("Read trim:\n%s\n", GetSubstring((char *) (read->get_data() + ((end_on_read + 1))), read->get_data_length() - (end_on_read + 1)).c_str());
+
+  return 0;
+}
+
 int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results) {
   /// General useful things.
   const Region &region = region_results->get_region_data();
@@ -19,13 +94,13 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
   int8_t *reg_data = NULL;       // The data of the region.
   int64_t reg_data_len = 0;         // Length of the region_data.
   int64_t index_pos = 0;            // Position of the start of the region on the original Index data. E.g. reg_data[0] is the same base as index->get_data()[index_pos].
-  int64_t index_pos_of_ref_end = 0; // If the region was circular, it crosses the boundary between the end and the start of the data. ref_data[index_pos_of_ref_end] is the last base of the reference before the split part is concatenated.
+  int64_t pos_of_ref_end = 0; // If the region was circular, it crosses the boundary between the end and the start of the data. ref_data[index_pos_of_ref_end] is the last base of the reference before the split part is concatenated.
   bool is_cleanup_required = NULL;  // If true, the region_data will have to be freed manually.
   int64_t l1_start = 0;             // The start position of the L1 determined boundaries, but within the region (relative to region start).
   int64_t l1_end = 0;               // The end position of the L1 determined boundaries, but within the region (relative to region start).
   // Here, a pointer to the beginning of the region is obtained. If the region was linear, reg_data just points to a location in the Index.
   // If the region was circular, reg_data points to a newly allocated memory for the concatenated region, and needs to be cleared.
-  int retval_region = GetRegionData(index, &region, &reg_data, &reg_data_len, &index_pos, &index_pos_of_ref_end, &is_cleanup_required);
+  int retval_region = GetRegionData(index, &region, &reg_data, &reg_data_len, &index_pos, &pos_of_ref_end, &is_cleanup_required);
   GetL1PosInRegion(read, index, parameters, region_results, &l1_start, &l1_end);
 
   if (retval_region) {
@@ -91,13 +166,14 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
     region_results->AddAlignmentData(aln);
 
   } else {
+    LOG_DEBUG_SPEC("Alignment is circular and will be split.\n");
 
-//    LOG_DEBUG_SPEC("Alignment is circular and will be split.\n");
-////    printf ("Circular!\n");
-////    exit(1);
-//
-//    AlignmentResults aln_r;
-//    aln_r = aln;
+    AlignmentResults aln_l;
+    AlignmentResults aln_r;
+    SplitCircularAlignment(&aln, pos_of_ref_end, &aln_l, &aln_r);
+    region_results->AddAlignmentData(aln_l);
+//    region_results->AddAlignmentData(aln_r);
+
 //
 //    int64_t end_on_aln = 0, end_on_read = 0, end_on_ref = 0;
 //    int64_t start_on_aln = 0, start_on_read = 0, start_on_ref = 0;
@@ -207,7 +283,6 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
     if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id, curr_aln->ref_start) != 0) {
       curr_aln->is_aligned = false;
       LOG_DEBUG_SPEC("Alignment is insane!\n");
-      exit(1);
     }
 
     VerboseAlignment(read, index, parameters, curr_aln);

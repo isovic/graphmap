@@ -74,17 +74,17 @@ int ConcatenateSplitRegion(const Index *index_reference, const Region *region, i
 }
 
 int GetRegionData(const Index *index, const Region *region,
-                  int8_t **region_data, int64_t *data_len, int64_t *index_pos, int64_t *index_pos_of_ref_end, bool *is_cleanup_required) {
+                  int8_t **region_data, int64_t *data_len, int64_t *index_reg_start, int64_t *pos_of_ref_end, bool *is_cleanup_required) {
 
   if (region->is_split == false) {
     *region_data = (int8_t *) index->get_data() + region->start;
     *data_len = (region->end - region->start);
-    *index_pos = region->start;
-    *index_pos_of_ref_end = -1;
+    *index_reg_start = region->start;
+    *pos_of_ref_end = -1;
     *is_cleanup_required = false;
 
   } else {
-    ConcatenateSplitRegion(index, region, region_data, data_len, index_pos, index_pos_of_ref_end);
+    ConcatenateSplitRegion(index, region, region_data, data_len, index_reg_start, pos_of_ref_end);
     *is_cleanup_required = true;
 
   }
@@ -93,14 +93,14 @@ int GetRegionData(const Index *index, const Region *region,
 }
 
 int GetRegionDataCopy(const Index *index, const Region *region,
-                  int8_t **region_data, int64_t *data_len, int64_t *index_pos, int64_t *index_pos_of_ref_end) {
+                  int8_t **region_data, int64_t *data_len, int64_t *index_reg_pos, int64_t *reg_pos_of_ref_end) {
 
   if (region->is_split == false) {
-    CopyLinearRegion(index, region, region_data, data_len, index_pos);
-    *index_pos_of_ref_end = -1;
+    CopyLinearRegion(index, region, region_data, data_len, index_reg_pos);
+    *reg_pos_of_ref_end = -1;
 
   } else {
-    ConcatenateSplitRegion(index, region, region_data, data_len, index_pos, index_pos_of_ref_end);
+    ConcatenateSplitRegion(index, region, region_data, data_len, index_reg_pos, reg_pos_of_ref_end);
 
   }
 
