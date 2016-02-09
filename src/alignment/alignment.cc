@@ -282,8 +282,6 @@ int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_en
     if (alignment[i] == EDLIB_S) {
       pos_on_read += 1;
     } else if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X) {
-      pos_on_read += 1;
-      pos_on_ref += 1;
       if (pos_on_ref == pos_of_ref_end) {
         *ret_end_on_ref = pos_on_ref;
         *ret_end_on_read = pos_on_read;
@@ -294,6 +292,8 @@ int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_en
         *ret_start_on_aln = i;
         break;
       }
+      pos_on_read += 1;
+      pos_on_ref += 1;
     } else if (alignment[i] == EDLIB_I) {
       pos_on_read += 1;
     } else if (alignment[i] == EDLIB_D) {

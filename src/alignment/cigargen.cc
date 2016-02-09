@@ -513,19 +513,23 @@ std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *r
       num_eq += 1;
       num_d = 0;
       ref_position += 1;
+
     } else if (align_op == EDLIB_I) {
       continue;
+
     } else {
 //      if (num_eq > 0) {
         md << num_eq; num_eq = 0;
 //      }
       if (align_op == EDLIB_X) {
         md << ((char) ref_data[alignment_position_start + ref_position]);
+        num_eq = 0;
         num_d = 0;
         ref_position += 1;
       } else if (align_op == EDLIB_D) {
         if (num_d == 0) { md << "^"; }
         md << ((char) ref_data[alignment_position_start + ref_position]);
+        num_eq = 0;
         num_d += 1;
         ref_position += 1;
       } else if (align_op == EDLIB_I) {
@@ -533,6 +537,11 @@ std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *r
         num_eq = 0;
       }
     }
+  }
+
+  if (num_eq > 0) {
+    md << num_eq; num_eq = 0;
+    num_eq = 0;
   }
 
   return md.str();

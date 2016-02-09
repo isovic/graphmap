@@ -444,18 +444,18 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
       continue;
     }
 
-    /// Set the number of different regions as an estimate of the mapping quality.
-    for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
-      region_data->get_alignments()[0].num_secondary_alns = mapping_data->num_similar_mappings;
-      region_data->get_alignments()[0].mapping_quality = mapping_data->mapping_quality;
-    }
-
     /// Align the region and measure the time for execution.
     clock_t begin_clock = clock();
     int ret_aln = AlignRegion(read, index, parameters, evalue_params, true, region_data);
     clock_t end_clock = clock();
     double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
+
+    /// Set the number of different regions as an estimate of the mapping quality.
+    for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
+      region_data->get_alignments()[j].num_secondary_alns = mapping_data->num_similar_mappings;
+      region_data->get_alignments()[j].mapping_quality = mapping_data->mapping_quality;
+    }
 
     /// Set the timing statistics.
     region_data->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
@@ -485,7 +485,8 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
       for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
         if (region_data->get_alignments()[j].is_aligned == true && region_data->get_alignments()[j].evalue > parameters->evalue_threshold) {
           region_data->get_alignments()[j].is_aligned = false;
-          region_data->get_mapping_metadata().unmapped_reason += FormatString("_evalue=%f>%f", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
+          region_data->get_mapping_metadata().unmapped_reason += FormatString("_evalue=%E>%E", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
+          LOG_DEBUG_SPEC("Alignment %d/%d has E-value %E > %E. Marking alignment as unaligned.\n", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
         }
       }
     }
@@ -703,7 +704,7 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
       ss << "\n";
 
     if (parameters->outfmt == "sam") {
-      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);  // TODO: Don't make the first alignment primary by default, but the best one.
     } else if (parameters->outfmt == "afg") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAFG();
     } else if (parameters->outfmt == "m5") {
@@ -768,10 +769,13 @@ int GraphMap::CollectFinalMappingsAndMapQ_(bool generate_final_mapping_ptrs, Map
         // Check if the path is different than the best one - sometimes they can be near duplicates.
         if ((mapping_data->intermediate_mappings.at(i)->get_mapping_data().ref_coords.start != first_entry->get_mapping_data().ref_coords.start || mapping_data->intermediate_mappings.at(i)->get_mapping_data().ref_coords.end != first_entry->get_mapping_data().ref_coords.end)) {
           // Count them for ambiguity (used in mapping quality).
-          ambiguity += 1;
           if (generate_final_mapping_ptrs == true) {
-            if (parameters->output_multiple_alignments)
+            if (parameters->output_multiple_alignments) {
               mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.at(i)));
+              ambiguity += 1;
+            }
+          } else {
+            ambiguity += 1;
           }
 
           // Count only the paths that are not the same length of the longest path. Might be useful for metagenomic,

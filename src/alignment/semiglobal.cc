@@ -8,7 +8,8 @@
 #include "alignment/alignment.h"
 
 // pos_of_ref_end is the distance from the beginning of the region to the last base of the reference, before the beginning of the reference is concatenated.
-int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, AlignmentResults *aln_l, AlignmentResults *aln_r) {
+// ref_start is used to 'rewind' the right part of the circular alignment.
+int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, int64_t ref_start, int64_t ref_len, AlignmentResults *aln_l, AlignmentResults *aln_r) {
   *aln_l = *aln;
   *aln_r = *aln;
 
@@ -31,50 +32,107 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
                   &start_on_aln, &start_on_read, &start_on_ref);
 
   // Trim the left part of the alignment.
-  aln_l->raw_pos_end = aln_l->raw_pos_start + end_on_ref - 1;
-  LOG_DEBUG("pos_of_ref_end = %ld\n", pos_of_ref_end);
-  LOG_DEBUG("pos_of_ref_end - aln->reg_pos_start = %ld\n", pos_of_ref_end - aln->reg_pos_start);
-  LOG_DEBUG("end_on_aln = %ld\n", end_on_aln);
-  LOG_DEBUG("end_on_read = %ld\n", end_on_read);
-  LOG_DEBUG("end_on_ref = %ld\n", end_on_ref);
-  LOG_DEBUG("start_on_aln = %ld\n", start_on_aln);
-  LOG_DEBUG("start_on_read = %ld\n", start_on_read);
-  LOG_DEBUG("start_on_ref = %ld\n", start_on_ref);
-  LOG_DEBUG("aln_l->query_len - (end_on_read + 1) = %ld\n", aln_l->query_len - (end_on_read + 1));
-
-  int64_t clip_l = aln_l->query_len - (end_on_read + 1) + 1;
+  aln_l->raw_pos_end = aln_l->raw_pos_start + end_on_ref;     // Update the reference alignment coordinates.
+  aln_l->reg_pos_end = aln_l->reg_pos_start + end_on_ref;     // Update the region alignment coordinates.
+  int64_t clip_l = aln_l->query_len - (end_on_read + 1);
   uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
   memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
   memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
+  // Copy the alignment to the raw_alignment member.
   aln_l->raw_alignment.clear();
   aln_l->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+  // Update the final alignment of the left part.
+  aln_l->alignment = aln_l->raw_alignment;
+  if (aln_l->orientation == kReverse) ReverseArray(aln_l->alignment);
+
+
+
+
+//  // For the right part:
+//  // If next_m_pos_on_ref > (position_of_ref_end + 1), then the bases in between need to be filled with S operations
+//  // If there were I or D bases between the start of the reference and the first base of the read that was mapped,
+//  // compensate the starting position of the alignment.
+//  //
+//  *ret_right_alignment_pos_start = (((next_m_pos_on_ref - (position_of_ref_end + 1))) % (reference_length)) + reference_start;
+//  *ret_right_alignment_pos_end = ((alignment_end + split_region_start_offset - reference_start) % (reference_length)) + reference_start;
+// int64_t num_clipped_bases_right = next_m_pos_on_read;
+//  int64_t new_alignment_length_right = (alignment_length - next_m_pos_on_alignment) + num_clipped_bases_right;
+//  unsigned char *new_alignment_right = (unsigned char *) malloc(sizeof(char) * (new_alignment_length_right + 1));
+//
+//  memset(&new_alignment_right[0], EDLIB_S, num_clipped_bases_right);
+//  memmove(&new_alignment_right[num_clipped_bases_right], &alignment[next_m_pos_on_alignment], (alignment_length - next_m_pos_on_alignment));
+//  new_alignment_right[new_alignment_length_right] = '\0';
+//  *ret_right_alignment = new_alignment_right;
+//  *ret_right_alignment_length = new_alignment_length_right;
+//
 
 //  // Trim the right part of the alignment.
-//  aln_r->raw_pos_start = aln_r->raw_pos_start + end_on_ref - 1;
-//  int64_t clip_l = aln_r->query_len - (end_on_read + 1) + 1;
-//  uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
-//  memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
-//  memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
-//  aln_r->raw_alignment.clear();
-//  aln_r->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+  aln_r->raw_pos_start = aln_r->raw_pos_start + start_on_ref - ref_len;
+  aln_r->raw_pos_end = aln_r->raw_pos_end - ref_len;
+  aln_r->reg_pos_start = aln_r->reg_pos_start + start_on_ref;
+
+  int64_t clip_r = start_on_read;
+  int64_t copy_r = (aln->raw_alignment.size() - start_on_aln);
+  uint8_t *alignment_r = (uint8_t *) malloc(sizeof(uint8_t) * (copy_r + clip_r + 1));
+  memset(&alignment_r[0], EDLIB_S, clip_r);
+  memmove(&alignment_r[clip_r], &aln->raw_alignment[start_on_aln], copy_r);
+  alignment_r[copy_r + clip_r] = '\0';
+
+//  int64_t clip_r = start_on_read - 1;
+//  int64_t copy_r = (aln->raw_alignment.size() - start_on_aln) - 1;
+  LOG_DEBUG("copy_r = %ld\n", copy_r);
+  LOG_DEBUG("clip_r = %ld\n", clip_r);
+
+  // Copy the alignment to the raw_alignment member.
+  aln_r->raw_alignment.clear();
+  aln_r->raw_alignment.assign(alignment_r, alignment_r + copy_r + clip_r);
+  // Update the final alignment of the left part.
+  aln_r->alignment = aln_r->raw_alignment;
+  if (aln_r->orientation == kReverse) ReverseArray(aln_r->alignment);
 
 
+//  printf ("Before:\n");
+//  for (int64_t i=0; i<aln->raw_alignment.size(); i++) {
+//    printf ("%d", aln->raw_alignment[i]);
+//  }
+//  printf ("\n");
+//  printf ("\n");
+//  fflush(stdout);
+//
+//  printf ("Left part:  ");
+//  for (int64_t i=0; i<aln_l->raw_alignment.size(); i++) {
+//    printf ("%d", aln_l->raw_alignment[i]);
+//  }
+//  printf ("\n");
+//  fflush(stdout);
+//
+//  printf ("Right part: ");
+//  for (int64_t i=0; i<aln_r->raw_alignment.size(); i++) {
+//    printf ("%d", aln_r->raw_alignment[i]);
+//  }
+//  printf ("\n");
+//  printf ("\n");
+//  fflush(stdout);
 
-  printf ("Before:\n");
-  for (int64_t i=0; i<aln->raw_alignment.size(); i++) {
-    printf ("%d", aln->raw_alignment[i]);
+  int64_t l_ref = 0, l_read = 0;
+  for (int64_t i=0; i<aln_r->raw_alignment.size(); i++) {
+    if (aln_r->raw_alignment[i] == EDLIB_M || aln_r->raw_alignment[i] == EDLIB_X || aln_r->raw_alignment[i] == EDLIB_EQUAL || aln_r->raw_alignment[i] == EDLIB_D)
+      l_ref += 1;
+    if (aln_r->raw_alignment[i] == EDLIB_M || aln_r->raw_alignment[i] == EDLIB_X || aln_r->raw_alignment[i] == EDLIB_EQUAL || aln_r->raw_alignment[i] == EDLIB_I || aln_r->raw_alignment[i] == EDLIB_S)
+      l_read += 1;
   }
-  printf ("\n");
-  printf ("\n");
-  fflush(stdout);
 
-  printf ("After:\n");
-  for (int64_t i=0; i<aln_l->raw_alignment.size(); i++) {
-    printf ("%d", aln_l->raw_alignment[i]);
-  }
-  printf ("\n");
-  printf ("\n");
-  fflush(stdout);
+//  LOG_DEBUG("l_ref = %ld\nl_read = %ld\n\n", l_ref, l_read);
+//  LOG_DEBUG("aln_r->raw_pos_end = %ld\n", aln_r->raw_pos_end);
+//  LOG_DEBUG("pos_of_ref_end = %ld\n", pos_of_ref_end);
+//  LOG_DEBUG("pos_of_ref_end - aln->reg_pos_start = %ld\n", pos_of_ref_end - aln->reg_pos_start);
+//  LOG_DEBUG("end_on_aln = %ld\n", end_on_aln);
+//  LOG_DEBUG("end_on_read = %ld\n", end_on_read);
+//  LOG_DEBUG("end_on_ref = %ld\n", end_on_ref);
+//  LOG_DEBUG("start_on_aln = %ld\n", start_on_aln);
+//  LOG_DEBUG("start_on_read = %ld\n", start_on_read);
+//  LOG_DEBUG("start_on_ref = %ld\n", start_on_ref);
+//  LOG_DEBUG("aln_r->query_len - (end_on_read + 1) = %ld\n", aln_r->query_len - (end_on_read + 1));
 
 //  LOG_DEBUG_SPEC("end_on_read = %ld\n", end_on_read);
 //  LOG_DEBUG_SPEC("Read trim:\n%s\n", GetSubstring((char *) (read->get_data() + ((end_on_read + 1))), read->get_data_length() - (end_on_read + 1)).c_str());
@@ -160,6 +218,13 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
   aln.aln_mode_code = MYERS_MODE_HW;
   aln.alignment = aln.raw_alignment;
 
+//  VerboseAlignment(read, index, parameters, &aln);
+  CountAlignmentOperations((std::vector<unsigned char> &) aln.raw_alignment, read->get_data(), reg_data, ref_id, aln.reg_pos_start, orientation,
+                           parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend,
+                           &aln.num_eq_ops, &aln.num_x_ops, &aln.num_i_ops, &aln.num_d_ops, &aln.alignment_score, &aln.nonclipped_length);
+  LOG_DEBUG_SPEC("Calculating the E-value.\n");
+  CalculateEValueDNA(aln.alignment_score, aln.nonclipped_length, index->get_data_length_forward(), evalue_params, &aln.evalue);
+
   /// If alignment is linear, just add it. Otherwise, it needs to be split first.
   if (region.is_split == false || parameters->is_reference_circular == false) {
     if (orientation == kReverse) ReverseArray(aln.alignment);
@@ -170,9 +235,9 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
 
     AlignmentResults aln_l;
     AlignmentResults aln_r;
-    SplitCircularAlignment(&aln, pos_of_ref_end, &aln_l, &aln_r);
+    SplitCircularAlignment(&aln, pos_of_ref_end, ref_start, ref_len, &aln_l, &aln_r);
     region_results->AddAlignmentData(aln_l);
-//    region_results->AddAlignmentData(aln_r);
+    region_results->AddAlignmentData(aln_r);
 
 //
 //    int64_t end_on_aln = 0, end_on_read = 0, end_on_ref = 0;
@@ -249,6 +314,7 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
 
     /// Verbose debug.
     LOG_DEBUG_SPEC("Alignment part %d / %d:\n", i, region_results->get_alignments().size());
+//    for (int32_t j=0; j<curr_aln->a
 
     ConvertInsertionsToClipping((unsigned char *) &(curr_aln->raw_alignment[0]), curr_aln->raw_alignment.size());
     int64_t num_clipped_front = 0, num_clipped_back = 0;
@@ -262,30 +328,47 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
     int64_t final_aln_pos_start = 0, final_aln_pos_end = 0;
     index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_start : curr_aln->raw_pos_end, abs_ref_id, 0, NULL, &final_aln_pos_start, NULL);
     index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_end : curr_aln->raw_pos_start, abs_ref_id, 0, NULL, &final_aln_pos_end, NULL);
-    curr_aln->ref_start = final_aln_pos_start % ref_len;
-    curr_aln->ref_end = final_aln_pos_end % ref_len;
+    curr_aln->ref_start = final_aln_pos_start; // % ref_len;
+    curr_aln->ref_end = final_aln_pos_end; // % ref_len;
 
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
     LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), ref_id, curr_aln->ref_start + index->get_reference_starting_pos()[curr_aln->ref_id]);
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), ref_id, curr_aln->ref_start + ref_start + index->get_reference_starting_pos()[ref_id]);
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
     CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), reg_data, ref_id, curr_aln->reg_pos_start, orientation,
                              parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend,
                              &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->nonclipped_length);
+//    LOG_DEBUG_SPEC("Calculating the E-value.\n");
+//    CalculateEValueDNA(curr_aln->alignment_score, curr_aln->nonclipped_length, index->get_data_length_forward(), evalue_params, &curr_aln->evalue);
 
-    LOG_DEBUG_SPEC("Calculating the E-value.\n");
-    CalculateEValueDNA(curr_aln->alignment_score, curr_aln->nonclipped_length, index->get_data_length_forward(), evalue_params, &curr_aln->evalue);
+//    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->alignment,
+//                             read->get_data(), index->get_data() + curr_aln->ref_start + index->get_reference_starting_pos()[ref_id],
+//                             ref_id, 0, orientation,
+//                             parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend,
+//                             &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->nonclipped_length);
 
     LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
     if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id, curr_aln->ref_start) != 0) {
       curr_aln->is_aligned = false;
       LOG_DEBUG_SPEC("Alignment is insane!\n");
+    } else {
+      LOG_DEBUG_SPEC("Alignment is ok!\n");
     }
 
     VerboseAlignment(read, index, parameters, curr_aln);
+
+//    printf ("raw_pos_start maps to:\n%s\n", GetSubstring((char *) index->get_data() + curr_aln->raw_pos_start, 10).c_str());
+//    printf ("raw_pos_end maps to:\n%s\n", GetSubstring((char *) index->get_data() + curr_aln->raw_pos_end - 10, 10 + 1).c_str());
+//    printf ("raw_pos_end char:\n%c\n", (char) (index->get_data()[curr_aln->raw_pos_end]));
+//    printf ("Ref start:\n%s\n", GetSubstring((char *) index->get_data() + index->get_reference_starting_pos()[1] + 0, 10 + 1).c_str());
+//    printf ("Ref end:\n%s\n", GetSubstring((char *) index->get_data() + index->get_reference_starting_pos()[1] + index->get_reference_lengths()[1] - 10, 10 + 1).c_str());
+//    printf ("Read start:\n%s\n", GetSubstring((char *) read->get_data(), 10).c_str());
+//    printf ("Read end:\n%s\n", GetSubstring((char *) read->get_data() + read->get_sequence_length() - 10, 10).c_str());
+//    printf ("%s\n", GetSubstring((char *) read->get_data(), read->get_sequence_length()).c_str());
+//    fflush(stdout);
   }
 
   if (is_cleanup_required) { free(reg_data); }

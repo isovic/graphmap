@@ -550,16 +550,16 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
   }
 
   if (read != NULL && read_length != read->get_sequence_length()) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 3. read_length = %ld, read->get_sequence_length() = %ld\\n", read_length, read->get_sequence_length()), "CheckAlignmentSane");
+    LOG_DEBUG("CheckAlignmentSane returned false! return 3. Calculated read_length = %ld (from alignment), read->get_sequence_length() = %ld.\n", read_length, read->get_sequence_length());
     return 3;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) && ref_length > index->get_reference_lengths()[reference_hit_id]) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 4.\n"), "CheckAlignmentSane");
+    LOG_DEBUG("CheckAlignmentSane returned false! return 4. Calculated reference length (from alignment) is longer than the actual reference. (ref_length = %ld, index->get_reference_lengths()[reference_hit_id] = %ld", ref_length, index->get_reference_lengths()[reference_hit_id]);
     return 4;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 5.\n"), "CheckAlignmentSane");
+    LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n");
     return 5;
   }
 
