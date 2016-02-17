@@ -1,13 +1,14 @@
 /*
- * semiglobal.cc
+ * anchored.cc
  *
- *  Created on: Jan 27, 2016
+ *  Created on: Feb 16, 2016
  *      Author: isovic
  */
 
 #include "alignment/alignment.h"
 
-int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results) {
+int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFunctionType AlignmentFunctionSHW, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results) {
+/*
   /// General useful things.
   const Region &region = region_results->get_region_data();
   SeqOrientation orientation = (region_results->get_region_data().reference_id >= index->get_num_sequences_forward()) ? (kReverse) : (kForward);
@@ -27,39 +28,50 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
   // Here, a pointer to the beginning of the region is obtained. If the region was linear, reg_data just points to a location in the Index.
   // If the region was circular, reg_data points to a newly allocated memory for the concatenated region, and needs to be cleared.
   int retval_region = GetRegionData(index, &region, &reg_data, &reg_data_len, &index_pos, &pos_of_ref_end, &is_cleanup_required);
-  GetL1PosInRegion(read, index, parameters, region_results, &l1_start, &l1_end);
 
-  if (retval_region) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "GetRegionData returned with error!"));
-    if (is_cleanup_required) { free(reg_data); }
-    return 1;
-  }
-
-  if (is_cleanup_required) { LOG_DEBUG_SPEC("Alignment is circular and manual cleanup will be required.\n"); }
-
-  /// Perform alignment and store results.
   AlignmentResults aln;
-  std::vector<unsigned char> alignment1;
-  int64_t aln_pos_start = 0, aln_pos_end = 0;
-  int ret_code = AlignmentFunction(read->get_data(), read->get_sequence_length(),
-                                   reg_data + l1_start, (int64_t) (l1_end - l1_start),
-                                   -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
-                                   &aln_pos_start, &aln_pos_end,
-                                   &aln.edit_distance,
-                                   aln.raw_alignment);
 
-  /// Sanity check.
-  if (ret_code != 0 || aln.raw_alignment.size() == 0) {
-    if (is_cleanup_required) { free(reg_data); }
-    LOG_DEBUG_SPEC("Something went wrong with AlignmentFunction.\n");
-    return ret_code;
-  }
+//  parameters->extend_aln_to_end
 
-  int64_t aln_start_in_reg = l1_start + aln_pos_start;
-  int64_t aln_end_in_reg = l1_start + aln_pos_end;
 
-  int64_t aln_abs_start = aln_start_in_reg + index_pos;
-  int64_t aln_abs_end = aln_end_in_reg + index_pos;
+
+//  GetL1PosInRegion(read, index, parameters, region_results, &l1_start, &l1_end);
+//
+//  if (retval_region) {
+//    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "GetRegionData returned with error!"));
+//    if (is_cleanup_required) { free(reg_data); }
+//    return 1;
+//  }
+//
+//  if (is_cleanup_required) { LOG_DEBUG_SPEC("Alignment is circular and manual cleanup will be required.\n"); }
+//
+//  /// Perform alignment and store results.
+//  AlignmentResults aln;
+//  std::vector<unsigned char> alignment1;
+//  int64_t aln_pos_start = 0, aln_pos_end = 0;
+//  int ret_code = AlignmentFunction(read->get_data(), read->get_sequence_length(),
+//                                   reg_data + l1_start, (int64_t) (l1_end - l1_start),
+//                                   -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
+//                                   &aln_pos_start, &aln_pos_end,
+//                                   &aln.edit_distance,
+//                                   aln.raw_alignment);
+//
+//  /// Sanity check.
+//  if (ret_code != 0 || aln.raw_alignment.size() == 0) {
+//    if (is_cleanup_required) { free(reg_data); }
+//    LOG_DEBUG_SPEC("Something went wrong with AlignmentFunction.\n");
+//    return ret_code;
+//  }
+//
+//  int64_t aln_start_in_reg = l1_start + aln_pos_start;
+//  int64_t aln_end_in_reg = l1_start + aln_pos_end;
+//
+//  int64_t aln_abs_start = aln_start_in_reg + index_pos;
+//  int64_t aln_abs_end = aln_end_in_reg + index_pos;
+
+
+
+
 
   /// Assign resulting values.
   // aln.raw_alignment is assigned directly in the AlignmentFunction call to avoid copying of the data twice.
@@ -167,5 +179,9 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
   for (int32_t i=0; i<region_results->get_alignments().size(); i++) { if (region_results->get_alignments()[i].is_aligned == false) num_unaligned += 1; }
   if (num_unaligned == region_results->get_alignments().size()) { return ALIGNMENT_NOT_SANE; }
 
+*/
   return 0;
 }
+
+
+

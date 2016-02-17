@@ -11,12 +11,9 @@
 int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results) {
 
     if (parameters->alignment_algorithm == "gotoh") {
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Gotoh for alignment!\n", "Alignment");
-//      if (region_results->get_region_data().is_split == false || parameters.is_reference_circular == false)
-//        return LocalRealignmentLinear(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
-//      else
-//        return LocalRealignmentCircular(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach.\n", "Alignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Gotoh for alignment!\n", "Alignment");
+      return SemiglobalAlignment(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, evalue_params, region_results);
 
     } else if (parameters->alignment_algorithm == "myers") {
 
@@ -25,35 +22,26 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
 
       return SemiglobalAlignment(MyersSemiglobalWrapper, read, index, parameters, evalue_params, region_results);
 
-//    } else if (parameters.alignment_algorithm == "anchor") {
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
-//      bool is_linear = region_results->get_region_data().is_split == false || parameters.is_reference_circular == false;
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
-//      return AnchoredAlignment(is_linear, extend_to_end, MyersNWWrapper, MyersSHWWrapper, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
-//
-//    } else if (parameters.alignment_algorithm == "anchorgotoh") {
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
-//      bool is_linear = region_results->get_region_data().is_split == false || parameters.is_reference_circular == false;
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
-//      return AnchoredAlignment(is_linear, extend_to_end, SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
-//
-//#ifndef RELEASE_VERSION
-//    } else if (parameters.alignment_algorithm == "anchormex") {
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using anchored alignment approach.\n", "Alignment");
-//      /// Extension to read ends is not currently supported. SHW alignment needs to be implemented in Opal first.
-//      extend_to_end = false;
-//      bool is_linear = region_results->get_region_data().is_split == false || parameters.is_reference_circular == false;
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
-//      return AnchoredAlignmentMex(is_linear, extend_to_end, OpalNWWrapper, OpalSHWWrapper, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
-//#endif
+    } else if (parameters->alignment_algorithm == "anchor") {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
+      bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
+      return AnchoredAlignmentNew(MyersNWWrapper, MyersSHWWrapper, read, index, parameters, evalue_params, region_results);
+
+    } else if (parameters->alignment_algorithm == "anchorgotoh") {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
+      bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
+      return AnchoredAlignmentNew(SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, evalue_params, region_results);
+
+    } else if (parameters->alignment_algorithm == "anchormex") {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
+      bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
+//      return AnchoredAlignmentNew(OpalNWWrapper, OpalSHWWrapper, read, index, parameters, evalue_params, region_results);
+      return AnchoredAlignmentNew(OpalNWWrapper, NULL, read, index, parameters, evalue_params, region_results);
 
     } else {
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Warning: Unknown alignment algorithm selected. Using Myers' bit-vector alignment instead.\n", "Alignment");
-//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, "Using semiglobal alignment approach.\n", "Alignment");
-//      if (region_results->get_region_data().is_split == false || parameters.is_reference_circular == false)
-//        return LocalRealignmentLinear(MyersSemiglobalWrapper, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
-//      else
-//        return LocalRealignmentCircular(MyersSemiglobalWrapper, read, index, parameters, region_results, ret_alignment_position_left_part, ret_cigar_left_part, ret_AS_left_part, ret_nonclipped_left_part, ret_alignment_position_right_part, ret_cigar_right_part, ret_AS_right_part, ret_nonclipped_right_part, ret_orientation, ret_reference_id, ret_position_ambiguity, ret_eq_op, ret_x_op, ret_i_op, ret_d_op);
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach (default).\n", "Alignment");
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
 
@@ -309,4 +297,71 @@ int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_en
 //Ovo je iz GenerateAlignments_:     primary_alignment.pos_start = relative_position_left_part + 1;
 //Sto znaci da cu to trebati handleati drukcije drugdje, prilikom zapisa SAM filea!
 
+
+
+// pos_of_ref_end is the distance from the beginning of the region to the last base of the reference, before the beginning of the reference is concatenated.
+// ref_start is used to 'rewind' the right part of the circular alignment.
+int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, int64_t ref_start, int64_t ref_len, AlignmentResults *aln_l, AlignmentResults *aln_r) {
+  *aln_l = *aln;
+  *aln_r = *aln;
+
+  if (aln->reg_pos_start > pos_of_ref_end) {
+    // The entire alignment is on the right part of the circular region.
+    aln_l->is_aligned = false;
+    return 0;
+
+  } else if (aln->reg_pos_end <= pos_of_ref_end) {
+    // The entire alignment is on the left part of the circular region.
+    aln_r->is_aligned = false;
+    return 0;
+  }
+
+  int64_t end_on_aln = 0, end_on_read = 0, end_on_ref = 0;
+  int64_t start_on_aln = 0, start_on_read = 0, start_on_ref = 0;
+
+  FindCircularEnd(aln->raw_alignment, pos_of_ref_end - aln->reg_pos_start,
+                  &end_on_aln, &end_on_read, &end_on_ref,
+                  &start_on_aln, &start_on_read, &start_on_ref);
+
+  // Trim the left part of the alignment.
+  aln_l->raw_pos_end = aln_l->raw_pos_start + end_on_ref;     // Update the reference alignment coordinates.
+  aln_l->reg_pos_end = aln_l->reg_pos_start + end_on_ref;     // Update the region alignment coordinates.
+  int64_t clip_l = aln_l->query_len - (end_on_read + 1);
+  uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
+  memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
+  memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
+  // Copy the alignment to the raw_alignment member.
+  aln_l->raw_alignment.clear();
+  aln_l->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+  // Update the final alignment of the left part.
+  aln_l->alignment = aln_l->raw_alignment;
+  if (aln_l->orientation == kReverse) ReverseArray(aln_l->alignment);
+
+  // Trim the right part of the alignment.
+  aln_r->raw_pos_start = aln_r->raw_pos_start + start_on_ref - ref_len;
+  aln_r->raw_pos_end = aln_r->raw_pos_end - ref_len;
+  aln_r->reg_pos_start = aln_r->reg_pos_start + start_on_ref;
+  int64_t clip_r = start_on_read;
+  int64_t copy_r = (aln->raw_alignment.size() - start_on_aln);
+  uint8_t *alignment_r = (uint8_t *) malloc(sizeof(uint8_t) * (copy_r + clip_r + 1));
+  memset(&alignment_r[0], EDLIB_S, clip_r);
+  memmove(&alignment_r[clip_r], &aln->raw_alignment[start_on_aln], copy_r);
+  alignment_r[copy_r + clip_r] = '\0';
+  // Copy the alignment to the raw_alignment member.
+  aln_r->raw_alignment.clear();
+  aln_r->raw_alignment.assign(alignment_r, alignment_r + copy_r + clip_r);
+  // Update the final alignment of the left part.
+  aln_r->alignment = aln_r->raw_alignment;
+  if (aln_r->orientation == kReverse) ReverseArray(aln_r->alignment);
+
+  int64_t l_ref = 0, l_read = 0;
+  for (int64_t i=0; i<aln_r->raw_alignment.size(); i++) {
+    if (aln_r->raw_alignment[i] == EDLIB_M || aln_r->raw_alignment[i] == EDLIB_X || aln_r->raw_alignment[i] == EDLIB_EQUAL || aln_r->raw_alignment[i] == EDLIB_D)
+      l_ref += 1;
+    if (aln_r->raw_alignment[i] == EDLIB_M || aln_r->raw_alignment[i] == EDLIB_X || aln_r->raw_alignment[i] == EDLIB_EQUAL || aln_r->raw_alignment[i] == EDLIB_I || aln_r->raw_alignment[i] == EDLIB_S)
+      l_read += 1;
+  }
+
+  return 0;
+}
 

@@ -42,6 +42,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
 #ifndef RELEASE_VERSION
   argparser.AddArgument(&parameters->mex_score, VALUE_TYPE_INT64, "T", "mex", "1", "Mex score.", 0, "Alignment options");
 #endif
+  argparser.AddArgument(&parameters->extend_aln_to_end, VALUE_TYPE_BOOL, "", "extend-to-end", "1", "Switches extension of anchored alignment to read/reference ends. If false, alignments will be bound by the first and last anchor. Otherwise, alignment will proceed until an end of one of the sequences is hit.", 0, "Alignment options");
 
   argparser.AddArgument(&parameters->k_graph, VALUE_TYPE_INT64, "k", "", "6", "Graph construction kmer size.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->num_links, VALUE_TYPE_INT64, "l", "", "9", "Number of edges per vertex.", 0, "Algorithmic options");

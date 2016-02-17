@@ -38,6 +38,10 @@
 
 int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results);
 int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results);
+int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFunctionType AlignmentFunctionSHW,
+                         const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                         const EValueParams *evalue_params, PathGraphEntry *region_results);
+
 void VerboseAlignment(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const AlignmentResults *aln);
 
 /// Determines the start and end locations for semiglobal alignment, keeping in mind the boundaries of the reference being aligned to. Works with circular alignment as well.
@@ -55,5 +59,7 @@ int GetAlignmentWindowData(const SingleSequence *read, const Index *index, const
 int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_end,
                     int64_t *ret_end_on_aln, int64_t *ret_end_on_read, int64_t *ret_end_on_ref,
                     int64_t *ret_start_on_aln, int64_t *ret_start_on_read, int64_t *ret_start_on_ref);
+
+int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, int64_t ref_start, int64_t ref_len, AlignmentResults *aln_l, AlignmentResults *aln_r);
 
 #endif /* SRC_ALIGNMENT_ALIGNMENT_H_ */

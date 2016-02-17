@@ -88,6 +88,8 @@ struct ProgramParameters {
   int64_t mapq_threshold = 0;
   std::string outfmt = "sam";
 
+  bool extend_aln_to_end = true;
+
   bool use_extended_cigar = false;
 };
 
