@@ -6,6 +6,7 @@
  */
 
 #include "alignment/alignment.h"
+#include "alignment/local_realignment_wrappers.h"
 
 int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFunctionType AlignmentFunctionSHW, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results) {
 /*

@@ -13,7 +13,7 @@
 
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
-#include "libs/fenwick.h"
+#include "algorithm/fenwick.h"
 #include "owler/dpfilter.h"
 
 

@@ -6,6 +6,7 @@
  */
 
 #include "alignment/alignment.h"
+#include "alignment/local_realignment_wrappers.h"
 
 int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results) {
   /// General useful things.

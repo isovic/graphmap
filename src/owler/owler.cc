@@ -291,7 +291,7 @@ void Owler::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_o
 //Hm iz nekog razloga ne crta strelice iako bi trebao ih crtati u dot formatu!
 
   // Load sequences in batch (if requested), or all at once.
-  while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllFromFastaOrFastqAsBatch(false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(parameters.batch_size_in_mb, false))) {
+  while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllAsBatch(SeqFmtToString(parameters.infmt), false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(SeqFmtToString(parameters.infmt), parameters.batch_size_in_mb, false))) {
     if (parameters.outfmt == "dot") {
 ////      fprintf (fp_out, "\n{node [shape=circle,width=0.95,fixedsize=true,style=filled,fillcolor=skyblue] ");
 //      fprintf (fp_out, "\t{node [shape=circle,fixedsize=true,style=filled,fillcolor=skyblue] ");

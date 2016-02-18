@@ -246,7 +246,7 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   int64_t num_unmapped = 0;
 
   // Load sequences in batch (if requested), or all at once.
-  while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllFromFastaOrFastqAsBatch(false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(parameters.batch_size_in_mb, false))) {
+  while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllAsBatch(SeqFmtToString(parameters.infmt), false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(SeqFmtToString(parameters.infmt), parameters.batch_size_in_mb, false))) {
     if (parameters.batch_size_in_mb <= 0) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads loaded in %.2f sec (size around %ld MB). (%ld bases)\n", (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads.GetNumberOfBases()), "ProcessReads");
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");

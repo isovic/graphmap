@@ -86,6 +86,7 @@ struct ProgramParameters {
   int64_t min_num_anchor_bases = 12;
   double evalue_threshold = -1;
   int64_t mapq_threshold = 0;
+  std::string infmt = "auto";
   std::string outfmt = "sam";
 
   bool extend_aln_to_end = true;

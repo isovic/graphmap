@@ -9,6 +9,11 @@ OBJ_LINUX = ./obj_linux
 OBJ_EXTCIGAR = ./obj_extcigar
 OBJ_MAC = ./obj_mac
 SOURCE = src
+CODEBASE = codebase
+# This finds all 'src' folders at maximum depth 2 (level one inside each submodule's folder).
+CODEBASE_SRC_FOLDERS = $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" -exec echo "-I"{} \;)
+# $(shell find $(CODEBASE) -maxdepth 3 -type d -name "libs" -exec echo "-I"{} \;)
+# $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" -exec echo "-I"{}"/*/" \;)
 
 # ? allows override by user using env var
 GCC ?= g++
@@ -18,9 +23,12 @@ GCC_MINOR_VERSION_GE_7 := $(shell expr `$(GCC) -dumpversion | cut -f2 -d.` \>= 7
 GCC_MAC ?= /opt/local/bin/g++-mp-4.8
 
 
-CPP_FILES := $(wildcard $(SOURCE)/*/*.cpp) $(wildcard $(SOURCE)/*.cpp) $(wildcard $(SOURCE)/libs/*/*.cpp)
-CC_FILES := $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc) $(wildcard $(SOURCE)/libs/*/*.cc)
-H_FILES := $(wildcard $(SOURCE)/*/*.h) $(wildcard $(SOURCE)/*.h) $(wildcard $(SOURCE)/libs/*/*.h)
+# CPP_FILES := $(wildcard $(SOURCE)/*/*.cpp) $(wildcard $(SOURCE)/*.cpp) $(wildcard $(SOURCE)/libs/*/*.cpp)
+# CC_FILES := $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc) $(wildcard $(SOURCE)/libs/*/*.cc)
+# H_FILES := $(wildcard $(SOURCE)/*/*.h) $(wildcard $(SOURCE)/*.h) $(wildcard $(SOURCE)/libs/*/*.h)
+CPP_FILES :=  $(wildcard $(CODEBASE)/*/src/*.cpp) $(wildcard $(CODEBASE)/*/src/libs/*/*.cpp) $(wildcard $(CODEBASE)/*/src/*/*.cpp) $(wildcard $(SOURCE)/*/*.cpp) $(wildcard $(SOURCE)/*.cpp) $(wildcard $(SOURCE)/libs/*/*.cpp)
+CC_FILES :=  $(wildcard $(CODEBASE)/*/src/*.cc) $(wildcard $(CODEBASE)/*/src/libs/*/*.cc) $(wildcard $(CODEBASE)/*/src/*/*.cc) $(wildcard $(SOURCE)/*/*.cc) $(wildcard $(SOURCE)/*.cc) $(wildcard $(SOURCE)/libs/*/*.cc)
+H_FILES := $(wildcard $(CODEBASE)/*/src/*.h) $(wildcard $(CODEBASE)/*/src/libs/*/*.h) $(wildcard $(CODEBASE)/*/src/*/*.h) $(wildcard $(SOURCE)/*/*.h) $(wildcard $(SOURCE)/*.h) $(wildcard $(CODEBASE)/*/src/*.hpp) $(wildcard $(CODEBASE)/*/src/*/*.hpp) $(wildcard $(SOURCE)/*/*.hpp) $(wildcard $(SOURCE)/*.hpp) $(wildcard $(SOURCE)/libs/*/*.h)
 
 OBJ_FILES := $(CPP_FILES:.cpp=.o) $(CC_FILES:.cc=.o)
 OBJ_FILES_FOLDER_TESTING := $(addprefix $(OBJ_TESTING)/,$(OBJ_FILES))
@@ -30,11 +38,11 @@ OBJ_FILES_FOLDER_LINUX := $(addprefix $(OBJ_LINUX)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_EXTCIGAR := $(addprefix $(OBJ_EXTCIGAR)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_MAC := $(addprefix $(OBJ_MAC)/,$(OBJ_FILES))
 
-LIB_DIRS = -L"/usr/local/lib" -L"libs/libdivsufsort-2.0.1/build/lib"
+LIB_DIRS = -L"/usr/local/lib" -L"$(CODEBASE)/seqlib/src/libs/libdivsufsort-2.0.1/build/lib"
 CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
 # INCLUDE = -I"./src/" -I"/usr/include/" -I"libs/libdivsufsort-2.0.1/build/include" -I"libs/seqan-library-1.4.2/include"
 # INCLUDE = -I"./src/" -I"/usr/include/" -I"src/libs/seqan-library-1.4.2/include"
-INCLUDE = -I"./src/" -I"/usr/include/" -I"src/libs/seqan-library-2.0.1/include"
+INCLUDE = -I"./src/" -I"/usr/include/" -I"$(CODEBASE)/seqlib/src/libs/seqan-library-2.0.1/include" -I"$(CODEBASE)/seqlib/src/libs/libdivsufsort-2.0.1-64bit/" $(CODEBASE_SRC_FOLDERS)
 
 CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
 CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread # -march=native
@@ -47,9 +55,16 @@ LD_LIBS = -lpthread -lgomp -lm -lz
 
 
 
-all: gcc_version_check linux
+all: modules gcc_version_check linux
+
+asd:
+	echo ""
+	echo $(CODEBASE_SRC_FOLDERS)
 
 
+
+modules:
+	git submodule update --init --recursive
 
 testing: $(OBJ_FILES_FOLDER_TESTING)
 	mkdir -p $(dir $(BIN))
