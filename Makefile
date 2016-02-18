@@ -57,14 +57,11 @@ LD_LIBS = -lpthread -lgomp -lm -lz
 
 all: gcc_version_check linux
 
-asd:
-	echo ""
-	echo $(CODEBASE_SRC_FOLDERS)
-
 
 
 modules:
-	git submodule update --init --recursive
+#	git submodule update --init --recursive
+	git submodule foreach git pull origin master
 
 testing: modules $(OBJ_FILES_FOLDER_TESTING)
 	mkdir -p $(dir $(BIN))
