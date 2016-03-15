@@ -555,7 +555,7 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
 
   fprintf (stderr, "%sparsimonious_mode = %s\n", line_prefix.c_str(), (parameters->parsimonious_mode == true)?"true":"false");
 
-  fprintf (stderr, "%sevalue_threshold = %f\n", line_prefix.c_str(), parameters->evalue_threshold);
+  fprintf (stderr, "%sevalue_threshold = %e\n", line_prefix.c_str(), parameters->evalue_threshold);
   fprintf (stderr, "%smapq_threshold = %ld\n", line_prefix.c_str(), parameters->mapq_threshold);
 
   fprintf (stderr, "%soutput_format = '%s'\n", line_prefix.c_str(), parameters->outfmt.c_str());

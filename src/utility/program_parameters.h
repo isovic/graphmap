@@ -50,7 +50,7 @@
 #define DEFAULT_PROCESS_READS_FROM_FOLDER       false
 #define DEFAULT_BATCH_SIZE_IN_MB                (int64_t) 200
 
-#define DEFAULT_ALIGNMENT_ALGORITHM     std::string("myers")
+#define DEFAULT_ALIGNMENT_ALGORITHM     std::string("anchor")
 #define DEFAULT_ALIGNMENT_APPROACH        std::string("sg")
 #define DEFAULT_CALCULATE_ONLY_INDEX      false
 
@@ -75,7 +75,7 @@
 
 #define DEFAULT_PARSIMONIOUS_MODE         false
 
-#define DEFAULT_MAX_EVALUE_THRESHOLD      (double) -1.0
+#define DEFAULT_MAX_EVALUE_THRESHOLD      ((double) 1.0e0)
 #define DEFAULT_MIN_MAPQ_VALUE            0
 
 #define DEFAULT_OUTPUT_FORMAT             std::string("sam")
