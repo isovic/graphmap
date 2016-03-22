@@ -18,7 +18,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddCompositeArgument("illumina", "-a gotoh -w sg -M 5 -X 4 -G 8 -E 6");
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->index_reference_path, VALUE_TYPE_STRING, "i", "indexpath", "", "Path to the index of the reference sequence. If not specified, index is generated in the same path as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->index_reference_dir, VALUE_TYPE_STRING, "i", "indexdir", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file (fastq or fasta).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "infmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
@@ -31,7 +31,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "", "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n illumina - Equivalent to: '-a gotoh -w sg -M 5 -X 4 -G 8 -E 6'", 0, "General-purpose pre-set options");
 
-  argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "myers", "Specifies which algorithm should be used for alignment. Options are:\n myers       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n gotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with end-to-end extension.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n myers       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n gotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with end-to-end extension.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
   argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
   argparser.AddArgument(&parameters->match_score, VALUE_TYPE_INT64, "M", "match", "5", "Match score for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
   argparser.AddArgument(&parameters->mismatch_penalty, VALUE_TYPE_INT64, "X", "mismatch", "4", "Mismatch penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
@@ -133,8 +133,8 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   }
 
   // Check if the index path was specified, if not, generate it.
-  if (argparser.GetArgumentByLongName("indexpath")->is_set == false) {
-    parameters->index_reference_path = parameters->reference_path + std::string(".gmidx");
+  if (argparser.GetArgumentByLongName("indexdir")->is_set == false) {
+    parameters->index_reference_dir = parameters->reference_path + std::string(".gmidx");
   }
 
   /// Write this out for every debug verbose level.
@@ -184,7 +184,7 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
   fprintf (stderr, "%smax_num_regions_cutoff = %ld\n", line_prefix.c_str(), parameters->max_num_regions_cutoff);
   fprintf (stderr, "%smax_num_regions = %ld\n", line_prefix.c_str(), parameters->max_num_regions);
   fprintf (stderr, "%sreference_path = %s\n", line_prefix.c_str(), parameters->reference_path.c_str());
-  fprintf (stderr, "%sindex_reference_path = %s\n", line_prefix.c_str(), parameters->index_reference_path.c_str());
+  fprintf (stderr, "%sindex_reference_path = %s\n", line_prefix.c_str(), parameters->index_reference_dir.c_str());
   fprintf (stderr, "%sreads_path = %s\n", line_prefix.c_str(), parameters->reads_path.c_str());
   fprintf (stderr, "%sout_sam_path = %s\n", line_prefix.c_str(), parameters->out_sam_path.c_str());
   fprintf (stderr, "%sreads_folder = %s\n", line_prefix.c_str(), parameters->reads_folder.c_str());

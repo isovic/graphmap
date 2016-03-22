@@ -199,7 +199,7 @@ int Owler::BuildIndex(ProgramParameters &parameters) {
 
   if (parameters.calc_only_index == false) {
     // Check if index already exists, if not generate it.
-    std::string index_path = parameters.index_reference_path + std::string("owl");
+    std::string index_path = parameters.index_reference_dir + std::string("owl");
     FILE *fp = fopen(index_path.c_str(), "r");
     if (fp == NULL) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
@@ -226,7 +226,7 @@ int Owler::BuildIndex(ProgramParameters &parameters) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
 
     index_primary->GenerateFromFile(parameters.reference_path);
-    index_primary->StoreToFile(parameters.index_reference_path);
+    index_primary->StoreToFile(parameters.index_reference_dir);
 
 //    if (parameters.parsimonious_mode == false) {
 //      LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
