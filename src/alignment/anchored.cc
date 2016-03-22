@@ -655,7 +655,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
     LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->ref_start + ref_start + index->get_reference_starting_pos()[abs_ref_id]);
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->raw_pos_start);
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
     CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), ref_data, abs_ref_id, curr_aln->raw_pos_start, orientation,
