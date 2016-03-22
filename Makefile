@@ -60,10 +60,10 @@ all: gcc_version_check linux
 
 
 modules:
-#	git submodule update --init --recursive
+	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 
-testing: modules $(OBJ_FILES_FOLDER_TESTING)
+testing: $(OBJ_FILES_FOLDER_TESTING)
 	mkdir -p $(dir $(BIN))
 	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN) $(OBJ_FILES_FOLDER_TESTING) $(LD_LIBS)
 	
@@ -75,7 +75,7 @@ obj_test/%.o: %.cpp $(H_FILES)
 	mkdir -p $(dir $@)
 	$(GCC) $(CC_LIBS) $(INCLUDE) $(CC_FLAGS_NOT_RELEASE) -o $@ $<
 
-testingext: modules $(OBJ_FILES_FOLDER_TESTING_EXT)
+testingext: $(OBJ_FILES_FOLDER_TESTING_EXT)
 	mkdir -p $(dir $(BIN))
 	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN) $(OBJ_FILES_FOLDER_TESTING_EXT) $(LD_LIBS)
 	
@@ -98,7 +98,7 @@ ifneq ($(GCC_MINOR_VERSION_GE_7), 1)
 endif
 
 
-debug: modules $(OBJ_FILES_FOLDER_DEBUG)
+debug: $(OBJ_FILES_FOLDER_DEBUG)
 	mkdir -p $(dir $(BIN_DEBUG))
 	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_DEBUG) $(OBJ_FILES_FOLDER_DEBUG) $(LD_LIBS)
 	
@@ -112,7 +112,7 @@ obj_debug/%.o: %.cpp $(H_FILES)
 
 
 
-linux: modules $(OBJ_FILES_FOLDER_LINUX)
+linux: $(OBJ_FILES_FOLDER_LINUX)
 	mkdir -p $(dir $(BIN_LINUX))
 	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_LINUX) $(OBJ_FILES_FOLDER_LINUX) $(LD_LIBS)
 	
@@ -126,7 +126,7 @@ obj_linux/%.o: %.cpp $(H_FILES)
 
 
 
-extcigar: modules $(OBJ_FILES_FOLDER_EXTCIGAR)
+extcigar: $(OBJ_FILES_FOLDER_EXTCIGAR)
 	mkdir -p $(dir $(BIN_LINUX))
 	$(GCC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_LINUX) $(OBJ_FILES_FOLDER_EXTCIGAR) $(LD_LIBS)
 	
@@ -140,7 +140,7 @@ obj_extcigar/%.o: %.cpp $(H_FILES)
 
 
 
-mac: modules $(OBJ_FILES_FOLDER_MAC)
+mac: $(OBJ_FILES_FOLDER_MAC)
 	mkdir -p $(dir $(BIN_MAC))
 	$(GCC_MAC) $(LD_FLAGS) $(LIB_DIRS) -o $(BIN_MAC) $(OBJ_FILES_FOLDER_MAC) $(LD_LIBS)
 	

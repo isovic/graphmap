@@ -838,9 +838,10 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   /// This should be here, needs to be returned after commit is done!  alignment = FixAlignment((unsigned char *) &(alignment[0]), alignment.size());
   ConvertInsertionsToClipping((unsigned char *) &(alignment[0]), alignment.size());
 
+  int64_t temp_edit_dist = 0;
   CountAlignmentOperations(alignment, read->get_data(), ref_data, reference_id, alignment_position_start, orientation,
-                           parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
-                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
+                           parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend, true,
+                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, &temp_edit_dist, ret_nonclipped_left_part);
 
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
     std::string alignment_as_string = "";

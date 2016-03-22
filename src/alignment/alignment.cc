@@ -8,8 +8,10 @@
 #include "alignment/alignment.h"
 #include "libs/opal.h"
 
-
 int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results) {
+  bool align_end_to_end = true;
+//  bool spliced_alignment = true;
+  bool spliced_alignment = false;
 
     if (parameters->alignment_algorithm == "gotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach.\n", "Alignment");
@@ -27,13 +29,13 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
-      return AnchoredAlignmentNew(MyersNWWrapper, MyersSHWWrapper, read, index, parameters, evalue_params, region_results);
+      return AnchoredAlignmentNew(MyersNWWrapper, MyersSHWWrapper, read, index, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
 
     } else if (parameters->alignment_algorithm == "anchorgotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
-      return AnchoredAlignmentNew(SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, evalue_params, region_results);
+      return AnchoredAlignmentNew(SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
 
 #ifndef RELEASE_VERSION
 
@@ -42,7 +44,7 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
 //      return AnchoredAlignmentNew(OpalNWWrapper, OpalSHWWrapper, read, index, parameters, evalue_params, region_results);
-      return AnchoredAlignmentNew(OpalNWWrapper, NULL, read, index, parameters, evalue_params, region_results);
+      return AnchoredAlignmentNew(OpalNWWrapper, NULL, read, index, parameters, evalue_params, region_results, false, spliced_alignment);
 #endif
 
     } else {

@@ -44,7 +44,8 @@ int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLeng
 /// Counts each operation type, and calculates the alignment score as well (while rescoring the alignment with the given scores/penalties).
 int CountAlignmentOperations(std::vector<unsigned char> &alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start, SeqOrientation orientation,
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
-                             int64_t *ret_eq, int64_t *ret_x, int64_t *ret_i, int64_t *ret_d, int64_t *ret_alignment_score, int64_t *ret_nonclipped_length);
+                             bool skip_leading_and_trailing_insertions,
+                             int64_t *ret_eq, int64_t *ret_x, int64_t *ret_i, int64_t *ret_d, int64_t *ret_alignment_score, int64_t *ret_edit_dist, int64_t *ret_nonclipped_length);
 /// Reverses the operations in a CIGAR string.
 std::string ReverseCigarString(std::string &cigar);
 

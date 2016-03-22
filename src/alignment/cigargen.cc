@@ -427,7 +427,8 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
 
 int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start, SeqOrientation orientation,
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
-                             int64_t* ret_eq, int64_t* ret_x, int64_t* ret_i, int64_t* ret_d, int64_t *ret_alignment_score, int64_t *ret_nonclipped_length) {
+                             bool skip_leading_and_trailing_insertions,
+                             int64_t* ret_eq, int64_t* ret_x, int64_t* ret_i, int64_t* ret_d, int64_t *ret_alignment_score, int64_t *ret_edit_dist, int64_t *ret_nonclipped_length) {
   unsigned char last_move = -1;  // Code of last move.
   int64_t num_same_moves = 0;
   int64_t read_position = 0;
@@ -441,7 +442,17 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
 
   int64_t nonclipped_length = 0;
 
-  for (int i = 0; i < alignment.size(); i++) {
+  int64_t start_op = 0, end_op = alignment.size() - 1;
+  if (skip_leading_and_trailing_insertions == true) {
+    for (start_op = 0; start_op < alignment.size(); start_op++, read_position++) {
+      if (alignment[start_op] != EDLIB_I) { break; }
+    }
+    for (end_op = (alignment.size() - 1); end_op >= 0; end_op--) {
+      if (alignment[end_op] != EDLIB_I) { break; }
+    }
+  }
+
+  for (int i = start_op; i <= end_op; i++) {
     char align_op = 255;
     align_op = alignment[i];
 
@@ -486,6 +497,7 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
   *ret_d = num_d;
   *ret_alignment_score = alignment_score;
   *ret_nonclipped_length = nonclipped_length;
+  *ret_edit_dist = num_x + num_i + num_d;
 
   return 0;
 }

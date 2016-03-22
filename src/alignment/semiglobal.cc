@@ -8,7 +8,9 @@
 #include "alignment/alignment.h"
 #include "alignment/local_realignment_wrappers.h"
 
-int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results) {
+int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
+                        const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                        const EValueParams *evalue_params, PathGraphEntry *region_results) {
   /// General useful things.
   const Region &region = region_results->get_region_data();
   SeqOrientation orientation = (region_results->get_region_data().reference_id >= index->get_num_sequences_forward()) ? (kReverse) : (kForward);
@@ -40,7 +42,6 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
 
   /// Perform alignment and store results.
   AlignmentResults aln;
-  std::vector<unsigned char> alignment1;
   int64_t aln_pos_start = 0, aln_pos_end = 0;
   int ret_code = AlignmentFunction(read->get_data(), read->get_sequence_length(),
                                    reg_data + l1_start, (int64_t) (l1_end - l1_start),
@@ -89,8 +90,8 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
 
 //  VerboseAlignment(read, index, parameters, &aln);
   CountAlignmentOperations((std::vector<unsigned char> &) aln.raw_alignment, read->get_data(), reg_data, ref_id, aln.reg_pos_start, orientation,
-                           parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend,
-                           &aln.num_eq_ops, &aln.num_x_ops, &aln.num_i_ops, &aln.num_d_ops, &aln.alignment_score, &aln.nonclipped_length);
+                           parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
+                           &aln.num_eq_ops, &aln.num_x_ops, &aln.num_i_ops, &aln.num_d_ops, &aln.alignment_score, &aln.edit_distance, &aln.nonclipped_length);
   LOG_DEBUG_SPEC("Calculating the E-value.\n");
   CalculateEValueDNA(aln.alignment_score, aln.nonclipped_length, index->get_data_length_forward(), evalue_params, &aln.evalue);
 
@@ -104,6 +105,7 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
     LOG_DEBUG_SPEC("Alignment is circular and will be split.\n");
     AlignmentResults aln_l;
     AlignmentResults aln_r;
+    // In case orientation == kReverse, the SplitCircularAlignment function will u
     SplitCircularAlignment(&aln, pos_of_ref_end, ref_start, ref_len, &aln_l, &aln_r);
     region_results->AddAlignmentData(aln_l);
     region_results->AddAlignmentData(aln_r);
@@ -139,8 +141,8 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSeq
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
     CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), reg_data, ref_id, curr_aln->reg_pos_start, orientation,
-                             parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend,
-                             &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->nonclipped_length);
+                             parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
+                             &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
 //    LOG_DEBUG_SPEC("Calculating the E-value.\n");
 //    CalculateEValueDNA(curr_aln->alignment_score, curr_aln->nonclipped_length, index->get_data_length_forward(), evalue_params, &curr_aln->evalue);
 

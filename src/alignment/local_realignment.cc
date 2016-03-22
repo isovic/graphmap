@@ -276,9 +276,10 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
   if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position))
     return -1;
 
+  int64_t temp_edit_dist = 0;
   CountAlignmentOperations(alignment, read->get_data(), index->get_data(), reference_id, alignment_position_start, orientation,
-                           parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
-                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
+                           parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend, true,
+                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, &temp_edit_dist, ret_nonclipped_left_part);
 
   alignment.clear();
 
@@ -371,10 +372,11 @@ int LocalRealignmentCircular(AlignmentFunctionType AlignmentFunction, const Sing
   }
 
   /// This should be here, needs to be returned after commit is done!  alignment_left_part = FixAlignment((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size());
+  int64_t temp_edit_dist = 0;
   ConvertInsertionsToClipping((unsigned char *) &(alignment_left_part[0]), alignment_left_part.size());
   CountAlignmentOperations(alignment_left_part, read->get_data(), data_copy, reference_id, best_aligning_position_start, orientation,
-                           parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
-                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
+                           parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend, true,
+                           ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, &temp_edit_dist, ret_nonclipped_left_part);
   
   *ret_AS_right_part = *ret_AS_left_part;
   *ret_nonclipped_right_part = *ret_nonclipped_left_part;

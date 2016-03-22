@@ -37,10 +37,12 @@
 
 
 int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results);
-int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction, const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, PathGraphEntry *region_results);
+int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
+                        const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                        const EValueParams *evalue_params, PathGraphEntry *region_results);
 int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFunctionType AlignmentFunctionSHW,
                          const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
-                         const EValueParams *evalue_params, PathGraphEntry *region_results);
+                         const EValueParams *evalue_params, PathGraphEntry *region_results, bool align_end_to_end, bool spliced_alignment);
 
 void VerboseAlignment(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const AlignmentResults *aln);
 
