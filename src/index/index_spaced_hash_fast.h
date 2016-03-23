@@ -88,6 +88,9 @@ class IndexSpacedHashFast : public Index {
   int LookUpHashKeys(int64_t bin_size, const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<SeedHit3> &ret_hits);
   void CalcPercentileHits(double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
 
+  // Experimental function, does not copy the hits but only returns the pointers to the buckets.
+  int FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, std::vector<int64_t *> &ret_hits, std::vector<uint64_t> &ret_num_hits) const;
+
 //  int get_k() const;
 //  void set_k(int k);
 //  const std::vector<std::vector<int64_t> >& get_kmer_hash() const;

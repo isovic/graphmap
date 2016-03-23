@@ -200,17 +200,46 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_l
   int64_t current_data_ptr = 0;
   int64_t *all_hits = NULL;
 
+  double keygen_time = 0.0f;
+  clock_t time_diff1 = clock();
+  int64_t num_hits = 0;
+  for (int64_t i = 0; i < shapes_lookup_.size(); i++) {
+    clock_t test_keygen = clock();
+    int64_t hash_key = GenerateHashKeyFromShape(seed, shapes_lookup_[i].c_str(), shapes_lookup_[i].size());
+    keygen_time += ((double) clock() - test_keygen) / CLOCKS_PER_SEC;
+
+    if (hash_key < 0 || hash_key > num_kmers_ || kmer_counts_[hash_key] <= 0) {
+      continue;
+    }
+    num_hits += kmer_counts_[hash_key];
+  }
+  all_hits = (int64_t *) malloc(sizeof(int64_t) * num_hits);
+//  printf ("num_hits = %ld\n", num_hits);
+//  printf ("keygen_time = %f\n", keygen_time);
+//  printf ("total_time = %f\n", ((double) clock() - time_diff1) / CLOCKS_PER_SEC);
+
+//
+//  if (num_hits == 134221872) {
+//    printf ("WTF!?!\n");
+//    printf ("Seed: '%s'\n", GetSubstring((char *) seed, seed_length).c_str());
+//  }
+//  fflush(stdout);
+
   for (int64_t i = 0; i < shapes_lookup_.size(); i++) {
     int64_t hash_key = GenerateHashKeyFromShape(seed, shapes_lookup_[i].c_str(), shapes_lookup_[i].size());
+    if (hash_key < 0 || hash_key > num_kmers_ || kmer_counts_[hash_key] <= 0) {
+      continue;
+    }
 
-    if (hash_key >= 0 && hash_key < num_kmers_ && kmer_counts_[hash_key] > 0) {
-      if (all_hits == NULL)
-        all_hits = (int64_t *) malloc(sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key]));
-      else
-        all_hits = (int64_t *) realloc(all_hits, (sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key])));
+//    if (hash_key >= 0 && hash_key < num_kmers_ && kmer_counts_[hash_key] > 0) {
+
+//      if (all_hits == NULL)
+//        all_hits = (int64_t *) malloc(sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key]));
+//      else
+//        all_hits = (int64_t *) realloc(all_hits, (sizeof(int64_t) * (current_data_ptr + kmer_counts_[hash_key])));
       memmove(&(all_hits[current_data_ptr]), &(kmer_hash_array_[hash_key][0]), kmer_counts_[hash_key] * sizeof(int64_t));
       current_data_ptr += kmer_counts_[hash_key];
-    }
+//    }
   }
 
 //  std::sort(all_hits, all_hits + current_data_ptr);
@@ -218,6 +247,7 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_l
   *ret_hits = all_hits;
   *ret_start_hit = 0;
   *ret_num_hits = current_data_ptr;
+
 
   if (current_data_ptr == 0) {
     *ret_hits = NULL;
@@ -232,6 +262,36 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_l
 
   return 0;
 
+}
+
+int IndexSpacedHashFast::FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, std::vector<int64_t *> &ret_hits, std::vector<uint64_t> &ret_num_hits) const {
+  seed_length = shape_index_length_;
+  ret_hits.clear();
+  ret_num_hits.clear();
+  ret_hits.resize(shapes_lookup_.size(), NULL);
+  ret_num_hits.resize(shapes_lookup_.size(), 0);
+
+  int64_t total_num_hits = 0;
+  for (int64_t i = 0; i < shapes_lookup_.size(); i++) {
+    int64_t hash_key = GenerateHashKeyFromShape(seed, shapes_lookup_[i].c_str(), shapes_lookup_[i].size());
+    if (hash_key < 0 || hash_key > num_kmers_ || kmer_counts_[hash_key] <= 0) {
+      continue;
+    }
+
+    ret_hits[i] = &kmer_hash_array_[hash_key][0];
+    ret_num_hits[i] = kmer_counts_[hash_key];
+    total_num_hits += ret_num_hits[i];
+  }
+
+  if (total_num_hits == 0) {
+    return 1;
+  }
+
+  if ((max_num_of_hits > 0 && total_num_hits > ((int64_t) max_num_of_hits))) {
+    return 2;
+  }
+
+  return 0;
 }
 
 //int64_t IndexSpacedHashFast::RawPositionToReferenceIndexWithReverse(int64_t raw_position) const {
