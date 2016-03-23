@@ -8,6 +8,9 @@
 #include "graphmap/graphmap.h"
 
 int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+  clock_t begin_clock = clock();
+  clock_t diff_clock = begin_clock;
+
   if (indexes.size() == 0 || indexes[0] == NULL) {
     LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
   }
@@ -24,6 +27,7 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
   ///// This part prepares the bins. /////
   ////////////////////////////////////////////////////
   // Create bins for each chromosome (or reference sequence) separately.
+  diff_clock = clock();
   std::vector<std::vector<float> > bins_chromosome;
   std::vector<std::vector<int64_t> > last_update_chromosome;
 
@@ -48,10 +52,14 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
 
   int64_t k = (int64_t) ((IndexSpacedHash *) indexes[0])->get_shape_index_length();
 
+  mapping_data->time_region_alloc = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
   ////////////////////////////////////////////////////
-  ///// This part counts the occurances in bins. /////
+  ///// This part counts the occurrences in bins. /////
   ////////////////////////////////////////////////////
   // Filling the bins with values, so we get an occurrence map.
+  diff_clock = clock();
   for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
     int8_t *seed = (int8_t *) &(read->get_data()[i]);
     uint64_t hits_start = 0, num_hits = 0;
@@ -68,6 +76,7 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
           mapping_data->num_seeds_with_no_hits += 1;
         } else if (ret_search == 2) {
           mapping_data->num_seeds_over_limit += 1;
+          continue;
         } else if (ret_search > 2) {
           mapping_data->num_seeds_errors += 1;
         }
@@ -130,6 +139,9 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
 
+  mapping_data->time_region_counting = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
   int64_t num_bins_above_zero = 0;
   for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
     for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
@@ -155,8 +167,18 @@ int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, cons
     }
   }
 
+  mapping_data->time_region_conversion = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
   // Sort the bins in the descending order of bins_[i].bin_value;
   std::sort(mapping_data->bins.begin(), mapping_data->bins.end(), bins_greater_than_key());
+
+  mapping_data->time_region_hitsort = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
+  clock_t end_clock = clock();
+  double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->time_region_selection = elapsed_secs;
 
   // Verbose all bin counts along each chromomsome.
   // This debug part below is commented out for speed during debugging/profiling.

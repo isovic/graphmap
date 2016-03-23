@@ -30,6 +30,7 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
 
   std::vector<uint128_t> hit_coords;
   hit_coords.reserve(10000);
+//  hit_coords.reserve(parameters->max_num_hits * read->get_sequence_length() + 1);
 
   for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
     IndexSpacedHash *index = (IndexSpacedHash *) indexes[index_id];
@@ -47,6 +48,7 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
         mapping_data->num_seeds_with_no_hits += 1;
       } else if (ret_search == 2) {
         mapping_data->num_seeds_over_limit += 1;
+        continue;
       } else if (ret_search > 2) {
         mapping_data->num_seeds_errors += 1;
       }

@@ -73,15 +73,20 @@ void GraphMap::Run(ProgramParameters& parameters) {
   // to detect outliers, but calculating the kspectra could be time and memory consuming for larger genomes. That is why
   // we employ this simple heuristic.
   // The dynamic calculation can be overridden by explicitly stating the max_num_hits in the arguments passed to the binary.
-  if (parameters.max_num_hits == 0) {
-    int64_t num_kmers = (1 << (parameters.k_region * 2));
-    int64_t num_kmers_in_genome = (this->indexes_[0]->get_data_length_forward() * 2) - parameters.k_region + 1;
-    double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
-    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
+  if (parameters.max_num_hits < 0) {
+    // This is how it was done previously.
+//    int64_t num_kmers = (1 << (parameters.k_region * 2));
+//    int64_t num_kmers_in_genome = (this->indexes_[0]->get_data_length_forward() * 2) - parameters.k_region + 1;
+//    double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
+//    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
+    int64_t max_seed_count = 0;
+    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
+    LOG_ALL("Automatically setting the maximum number of seed hits to: %ld. Maximum seed occurrence in index: %ld.\n", parameters.max_num_hits, max_seed_count);
+
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum number of kmer hits: %ld\n", parameters.max_num_hits), "Run");
 //    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\tmax_num_hits = %ld\n", parameters.max_num_hits), "Run");
-  } else if (parameters.max_num_hits < 0) {
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("No limit to the maximum number of kmer hits will be set.\n"), "Run");
+  } else if (parameters.max_num_hits == 0) {
+    LOG_ALL("No limit to the maximum number of seed hits will be set in region selection.\n");
   }
 
   if (parameters.is_reference_circular == false)

@@ -336,18 +336,18 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   std::vector<ClusterAndIndices *> clusters;
   std::vector<int> cluster_indices;
   std::vector<int32_t> cluster_ids;
-//  cluster_indices = first_filtered_lcskpp_indices;
-//  cluster_ids = first_filtered_clusters;
-  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
-//  FilterAnchorBreakpoints(0.0f, 0.0f, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+//  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
 
 /// The new version:
   /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
   std::vector<int> first_filtered_lcskpp_indices;
   std::vector<int32_t> first_filtered_clusters;
-  // FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, 300, 2, 50, first_filtered_lcskpp_indices, NULL);
-  ////  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
-  //  GenerateClusters(0.0f, 0.0f, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+//   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, 300, 2, 50, 2, first_filtered_lcskpp_indices, NULL);
+//   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, std::max(read->get_sequence_length() * 0.10f, 200.0f), 2, 50, 2, first_filtered_lcskpp_indices, NULL);
+   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+
+  //  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+    GenerateClusters(0.0f, 0.0f, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
 
   // Find the L1 parameters (median line and the confidence intervals).
   float l_diff = read->get_sequence_length() * parameters->error_rate;

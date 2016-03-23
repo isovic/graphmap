@@ -86,6 +86,7 @@ class IndexSpacedHashFast : public Index {
 
   int CalcAllKeysFromSequence(const SingleSequence *read, int64_t kmer_step, std::vector<int64_t> &ret_hash_keys, std::vector<int64_t> &ret_key_counts);
   int LookUpHashKeys(int64_t bin_size, const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<SeedHit3> &ret_hits);
+  void CalcPercentileHits(double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
 
 //  int get_k() const;
 //  void set_k(int k);
@@ -114,6 +115,7 @@ class IndexSpacedHashFast : public Index {
   int64_t GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const;
   int64_t CalcNumHashKeysFromShape(const char *shape, int64_t shape_length) const;
   void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
+  void CalcPercentileHits_(int64_t *seed_counts, int64_t num_seeds, double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
 
 };
 

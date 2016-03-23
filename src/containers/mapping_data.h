@@ -79,6 +79,8 @@ class MappingData {
   double time_region_seed_lookup;
   double time_region_hitsort;
   double time_region_conversion;
+  double time_region_alloc;
+  double time_region_counting;
 
   bool IsMapped();
   bool IsAligned();

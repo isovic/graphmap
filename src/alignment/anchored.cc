@@ -55,10 +55,17 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
                                      -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                      &leftover_left_start, &leftover_left_end,
                                      &leftover_left_edit_distance, leftover_left_alignment);
+
+
+//    printf ("clip_count_front = %ld\n", clip_count_front);
+//    printf ("aln.ref_start = %ld\n", alignment_position_start - (leftover_left_end + 1) - ref_index_start);
+//    printf ("aln.ref_end = %ld\n", alignment_position_start - (leftover_left_end + 1) + leftover_left_end - ref_index_start);
+//    printf ("diff = %ld\n", (alignment_position_start + leftover_left_end - ref_index_start) - (alignment_position_start - ref_index_start));
+
     /// Check if the return code is ok. Otherwise, just clip the front.
     /// Added on 15.11.2015.: check if the edit distance of the front part is too high. EDlib will automatically return an error code, but SeqAn won't.
     /// An example is when the entire front part does not match (e.g. alignment of a read to a part of the reference consisted of N bases).
-    if (ret_code_right != 0 || leftover_left_edit_distance > clip_count_front/2) {
+    if (ret_code_right != 0 || leftover_left_edit_distance > leftover_left_alignment.size()/1.9f) {
       // TODO: This is a nasty hack. EDlib used to crash when query and target are extremely small, e.g. query = "C" and target = "TC".
       // In this manner we just ignore the leading part, and clip it.
       std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
@@ -109,6 +116,8 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
         free(reversed_ref_front);
     }
   }
+
+//  exit(1);
 
   return 0;
 }

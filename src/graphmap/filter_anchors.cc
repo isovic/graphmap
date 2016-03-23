@@ -60,8 +60,16 @@ inline void GetPositionsFromRegistry(const Vertices& registry_entries, const std
   *rpos_end = registry_entries.reference_ends[vertex_id];
 }
 
+// Used for the vertices in GraphMap. The vertices are the ugly representation of several arrays which makes it more cache friendly.
+inline void GetPositionsFromRegistry2(const Vertices& registry_entries, int64_t vertex_id, int32_t *qpos_start, int32_t *rpos_start, int32_t *qpos_end, int32_t *rpos_end) {
+  *qpos_start = registry_entries.query_starts[vertex_id];
+  *rpos_start = registry_entries.reference_starts[vertex_id];
+  *qpos_end = registry_entries.query_ends[vertex_id];
+  *rpos_end = registry_entries.reference_ends[vertex_id];
+}
+
 int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const ProgramParameters *parameters,
-                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases,
+                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
 //  int32_t bandwidth = 10;
@@ -104,7 +112,16 @@ int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const P
 //                          (get128_rpos(hits[chains.back().front()]) - get128_rpos(hits[chains.back().back()]) + seed_length);
 //    int64_t chain_len = std::max(chain_len_q, chain_len_r);
 //    int64_t chain_len = std::max((int64_t) max_dist, (int64_t) chains.back().size() * lookahead_dist_factor);
-    int64_t chain_len = std::max((int64_t) max_dist, (int64_t) chains.back().size() * lookahead_dist_factor);
+
+//    int32_t chain_qpos_start1 = 0, chain_rpos_start1 = 0, chain_qpos_end1 = 0, chain_rpos_end1 = 0;
+//    int32_t chain_qpos_start2 = 0, chain_rpos_start2 = 0, chain_qpos_end2 = 0, chain_rpos_end2 = 0;
+//    if (chains.back().size() > 0) {
+//      GetPositionsFromRegistry2(registry_entries, chains.back().front(), &chain_qpos_start1, &chain_rpos_start1, &chain_qpos_end1, &chain_rpos_end1);
+//      GetPositionsFromRegistry2(registry_entries, chains.back().back(), &chain_qpos_start2, &chain_rpos_start2, &chain_qpos_end2, &chain_rpos_end2);
+//    }
+//    int64_t chain_length = std::max((chain_qpos_end1 - chain_qpos_start2), (chain_rpos_end1 - chain_rpos_end2));
+//    int64_t chain_len_lookahead = std::max((int64_t) max_dist, (int64_t) chain_length * lookahead_dist_factor);
+    int64_t chain_len_lookahead = max_dist;
 
 //    printf ("chain_len_q = %ld, chain_len_r = %ld, chain_len = %ld\n", chain_len_q, chain_len_r, chain_len);
 
@@ -125,7 +142,7 @@ int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const P
       #ifdef DEBUG_TEST1
             printf ("  [next_id = %ld] Considering next seed for chaining. qpos = %d, rpos = %d\n", next_id, next_qpos, next_rpos);
       #endif
-      int64_t score = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len);
+      int64_t score = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead);
       #ifdef DEBUG_TEST1
             if (score > 0) { printf ("  Break.\n"); break; }
       #endif
@@ -192,7 +209,6 @@ int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const P
 //  std::sort(chain_sizes.begin(), chain_sizes.end());
 //  int64_t median_size = (chain_sizes.size() > 0) ? (chain_sizes[chain_sizes.size()/4]) : (0);
 //  int64_t size_cutoff = std::max((int64_t) 3, median_size);
-//  int64_t size_cutoff = 2;
 
 #ifdef DEBUG_TEST1
   printf ("Generating filtered LCSk anchors. Median of chain sizes: %ld, size cutoff: %ld.\n", median_size, size_cutoff);
@@ -213,7 +229,8 @@ int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const P
   }
 //  for (int64_t i=(chains.size()-1); i>=0; i--) {
   for (int64_t i=0; i<chains.size(); i++) {
-    if (chain_cov_bases[i] < min_covered_bases) { continue; }
+    if (chains[i].size() <= cluster_size_cutoff && chain_cov_bases[i] < min_covered_bases) { continue; }
+//    if (chain_cov_bases[i] < min_covered_bases) { continue; }
 //    for (int64_t j=(chains[i].size()-1); j>=0; j--) {
     for (int64_t j=0; j<chains[i].size(); j++) {
       ret_filtered_lcskpp_indices.push_back(chains[i][j]);

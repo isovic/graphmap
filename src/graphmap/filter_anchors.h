@@ -37,7 +37,7 @@ using uint128_t = unsigned __int128;
 int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rpos, double indel_bandwidth_margin, int32_t fwd_length);
 
 int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const ProgramParameters *parameters,
-                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases,
+                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids);
 
 

@@ -13,6 +13,8 @@
 #include <iostream>
 
 #include "index/index_spaced_hash_fast.h"
+#include "log_system/log_system.h"
+#include "utility/utility_general.h"
 
 CompiledSeed::CompiledSeed(std::string m_shape) {
   Generate(m_shape);
@@ -331,6 +333,36 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t 
   }
 
   return 0;
+}
+
+void IndexSpacedHashFast::CalcPercentileHits(double percentile, int64_t *ret_count, int64_t *ret_max_seed_count) {
+  return CalcPercentileHits_(kmer_counts_, num_kmers_, percentile, ret_count, ret_max_seed_count);
+}
+
+void IndexSpacedHashFast::CalcPercentileHits_(int64_t *seed_counts, int64_t num_seeds, double percentile, int64_t *ret_count, int64_t *ret_max_seed_count) {
+  // Sort the counts so that we can get an occurance histogram.
+  // We will select a percentile of the data as the cutoff value.
+  LOG_DEBUG("Sorting the seed counts to obtain the occurrence histogram.\n");
+  std::vector<size_t> counts_indices;
+  ordered_sort_array(seed_counts, num_seeds, counts_indices);
+  int64_t num_nonzero = 0;
+  for (int64_t i=0; i<num_seeds; i++) {
+    if (seed_counts[counts_indices[i]] != 0) {
+      num_nonzero = num_seeds - i;
+      break;
+    }
+  }
+
+  int64_t percentil_id = num_seeds - (int64_t) round(((double) 1.0 - percentile) * ((double) num_nonzero)) - 2; // The + 2 is for the case when the percentile is so low that it would amount to id = 0. This way we at least cut out two most occurring seeds, often AAAAA* and TTTTT*.
+  if (percentil_id < 0) { percentil_id = 0; }
+  if (percentil_id > num_seeds) { percentil_id = num_seeds - 1; }
+  int64_t percentile_val = seed_counts[counts_indices[percentil_id]];
+
+  *ret_count = percentile_val;
+
+  if (ret_max_seed_count) {
+    *ret_max_seed_count = seed_counts[counts_indices.back()];
+  }
 }
 
 int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {

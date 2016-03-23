@@ -358,6 +358,8 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
              "_(lookup=" << mapping_metadata.time_region_seed_lookup <<
              "_sort=" << mapping_metadata.time_region_hitsort <<
              "_conv=" << mapping_metadata.time_region_conversion <<
+             "_alloc=" << mapping_metadata.time_region_alloc <<
+             "_count=" << mapping_metadata.time_region_counting <<
              ")" <<
              "__mapping=" << mapping_metadata.time_mapping <<
              "__alignment=" << mapping_metadata.time_alignment;
