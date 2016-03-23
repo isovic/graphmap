@@ -404,7 +404,7 @@ void IndexSpacedHashFast::CalcPercentileHits_(int64_t *seed_counts, int64_t num_
   // We will select a percentile of the data as the cutoff value.
   LOG_DEBUG("Sorting the seed counts to obtain the occurrence histogram.\n");
   std::vector<size_t> counts_indices;
-  ordered_sort_array(seed_counts, num_seeds, counts_indices);
+  OrderedSortArray(seed_counts, num_seeds, counts_indices);
   int64_t num_nonzero = 0;
   for (int64_t i=0; i<num_seeds; i++) {
     if (seed_counts[counts_indices[i]] != 0) {

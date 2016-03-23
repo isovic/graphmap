@@ -58,6 +58,17 @@ class CompiledSeed {
   uint64_t Apply(uint64_t full_seed);
 };
 
+template <typename T>
+void OrderedSortArray(const T* values, int64_t values_size, std::vector<size_t> &indices) {
+    indices.resize(values_size);
+    std::iota(begin(indices), end(indices), static_cast<size_t>(0));
+
+    std::sort(
+        begin(indices), end(indices),
+        [&](size_t a, size_t b) { return values[a] < values[b]; }
+    );
+}
+
 class IndexSpacedHashFast : public Index {
  public:
   IndexSpacedHashFast();
