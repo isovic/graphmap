@@ -74,9 +74,9 @@ int GenerateClusters(int64_t min_cluster_length, float min_cluster_coverage, std
 //  fflush(stdout);
 
   new_cluster->query.start = local_score->get_registry_entries().query_starts[lcskpp_indices.back()];
-  new_cluster->query.end = local_score->get_registry_entries().query_ends[lcskpp_indices.front()];
+  new_cluster->query.end = local_score->get_registry_entries().query_ends[lcskpp_indices.front()] - 1;      // The '- 1' is because anchor end coordinate points to one base after the last inclusive base. Clusters should demarcate the exact start and end positions (start is the first base, end is the last base).
   new_cluster->ref.start = local_score->get_registry_entries().reference_starts[lcskpp_indices.back()];
-  new_cluster->ref.end = local_score->get_registry_entries().reference_ends[lcskpp_indices.front()];
+  new_cluster->ref.end = local_score->get_registry_entries().reference_ends[lcskpp_indices.front()] - 1;
 
   for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
     new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);

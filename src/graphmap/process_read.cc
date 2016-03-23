@@ -25,9 +25,9 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
 
   // If the read length is too short, call it unmapped.
-  if (read->get_sequence_length() < 80) {
+  if (read->get_sequence_length() < parameters->min_read_len) {
     std::stringstream ss;
-    ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << 80 << "__num_region_iterations=" << mapping_data->num_region_iterations;
+    ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << parameters->min_read_len << "__num_region_iterations=" << mapping_data->num_region_iterations;
     mapping_data->unmapped_reason += ss.str();
     return 0;
   }

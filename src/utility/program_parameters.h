@@ -92,6 +92,8 @@ struct ProgramParameters {
   bool extend_aln_to_end = true;
 
   bool use_extended_cigar = false;
+
+  int64_t min_read_len = 80;      // If a read is shorter than this, it will be marked as unmapped.
 };
 
 int ProcessArgs(int argc, char **argv, ProgramParameters *parameters);

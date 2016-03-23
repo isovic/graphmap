@@ -61,6 +61,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
   argparser.AddArgument(&parameters->start_read, VALUE_TYPE_INT64, "s", "start", "0", "Ordinal number of the read from which to start processing data.", 0, "Other options");
   argparser.AddArgument(&parameters->num_reads_to_process, VALUE_TYPE_INT64, "n", "numreads", "-1", "Number of reads to process per batch. Value of '-1' processes all reads.", 0, "Other options");
+  argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "n", "min-read-len", "80", "If a read is shorter than this, it will be marked as unmapped. This value can be lowered if the reads are known to be accurate.", 0, "Other options");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
   argparser.AddArgument(&parameters->debug_read, VALUE_TYPE_INT64, "y", "debug-read", "-1", "ID of the read to give the detailed verbose output.", 0, "Debug options");
