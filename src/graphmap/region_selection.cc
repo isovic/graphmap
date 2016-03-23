@@ -7,6 +7,7 @@
 
 #include "graphmap/graphmap.h"
 #include "log_system/log_system.h"
+#include <unordered_map>
 
 int GraphMap::RegionSelection_(int64_t bin_size, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   clock_t begin_clock = clock();
@@ -386,6 +387,7 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+  LOG_DEBUG("total_num_hits = %ld\n", total_num_hits);
 
   mapping_data->time_region_counting = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();
@@ -467,7 +469,7 @@ int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mappi
 
   int64_t num_seqs = indexes[0]->get_num_sequences_forward() * 2;
 
-  std::vector<std::map<std::int64_t, std::pair<int64_t, float> > > bins_map;
+  std::vector<std::unordered_map<std::int64_t, std::pair<int64_t, float> > > bins_map;
 
   std::vector<int64_t> max_num_bins;
   bins_map.resize(num_seqs);
@@ -570,7 +572,7 @@ int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mappi
               continue;
             }
 
-            std::map<std::int64_t, std::pair<int64_t, float> > &temp_map = bins_map[reference_index];
+            std::unordered_map<std::int64_t, std::pair<int64_t, float> > &temp_map = bins_map[reference_index];
             auto it_count = temp_map.find(position_bin);
             if (it_count == temp_map.end()) {
               std::pair<int64_t, float> new_bin((i + 1), 1.0f);
@@ -587,7 +589,8 @@ int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mappi
     }
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld, total_num_hits = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit, total_num_hits), "ProcessKmersInBins_");
+  LOG_DEBUG("total_num_hits = %ld\n", total_num_hits);
 
   mapping_data->time_region_counting = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();
@@ -602,7 +605,7 @@ int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mappi
   mapping_data->bins.clear();
   mapping_data->bins.resize(num_bins_above_zero);
   for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
-    std::map<std::int64_t, std::pair<int64_t, float> > &temp_map = bins_map[i];
+    std::unordered_map<std::int64_t, std::pair<int64_t, float> > &temp_map = bins_map[i];
     int64_t j = 0;
     for (auto it = temp_map.begin(); it != temp_map.end(); it++) {
       ChromosomeBin new_bin;

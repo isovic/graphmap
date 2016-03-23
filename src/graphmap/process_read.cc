@@ -40,8 +40,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
 //  RegionSelection_(bin_size, mapping_data, indexes, read, parameters);
 //  RegionSelectionNoBins_(bin_size, mapping_data, indexes, read, parameters);
+  RegionSelectionNoCopy_(bin_size, mapping_data, indexes, read, parameters);
+//  RegionSelectionNoCopyWithMap_(bin_size, mapping_data, indexes, read, parameters);
+
+//  int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : 100000;
 //  RegionSelectionNoCopy_(bin_size, mapping_data, indexes, read, parameters);
-  RegionSelectionNoCopyWithMap_(bin_size, mapping_data, indexes, read, parameters);
 
   clock_t end_clock = clock();
   double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
