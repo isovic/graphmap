@@ -75,6 +75,7 @@ class GraphMap {
 
   int RegionSelection_(int64_t bin_size, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
   int RegionSelectionNoCopy_(int64_t bin_size, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
+  int RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
 
   int GraphMap_(ScoreRegistry *local_score, Index *index_read, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
   int ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, Index *index_read, const SingleSequence* read, const ProgramParameters* parameters);

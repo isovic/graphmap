@@ -440,3 +440,202 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
 
   return 0;
 }
+
+int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+  clock_t begin_clock = clock();
+  clock_t diff_clock = begin_clock;
+
+  if (indexes.size() == 0 || indexes[0] == NULL) {
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
+  }
+
+  int64_t readlength = read->get_sequence_length();
+  int64_t num_fwd_seqs = indexes[0]->get_num_sequences_forward();
+  bool self_overlap = (parameters->alignment_approach == "overlapper" && parameters->reference_path == parameters->reads_path);
+
+  mapping_data->bin_size = bin_size;
+
+  float bin_size_inverse = (bin_size > 0) ? (1.0f / ((float) bin_size)) : (0.0f);
+
+  ////////////////////////////////////////////////////
+  ///// This part prepares the bins. /////
+  ////////////////////////////////////////////////////
+  // Create bins for each chromosome (or reference sequence) separately.
+  diff_clock = clock();
+//  std::vector<std::vector<float> > bins_chromosome;
+//  std::vector<std::vector<int64_t> > last_update_chromosome;
+
+  int64_t num_seqs = indexes[0]->get_num_sequences_forward() * 2;
+
+  std::vector<std::map<std::int64_t, std::pair<int64_t, float> > > bins_map;
+
+  std::vector<int64_t> max_num_bins;
+  bins_map.resize(num_seqs);
+  max_num_bins.resize(num_seqs);
+
+//  // Resize for the forward and reverse too.
+//  bins_chromosome.resize(indexes[0]->get_num_sequences_forward() * 2);
+//  last_update_chromosome.resize(indexes[0]->get_num_sequences_forward() * 2);
+//  // Resizing containers for each chromosome.
+  for (int64_t i = 0; i < indexes[0]->get_num_sequences_forward()*2; i++) {
+    int64_t current_reference_length = indexes[0]->get_reference_lengths()[i];
+    int64_t current_num_bins = ceil(((float) current_reference_length) * bin_size_inverse) + 1;
+//    // Forward strand.
+//    bins_chromosome[i].resize(current_num_bins, 0);
+//    last_update_chromosome[i].resize(current_num_bins, 0);
+//    // Reverse strand.
+//    bins_chromosome[i + indexes[0]->get_num_sequences_forward()].resize(current_num_bins, 0);
+//    last_update_chromosome[i + indexes[0]->get_num_sequences_forward()].resize(current_num_bins, 0);
+    max_num_bins[i] = current_num_bins;
+  }
+
+  mapping_data->num_seeds_with_no_hits = 0;
+  mapping_data->num_seeds_over_limit = 0;
+  mapping_data->num_seeds_errors = 0;
+
+  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
+
+  mapping_data->time_region_alloc = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
+  ////////////////////////////////////////////////////
+  ///// This part counts the occurrences in bins. /////
+  ////////////////////////////////////////////////////
+  // Filling the bins with values, so we get an occurrence map.
+  mapping_data->time_region_seed_lookup = 0.0;
+  int64_t total_num_hits = 0;
+  diff_clock = clock();
+  for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
+    int8_t *seed = (int8_t *) &(read->get_data()[i]);
+
+    for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
+      IndexSpacedHashFast *index = (IndexSpacedHashFast *) indexes[index_id];
+
+      if (index != NULL) {
+        clock_t diff_find_seeds = clock();
+        std::vector<int64_t *> hit_vector;
+        std::vector<uint64_t> hit_counts;
+        int ret_search = index->FindAllRawPositionsOfSeedNoCopy(seed, k, parameters->max_num_hits, hit_vector, hit_counts);
+        mapping_data->time_region_seed_lookup += ((double) clock() - diff_find_seeds) / CLOCKS_PER_SEC;
+
+        // Check if there is too many hits (or too few).
+        if (ret_search == 1) {
+          mapping_data->num_seeds_with_no_hits += 1;
+        } else if (ret_search == 2) {
+          mapping_data->num_seeds_over_limit += 1;
+          continue;
+        } else if (ret_search > 2) {
+          mapping_data->num_seeds_errors += 1;
+        }
+
+        // Counting kmers in regions of bin_size on the genome
+//        printf ("[%ld[ num_hits = %ld\n", i, num_hits);
+
+        for (int64_t hits_id = 0; hits_id < hit_vector.size(); hits_id++) {
+          int64_t *hits = hit_vector[hits_id];
+          total_num_hits += hit_counts[hits_id];
+
+          for (int64_t j = 0; j < hit_counts[hits_id]; j++) {
+            int64_t position = hits[j];
+            int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
+            int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
+
+            if (self_overlap == true &&
+                (reference_index % num_fwd_seqs) == read->get_sequence_id()) {
+              continue;
+            }
+
+            if (reference_index < 0) {
+              LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, 0, hit_counts[hits_id]), "SelectRegionsWithHoughAndCircular");
+              continue;
+            }
+
+            // Convert the absolute coordinates to local coordinates on the hit reference.
+            int64_t x = i;          // Coordinate on the read.
+            int64_t y_local = local_position;
+            int64_t l_local = y_local - x;
+
+            // Compensate for sequence overhangs.
+            if (l_local < 0 && parameters->is_reference_circular == false) {
+              l_local = 0;
+            }
+            if (l_local < 0 && parameters->is_reference_circular == true) {
+              l_local = index->get_reference_lengths()[reference_index] - 1;
+            }
+
+            // Calculate the index of the bin the position belongs to.
+            int64_t position_bin = floor(((float) l_local) * bin_size_inverse);
+            if (reference_index >= num_seqs ||
+                position_bin >= max_num_bins[reference_index]) {
+              continue;
+            }
+
+            std::map<std::int64_t, std::pair<int64_t, float> > &temp_map = bins_map[reference_index];
+            auto it_count = temp_map.find(position_bin);
+            if (it_count == temp_map.end()) {
+              std::pair<int64_t, float> new_bin((i + 1), 1.0f);
+              bins_map[reference_index][position_bin] = new_bin;
+            } else {
+              if (it_count->second.first == (i + 1)) { continue; }
+              it_count->second.second += 1.0f;
+              it_count->second.first = (i + 1);
+            }
+          }  // for (int64_t j=hits_start; j<(hits_start + num_hits); j++)
+        }
+
+      }
+    }
+  }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
+
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit), "ProcessKmersInBins_");
+
+  mapping_data->time_region_counting = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
+  int64_t num_bins_above_zero = 0;
+  for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
+    num_bins_above_zero += bins_map[i].size();
+  }
+
+  // Convert the bins to a more compact form, which will be easier to sort.
+  // The tuple will contain: reference_id, bin_index, bin_count.
+  mapping_data->bins.clear();
+  mapping_data->bins.resize(num_bins_above_zero);
+  for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
+    std::map<std::int64_t, std::pair<int64_t, float> > &temp_map = bins_map[i];
+    int64_t j = 0;
+    for (auto it = temp_map.begin(); it != temp_map.end(); it++) {
+      ChromosomeBin new_bin;
+      new_bin.reference_id = i;
+      new_bin.bin_id = it->first;
+      new_bin.bin_value = it->second.second;
+      mapping_data->bins.push_back(new_bin);
+      j++;
+    }
+  }
+
+  mapping_data->time_region_conversion = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
+  // Sort the bins in the descending order of bins_[i].bin_value;
+  std::sort(mapping_data->bins.begin(), mapping_data->bins.end(), bins_greater_than_key());
+
+  mapping_data->time_region_hitsort = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
+  diff_clock = clock();
+
+  clock_t end_clock = clock();
+  double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->time_region_selection = elapsed_secs;
+  LOG_DEBUG_SPEC("Region selection timings:\n");
+  LOG_DEBUG_SPEC("    time_region_seed_lookup = %f\n", mapping_data->time_region_seed_lookup);
+  LOG_DEBUG_SPEC("    time_region_alloc = %f\n", mapping_data->time_region_alloc);
+  LOG_DEBUG_SPEC("    time_region_counting = %f\n", mapping_data->time_region_counting);
+  LOG_DEBUG_SPEC("    time_region_conversion = %f\n", mapping_data->time_region_conversion);
+  LOG_DEBUG_SPEC("    time_region_sort = %f\n", mapping_data->time_region_hitsort);
+  LOG_DEBUG_SPEC("\n");
+  LOG_DEBUG_SPEC("    total_num_hits = %ld\n", total_num_hits);
+  LOG_DEBUG_SPEC("    read_len = %ld\n", read->get_sequence_length());
+//  exit(1);
+
+  return 0;
+}
