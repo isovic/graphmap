@@ -94,6 +94,9 @@ struct ProgramParameters {
   bool use_extended_cigar = false;
 
   int64_t min_read_len = 80;      // If a read is shorter than this, it will be marked as unmapped.
+
+  double min_bin_percent = 0.75f;
+  double bin_threshold_step = 0.10f;
 };
 
 int ProcessArgs(int argc, char **argv, ProgramParameters *parameters);

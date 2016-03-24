@@ -15,16 +15,6 @@
 /// int64_t min_cluster_length = read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR;
 #define MIN_CLUSTER_LENGTH_FACTOR 0.03f
 
-
-
-struct ClusterAndIndices {
-  Range query;
-  Range ref;
-  int32_t num_anchors = 0;
-  int32_t coverage = 0;
-  std::vector<int> lcskpp_indices;
-};
-
 bool CheckDistanceTooBig(const Vertices& registry_entries, int64_t index_last, int64_t index_current, const ProgramParameters* parameters) {
   int64_t distance_query = registry_entries.query_ends[index_current] - registry_entries.query_starts[index_last];
   int64_t distance_ref = registry_entries.reference_ends[index_current] - registry_entries.reference_starts[index_last];
@@ -55,6 +45,108 @@ bool CheckDistanceStep(const Vertices& registry_entries, int64_t index_first, in
 }
 
 int GenerateClusters(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
+                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
+                     std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
+//  std::vector<ClusterAndIndices *> clusters;
+  ret_clusters.clear();
+
+  if (lcskpp_indices.size() == 0) { return 1; }
+
+  ClusterAndIndices *new_cluster = NULL;
+
+  new_cluster = new ClusterAndIndices;
+
+//  printf ("lcskpp_indices.size() = %ld\n", lcskpp_indices.size());
+//  printf ("local_score->get_registry_entries().size() = %ld\n", local_score->get_registry_entries().num_vertices);
+//  printf ("lcskpp_indices.back() = %ld\n", lcskpp_indices.back());
+//  printf ("lcskpp_indices.front() = %ld\n", lcskpp_indices.front());
+//  fflush(stdout);
+
+//  new_cluster->query.start = local_score->get_registry_entries().query_starts[lcskpp_indices.back()];
+//  new_cluster->query.end = local_score->get_registry_entries().query_ends[lcskpp_indices.front()] - 1;      // The '- 1' is because anchor end coordinate points to one base after the last inclusive base. Clusters should demarcate the exact start and end positions (start is the first base, end is the last base).
+//  new_cluster->ref.start = local_score->get_registry_entries().reference_starts[lcskpp_indices.back()];
+//  new_cluster->ref.end = local_score->get_registry_entries().reference_ends[lcskpp_indices.front()] - 1;
+//
+
+  const Vertices& registry_entries = local_score->get_registry_entries();
+
+  double indel_bandwidth_margin = 0.20f;
+  double score_gap = 0.0, score_dist = 0.0;
+
+  for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
+    if (new_cluster->lcskpp_indices.size() == 0) {
+      new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);
+      new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
+      new_cluster->num_anchors += 1;
+
+//      printf ("Tu sam 1! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
+//      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+//      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+//      printf ("    start: [%d, %d], end: [%d, %d], i = %ld\n", qpos_start, rpos_start, qpos_end, rpos_end, i);
+//      fflush(stdout);
+
+    } else {
+      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+//      printf ("    start: [%d, %d], end: [%d, %d], i = %ld\n", qpos_start, rpos_start, qpos_end, rpos_end, i);
+//      fflush(stdout);
+
+      int32_t prev_qpos_start = 0, prev_rpos_start = 0, prev_qpos_end = 0, prev_rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, (i + 1), &prev_qpos_start, &prev_rpos_start, &prev_qpos_end, &prev_rpos_end);
+
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, prev_qpos_end, prev_rpos_end, indel_bandwidth_margin, -1, &score_gap, &score_dist);
+
+      if (ret_val > 0) {
+        ret_clusters.push_back(new_cluster);
+        new_cluster = new ClusterAndIndices;
+      }
+      new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);
+      new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
+      new_cluster->num_anchors += 1;
+//      printf ("Tu sam 2! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
+//      fflush(stdout);
+    }
+  }
+
+  if (new_cluster->lcskpp_indices.size() != 0) {
+    ret_clusters.push_back(new_cluster);
+  }
+
+  /// Generate the final ret_clusters that will be returned and used further.
+  for (int64_t i=0; i<ret_clusters.size(); i++) {
+    ret_clusters[i]->query.start = registry_entries.query_starts[ret_clusters[i]->lcskpp_indices.front()];
+    ret_clusters[i]->query.end = registry_entries.query_ends[ret_clusters[i]->lcskpp_indices.back()] - 1;
+    ret_clusters[i]->ref.start = registry_entries.reference_starts[ret_clusters[i]->lcskpp_indices.front()];
+    ret_clusters[i]->ref.end = registry_entries.reference_ends[ret_clusters[i]->lcskpp_indices.back()] - 1;
+
+    int64_t cluster_length = ret_clusters[i]->query.end - ret_clusters[i]->query.start + 1;
+    int64_t covered_bases = ret_clusters[i]->coverage;
+    float cluster_coverage = ((float) covered_bases) / ((float) cluster_length);
+
+
+    ret_filtered_lcskpp_indices.insert(ret_filtered_lcskpp_indices.end(), ret_clusters[i]->lcskpp_indices.begin(), ret_clusters[i]->lcskpp_indices.end());
+    printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
+    fflush(stdout);
+
+    /// Create indices for debugging purposes (so we can differentiate clusters).
+    if (ret_cluster_ids) {
+      std::vector<int32_t> cluster_indices(ret_clusters[i]->lcskpp_indices.size(), i);
+      ret_cluster_ids->insert(ret_cluster_ids->end(), cluster_indices.begin(), cluster_indices.end());
+    }
+
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), "L1-PostProcessRegionWithLCS_");
+    for (int64_t j=0; j<ret_clusters[i]->lcskpp_indices.size(); j++) {
+      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+      GetPositionsFromRegistry2(registry_entries, ret_clusters[i]->lcskpp_indices[j], &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("    [%ld] start: [%d, %d], end: [%d, %d]\n", j, qpos_start, rpos_start, qpos_end, rpos_end), "[]");
+    }
+  }
+
+  return 0;
+}
+
+int GenerateClustersDummy(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
                      ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
@@ -312,7 +404,33 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
   return 0;
 }
 
-int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_score, const MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters, const std::vector<ClusterAndIndices *> &clusters) {
+  FILE *fp = fopen(out_file.c_str(), "a");
+  if (fp == NULL) { return 1; }
+
+  int64_t num_nonempty_clusters = 0;
+  for (int64_t i=0; i<clusters.size(); i++) {
+    if (clusters[i] && clusters[i]->lcskpp_indices.size() > 0) { num_nonempty_clusters += 1; }
+  }
+
+  // 1. Number of clusters, 2. Read ID, 3. Read len, 4. Target ID, 4. Target len, 5. Target reversed
+  fprintf (fp, "region\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\n", local_score->get_scores_id(), num_nonempty_clusters, read->get_sequence_id(), read->get_sequence_length(),
+           (local_score->get_region().reference_id % indexes[0]->get_num_sequences_forward()), indexes[0]->get_reference_lengths()[local_score->get_region().reference_id], (int32_t) local_score->get_region().reference_id >= indexes[0]->get_num_sequences_forward());
+  int64_t current_cluster = 0;
+  for (int64_t i=0; i<clusters.size(); i++) {
+    if (clusters[i] && clusters[i]->lcskpp_indices.size() > 0) {
+      current_cluster += 1;
+      // Cluster line:
+      //  cluster_id qstart qend rstart rend num_anchors num_covered_bases
+      fprintf (fp, "cluster\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\t%d\n", current_cluster, clusters[i]->query.start, clusters[i]->query.end, clusters[i]->ref.start, clusters[i]->ref.end, clusters[i]->num_anchors, clusters[i]->coverage);
+    }
+  }
+  fprintf (fp, "#\n");
+  fclose(fp);
+  return 0;
+}
+
+int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
@@ -375,7 +493,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &first_filtered_lcskpp_indices, 0, 0, false);
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
-        VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false);
+        VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false, &cluster_ids);
       }
     #endif
 
@@ -485,7 +603,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
     VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &first_filtered_lcskpp_indices, 0, 0, false);
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
-    VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, l, 3.0f * confidence_L1, true, &cluster_ids);
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, l, 3.0f * confidence_L1, false, &cluster_ids);
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("LCSk clusters:\n"), "ExperimentalPostProcessRegionWithLCS_");
     for (int64_t i=0; i<clusters.size(); i++) {
@@ -498,6 +616,8 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", i, mapping_info.clusters[i].query.start, mapping_info.clusters[i].query.end, mapping_info.clusters[i].ref.start, mapping_info.clusters[i].ref.end), "[]");
     }
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n", "[]");
+
+    VerboseClustersToFile_(FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id()), local_score, mapping_data, indexes, read, parameters, clusters);
   }
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "PostProcessRegionWithLCS_");

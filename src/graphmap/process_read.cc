@@ -88,9 +88,9 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   // Initialize the iteration counter and the value after which the counter should be reset.
   mapping_data->iteration = 0;
 
-  float threshold_step = 0.10f;
+//  float threshold_step = 0.10f;
   float bin_value_threshold = mapping_data->bins.front().bin_value;
-  bin_value_threshold = (mapping_data->bins.front().bin_value * (1.0f - threshold_step));
+  bin_value_threshold = (mapping_data->bins.front().bin_value * (1.0f - parameters->bin_threshold_step));
   bin_value_threshold = std::max(bin_value_threshold, 2.0f);
   int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, bin_value_threshold);
   float min_allowed_bin_value = 0.0f;
@@ -98,7 +98,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     min_allowed_bin_value = (0.50f * mapping_data->bins.front().bin_value);
 
   } else {
-    min_allowed_bin_value = (0.75f * mapping_data->bins.front().bin_value);
+    min_allowed_bin_value = (parameters->min_bin_percent * mapping_data->bins.front().bin_value);
 //    min_allowed_bin_value = 0.0f;
   }
 
@@ -122,6 +122,17 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     }
   }
 
+#ifndef RELEASE_VERSION
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+
+    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
+    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
+    if (fp_cluster_path) {
+      fclose(fp_cluster_path);
+    }
+  }
+#endif
+
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
 
   // Process regions one by one.
@@ -130,7 +141,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     int ret_check = 0;
 
     if (parameters->alignment_approach != "overlapper") {
-      ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, threshold_step, &bin_value_threshold, mapping_data, read, parameters);
+      ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, parameters->bin_threshold_step, &bin_value_threshold, mapping_data, read, parameters);
     } else {
       if (mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value)
         break;
