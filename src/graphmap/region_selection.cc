@@ -650,6 +650,10 @@ int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mappi
 #include <algorithm>
 #include "sparsehash/dense_hash_map"
 using google::dense_hash_map;      // namespace where class lives by default
+struct DenseType2 {
+  int32_t timestamp = 0;
+  float count = 0.0;
+};
 
 int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   clock_t begin_clock = clock();
@@ -677,7 +681,7 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
 
   int64_t num_seqs = indexes[0]->get_num_sequences_forward() * 2;
 
-  typedef dense_hash_map<int64_t, std::pair<int32_t, float>, std::hash<int64_t> > DenseType;
+  typedef dense_hash_map<int64_t, DenseType2, std::hash<int64_t> > DenseType;
 //  std::vector<std::unordered_map<std::int64_t, std::pair<int64_t, float> > > bins_map;
   std::vector<DenseType> bins_map1;
 
@@ -700,8 +704,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
 //    last_update_chromosome[i + indexes[0]->get_num_sequences_forward()].resize(current_num_bins, 0);
     max_num_bins[i] = current_num_bins;
 
-    std::pair<int32_t, float> empty_val(0, 0.0f);
-    bins_map1[i].set_empty_key(empty_val);
+//    DenseType2 dt2;
+    bins_map1[i].set_empty_key(-1);
   }
 
   mapping_data->num_seeds_with_no_hits = 0;
@@ -722,6 +726,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
   diff_clock = clock();
   for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
     int8_t *seed = (int8_t *) &(read->get_data()[i]);
+//    printf ("Tu sam 1!\n");
+//    fflush(stdout);
 
     for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
       IndexSpacedHashFast *index = (IndexSpacedHashFast *) indexes[index_id];
@@ -786,17 +792,22 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
             }
 
             DenseType &temp_map = bins_map1[reference_index];
-            auto hit = temp_map[position_bin];
-            if (hit.second == (i + 1)) { continue; }
-            hit.first += 1.0f;
-            hit.second = (i + 1);
+            DenseType2 &hit = temp_map[position_bin];
+            if (hit.timestamp == (i + 1)) { continue; }
+            hit.count += 1.0f;
+            hit.timestamp = (i + 1);
+//            printf ("map[%ld][%ld]: count = %f, timestamp = %d, i = %ld\n", reference_index, position_bin, temp_map[position_bin].count, temp_map[position_bin].timestamp, i);
 
           }  // for (int64_t j=hits_start; j<(hits_start + num_hits); j++)
+//          printf ("Tu sam 2!\n");
+//          fflush(stdout);
         }
 
       }
     }
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
+//  printf ("Tu sam 3!\n");
+//  fflush(stdout);
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld, total_num_hits = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit, total_num_hits), "ProcessKmersInBins_");
   LOG_DEBUG("total_num_hits = %ld\n", total_num_hits);
@@ -820,7 +831,7 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
       ChromosomeBin new_bin;
       new_bin.reference_id = i;
       new_bin.bin_id = it->first;
-      new_bin.bin_value = it->second.second;
+      new_bin.bin_value = it->second.count;
       mapping_data->bins.push_back(new_bin);
       j++;
     }

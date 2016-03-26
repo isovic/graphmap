@@ -126,8 +126,8 @@ int GenerateClusters(int64_t min_cluster_length, float min_cluster_coverage, std
 
 
     ret_filtered_lcskpp_indices.insert(ret_filtered_lcskpp_indices.end(), ret_clusters[i]->lcskpp_indices.begin(), ret_clusters[i]->lcskpp_indices.end());
-    printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
-    fflush(stdout);
+//    printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
+//    fflush(stdout);
 
     /// Create indices for debugging purposes (so we can differentiate clusters).
     if (ret_cluster_ids) {
