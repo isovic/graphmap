@@ -648,8 +648,8 @@ int GraphMap::RegionSelectionNoCopyWithMap_(int64_t bin_size, MappingData* mappi
 
 #include <string.h>
 #include <algorithm>
-#include "sparsehash/dense_hash_map"
-using google::dense_hash_map;      // namespace where class lives by default
+#include "sparsehash/sparse_hash_map"
+using google::sparse_hash_map;      // namespace where class lives by default
 struct DenseType2 {
   int32_t timestamp = 0;
   float count = 0.0;
@@ -681,7 +681,7 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
 
   int64_t num_seqs = indexes[0]->get_num_sequences_forward() * 2;
 
-  typedef dense_hash_map<int64_t, DenseType2, std::hash<int64_t> > DenseType;
+  typedef sparse_hash_map<int64_t, DenseType2, std::hash<int64_t> > DenseType;
 //  std::vector<std::unordered_map<std::int64_t, std::pair<int64_t, float> > > bins_map;
   std::vector<DenseType> bins_map1;
 
@@ -705,7 +705,7 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
     max_num_bins[i] = current_num_bins;
 
 //    DenseType2 dt2;
-    bins_map1[i].set_empty_key(-1);
+//    bins_map1[i].set_empty_key(-1);
   }
 
   mapping_data->num_seeds_with_no_hits = 0;
