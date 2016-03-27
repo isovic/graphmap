@@ -80,7 +80,8 @@ void GraphMap::Run(ProgramParameters& parameters) {
 //    double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
 //    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
     int64_t max_seed_count = 0;
-    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.999, &parameters.max_num_hits, &max_seed_count);
+//    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
+    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
     LOG_ALL("Automatically setting the maximum number of seed hits to: %ld. Maximum seed occurrence in index: %ld.\n", parameters.max_num_hits, max_seed_count);
 
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum number of kmer hits: %ld\n", parameters.max_num_hits), "Run");

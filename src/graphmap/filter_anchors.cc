@@ -6,6 +6,7 @@
  */
 
 #include "filter_anchors.h"
+#include "log_system/log_system.h"
 
 //#define DEBUG_TEST1
 
@@ -27,6 +28,9 @@ int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rp
   *score_dist = -mismatch / 2.0;     // Divide by two because not necessarily all bases on the diagonal are mismatches, some might be matches. Just a heuristic.
 
   int32_t bandwidth = indel_bandwidth_margin * dist;
+//  int32_t bandwidth = indel_bandwidth_margin * fwd_length;
+//  printf ("  -> fwd_length = %d, dist = %f, mismatch = %f, band = %f\n", fwd_length, dist, mismatch, band);
+//  fflush(stdout);
 
   int32_t x_dist = abs(qpos - next_qpos);
 
@@ -43,45 +47,13 @@ int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rp
     return 2;
 
   } else if ((fwd_length > 0 && x_dist > fwd_length) && band > bandwidth) {
+//    printf ("band = %f, bandwidth = %d\n", band, bandwidth);
+//    fflush(stdout);
     // All numbers are too high, break the chain.
     return 3;
   }
 
   return 4;
-}
-
-int64_t CalcScore1(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rpos, double indel_bandwidth_margin, int32_t fwd_length) {
-//  int32_t min_dist = (next_qpos <= qpos) ? (qpos - next_qpos) :
-//                     (next_qpos >= (qpos + seed_length_q)) ? (next_qpos - qpos - seed_length_q) :
-//                     -1;
-  int32_t min_dist = (next_qpos <= qpos) ? (qpos - next_qpos) : (next_qpos - qpos);
-
-  if (min_dist < 0 || min_dist > fwd_length) {
-#ifdef DEBUG_TEST1
-  printf ("  --[min_dist not satisfied!] min_dist = %ld, fwd_length = %ld\n", min_dist, fwd_length);
-  fflush(stdout);
-#endif
-    return 1;
-  }
-
-  int32_t l1 = rpos - qpos, l2 = next_rpos - next_qpos;
-  double a = abs(l2 - l1);
-  double band = a * (sqrt(2.0) / 2.0);
-  double dist = sqrt((double) (rpos - next_rpos) * (rpos - next_rpos) + (qpos - next_qpos) * (qpos - next_qpos));
-  int32_t bandwidth = indel_bandwidth_margin * dist;
-#ifdef DEBUG_TEST1
-  printf ("  bandwidth = %ld, band = %f, dist = %f, a = %f\n", bandwidth, band, dist, a);
-  fflush(stdout);
-#endif
-  if (band > bandwidth) {
-#ifdef DEBUG_TEST1
-  printf ("  --[bandwidth not satisfied!]\n", bandwidth, band, dist, a);
-  fflush(stdout);
-#endif
-    return 1;
-  }     // Do I need to check the diagonal, or the actual gap? 'a' is the vertical/horizontal distance, and 'band' is the diagonal between two lines.
-
-  return -a;
 }
 
 // Used for packed 128-bit hits, mainly for Owler.
@@ -109,7 +81,7 @@ void GetPositionsFromRegistry2(const Vertices& registry_entries, int64_t vertex_
   *rpos_end = registry_entries.reference_ends[vertex_id];
 }
 
-int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const ProgramParameters *parameters,
+int FilterAnchors1(const SingleSequence* seq, ScoreRegistry* local_score, const ProgramParameters *parameters,
                   const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
@@ -300,6 +272,162 @@ int FilterAnchors(const SingleSequence* seq, ScoreRegistry* local_score, const P
 #ifdef DEBUG_TEST1
   printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
 #endif
+
+  return 0;
+
+}
+
+
+
+
+
+
+int FilterAnchors(const SingleSequence* read, ScoreRegistry* local_score, const ProgramParameters *parameters,
+                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
+                  std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
+
+  int64_t chain_len_lookahead = max_dist;
+  const Vertices& registry_entries = local_score->get_registry_entries();
+
+  std::vector<std::vector<int32_t> > chains;
+  std::vector<int32_t> chain_cov_bases;
+
+  {
+    std::vector<int32_t> new_chain;
+    new_chain.reserve(lcskpp_indices.size());
+    chains.push_back(new_chain);
+    chain_cov_bases.push_back(0);
+  }
+
+  LOG_DEBUG_SPEC_NO_HEADER("Starting a new chain: %ld\n", chains.size());
+//  fflush(stdout);
+  for (int64_t i=0; i<lcskpp_indices.size(); i++) {
+    double max_score_gap = 1.0, max_score_mismatch = 1.0;
+    int64_t max_score_id = -1;
+    int64_t next_id = i;
+    while (next_id < lcskpp_indices.size()) {
+      if (chains.back().size() == 0) {
+        int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+        GetPositionsFromRegistry(registry_entries, lcskpp_indices, next_id, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+        int32_t cov_bases = std::max((qpos_end - qpos_start), (rpos_end - rpos_start));
+        chains.back().push_back(lcskpp_indices[next_id]);
+        chain_cov_bases.back() += cov_bases;
+        LOG_DEBUG_SPEC_NO_HEADER("  Adding anchor %ld: start = [%d, %d], end = [%d, %d]\n", 0, qpos_start, rpos_start, qpos_end, rpos_end);
+//        fflush(stdout);
+        continue;
+      }
+
+      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+      GetPositionsFromRegistry2(registry_entries, chains.back().back(), &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+      int32_t cov_bases = std::max((qpos_end - qpos_start), (rpos_end - rpos_start));
+
+      int32_t next_qpos_start = 0, next_rpos_start = 0, next_qpos_end = 0, next_rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, next_id, &next_qpos_start, &next_rpos_start, &next_qpos_end, &next_rpos_end);
+      int32_t next_cov_bases = std::max((next_qpos_end - next_qpos_start), (next_rpos_end - next_rpos_start));
+
+      LOG_DEBUG_SPEC_NO_HEADER("  Considering anchor %ld (i = %ld, lcskpp_indices[%ld] = %d, chains.back().back() = %d): start = [%d, %d], end = [%d, %d]. max_score_id = %ld\n", next_id, i, lcskpp_indices[next_id], chains.back().back(), qpos_start, rpos_start, qpos_end, rpos_end, max_score_id);
+
+      double score_gap = 0.0, score_mismatch = 0.0;
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead, &score_gap, &score_mismatch);
+
+      if (ret_val > 0) {
+        LOG_DEBUG_SPEC_NO_HEADER("    - Breaking. CalcScore returned a value > 0 (ret_val = %ld)\n", ret_val);
+        break;
+      }
+
+      if (max_score_id == -1 || (score_gap >= max_score_gap && score_mismatch >= max_score_mismatch)) {
+        LOG_DEBUG_SPEC_NO_HEADER("    - This will be the new max_score_id.", ret_val);
+        max_score_gap = score_gap;
+        max_score_mismatch = score_mismatch;
+        max_score_id = next_id;
+      }
+      next_id += 1;
+    }
+
+    if (max_score_id == -1) {
+      std::vector<int32_t> new_chain;
+      chains.push_back(new_chain);
+      chains.back().reserve(lcskpp_indices.size() - i);
+      chain_cov_bases.push_back(0);
+
+      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+      int32_t cov_bases = std::max((qpos_end - qpos_start), (rpos_end - rpos_start));
+      chains.back().push_back(lcskpp_indices[i]);
+      chain_cov_bases.back() += cov_bases;
+
+      LOG_DEBUG_SPEC_NO_HEADER("  Adding anchor %ld: start = [%d, %d], end = [%d, %d]. (Case where max_score_id == -1)\n", i, qpos_start, rpos_start, qpos_end, rpos_end);
+      LOG_DEBUG_SPEC_NO_HEADER("  End of chain.\n\n");
+//      fflush(stdout);
+      LOG_DEBUG_SPEC_NO_HEADER("Starting a new chain: %ld\n", chains.size());
+//      fflush(stdout);
+
+    } else {
+      int32_t max_qpos_start = 0, max_rpos_start = 0, max_qpos_end = 0, max_rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, max_score_id, &max_qpos_start, &max_rpos_start, &max_qpos_end, &max_rpos_end);
+      int32_t max_cov_bases = std::max((max_qpos_end - max_qpos_start), (max_rpos_end - max_rpos_start));
+
+      chains.back().push_back(lcskpp_indices[max_score_id]);
+      chain_cov_bases.back() += max_cov_bases;
+      i = max_score_id;
+
+      LOG_DEBUG_SPEC_NO_HEADER("  Adding anchor, max_score_id = %ld, start = [%d, %d], end = [%d, %d]\n", max_score_id, max_qpos_start, max_rpos_start, max_qpos_end, max_rpos_end);
+//      fflush(stdout);
+    }
+  }
+
+  ret_filtered_lcskpp_indices.size();
+  if (ret_cluster_ids) { ret_cluster_ids->clear(); }
+
+  // Fill the return indices.
+  for (int64_t i=0; i<chains.size(); i++) {
+    // Remove chains with too low of a count.
+    if (chains[i].size() == 0) { continue; }
+
+    int32_t qpos_start1 = 0, rpos_start1 = 0, qpos_end1 = 0, rpos_end1 = 0;
+    GetPositionsFromRegistry2(registry_entries, chains[i].front(), &qpos_start1, &rpos_start1, &qpos_end1, &rpos_end1);
+    int32_t qpos_start2 = 0, rpos_start2 = 0, qpos_end2 = 0, rpos_end2 = 0;
+    GetPositionsFromRegistry2(registry_entries, chains[i].back(), &qpos_start2, &rpos_start2, &qpos_end2, &rpos_end2);
+
+//    printf ("chains[%ld].size() = %ld, chain_cov_bases[%ld] = %ld, qlen = %d, rlen = %d, qpos_start1 = %d, qpos_end2 = %d;   ", i, chains[i].size(), i, chain_cov_bases[i], (qpos_end2 - qpos_start1), (rpos_end2 - rpos_start1), qpos_start1, qpos_end2);
+    if (chains[i].size() <= cluster_size_cutoff && chain_cov_bases[i] < min_covered_bases) {
+      LOG_DEBUG_SPEC_NO_HEADER("Removed!");
+      chains[i].clear();
+    }
+    LOG_DEBUG_SPEC_NO_HEADER("\n");
+  }
+
+  LOG_DEBUG_SPEC_NO_HEADER("cluster_size_cutoff = %ld\n", cluster_size_cutoff);
+  LOG_DEBUG_SPEC_NO_HEADER("min_covered_bases = %ld\n", min_covered_bases);
+
+  int64_t num_filtered_indices = 0;
+  for (int64_t i=0; i<chains.size(); i++) { num_filtered_indices += chains[i].size(); }
+  ret_filtered_lcskpp_indices.reserve(num_filtered_indices);
+  if (ret_cluster_ids) { ret_cluster_ids->reserve(num_filtered_indices); }
+
+  // Fill the return indices.
+  for (int64_t i=0; i<chains.size(); i++) {
+    // Remove chains with too low of a count.
+    if (chains[i].size() <= cluster_size_cutoff && chain_cov_bases[i] < min_covered_bases) { continue; }
+
+    int32_t qpos_start1 = 0, rpos_start1 = 0, qpos_end1 = 0, rpos_end1 = 0;
+    GetPositionsFromRegistry2(registry_entries, chains[i].front(), &qpos_start1, &rpos_start1, &qpos_end1, &rpos_end1);
+    int32_t qpos_start2 = 0, rpos_start2 = 0, qpos_end2 = 0, rpos_end2 = 0;
+    GetPositionsFromRegistry2(registry_entries, chains[i].back(), &qpos_start2, &rpos_start2, &qpos_end2, &rpos_end2);
+
+    LOG_DEBUG_SPEC_NO_HEADER("chains[%ld].size() = %ld, chain_cov_bases[%ld] = %ld, qlen = %d, rlen = %d, qpos_start1 = %d, qpos_end2 = %d;   ", i, chains[i].size(), i, chain_cov_bases[i], (qpos_end2 - qpos_start1), (rpos_end2 - rpos_start1), qpos_start1, qpos_end2);
+    LOG_DEBUG_SPEC_NO_HEADER("\n");
+
+    for (int64_t j=0; j<chains[i].size(); j++) {
+      ret_filtered_lcskpp_indices.push_back(chains[i][j]);
+      if (ret_cluster_ids) {
+        ret_cluster_ids->push_back(chains.size() - i);
+      }
+    }
+  }
+
+//  fflush(stdout);
+//  exit(1);
 
   return 0;
 

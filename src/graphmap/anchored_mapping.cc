@@ -43,8 +43,7 @@ bool CheckDistanceStep(const Vertices& registry_entries, int64_t index_first, in
 
   return false;
 }
-
-int GenerateClusters(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
+int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
                      ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
@@ -124,6 +123,14 @@ int GenerateClusters(int64_t min_cluster_length, float min_cluster_coverage, std
     int64_t covered_bases = ret_clusters[i]->coverage;
     float cluster_coverage = ((float) covered_bases) / ((float) cluster_length);
 
+    // Filter clusters which are too small.
+//    if ((min_num_anchors_in_cluster > 0 && min_cluster_length > 0 && min_cluster_coverage > 0) && ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster && cluster_length < min_cluster_length) {
+    if (ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster &&
+        cluster_length < min_cluster_length &&
+        ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster) {
+      ret_clusters[i]->lcskpp_indices.clear();
+      continue;
+    }
 
     ret_filtered_lcskpp_indices.insert(ret_filtered_lcskpp_indices.end(), ret_clusters[i]->lcskpp_indices.begin(), ret_clusters[i]->lcskpp_indices.end());
 //    printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
@@ -135,11 +142,17 @@ int GenerateClusters(int64_t min_cluster_length, float min_cluster_coverage, std
       ret_cluster_ids->insert(ret_cluster_ids->end(), cluster_indices.begin(), cluster_indices.end());
     }
 
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), "L1-PostProcessRegionWithLCS_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), std::string(__FUNCTION__));
     for (int64_t j=0; j<ret_clusters[i]->lcskpp_indices.size(); j++) {
       int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
       GetPositionsFromRegistry2(registry_entries, ret_clusters[i]->lcskpp_indices[j], &qpos_start, &rpos_start, &qpos_end, &rpos_end);
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("    [%ld] start: [%d, %d], end: [%d, %d]\n", j, qpos_start, rpos_start, qpos_end, rpos_end), "[]");
+    }
+  }
+
+  for (int64_t i = (ret_clusters.size() - 1); i >= 0; i--) {
+    if (ret_clusters[i]->lcskpp_indices.size() == 0) {
+      ret_clusters.erase(ret_clusters.begin() + i);
     }
   }
 
@@ -462,10 +475,10 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   std::vector<int32_t> first_filtered_clusters;
 //   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, 300, 2, 50, 2, first_filtered_lcskpp_indices, NULL);
 //   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, std::max(read->get_sequence_length() * 0.10f, 200.0f), 2, 50, 2, first_filtered_lcskpp_indices, NULL);
-   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
 
   //  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
-    GenerateClusters(0.0f, 0.0f, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+    GenerateClusters(2, 50, 20, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
 
   // Find the L1 parameters (median line and the confidence intervals).
   float l_diff = read->get_sequence_length() * parameters->error_rate;

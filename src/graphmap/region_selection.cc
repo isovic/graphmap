@@ -755,20 +755,24 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
           int64_t *hits = hit_vector[hits_id];
           total_num_hits += hit_counts[hits_id];
 
+          int64_t prev_position_bin = -1, prev_reference_index = -1;
+
           for (int64_t j = 0; j < hit_counts[hits_id]; j++) {
             int64_t position = hits[j];
             int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
             int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
 
-            if (self_overlap == true &&
-                (reference_index % num_fwd_seqs) == read->get_sequence_id()) {
+            if (self_overlap == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) {
               continue;
             }
 
-            if (reference_index < 0) {
-              LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, 0, hit_counts[hits_id]), "SelectRegionsWithHoughAndCircular");
-              continue;
-            }
+//            if (reference_index < 0 || reference_index >= num_seqs) {
+//              LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, 0, hit_counts[hits_id]), "SelectRegionsWithHoughAndCircular");
+//              printf ("Tu sam 123!\n");
+//              fflush(stdout);
+//              exit(1);
+//              continue;
+//            }
 
             // Convert the absolute coordinates to local coordinates on the hit reference.
             int64_t x = i;          // Coordinate on the read.
@@ -785,8 +789,11 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
 
             // Calculate the index of the bin the position belongs to.
             int64_t position_bin = floor(((float) l_local) * bin_size_inverse);
-            if (reference_index >= num_seqs ||
-                position_bin >= max_num_bins[reference_index]) {
+            if (reference_index == prev_reference_index && position_bin == prev_position_bin) { continue; }
+            prev_reference_index = reference_index;
+            prev_position_bin = position_bin;
+
+            if (position_bin >= max_num_bins[reference_index]) {
               continue;
             }
 

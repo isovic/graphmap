@@ -9,9 +9,11 @@
 #include "libs/opal.h"
 
 int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results) {
-  bool align_end_to_end = true;
+//  bool align_end_to_end = true;
 //  bool spliced_alignment = true;
-  bool spliced_alignment = false;
+//  bool spliced_alignment = false;
+  bool align_end_to_end = parameters->alignment_algorithm != "spliced";
+  bool spliced_alignment = parameters->alignment_algorithm == "spliced";
 
     if (parameters->alignment_algorithm == "gotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach.\n", "Alignment");
@@ -25,13 +27,13 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
 
       return SemiglobalAlignment(MyersSemiglobalWrapper, read, index, parameters, evalue_params, region_results);
 
-    } else if (parameters->alignment_algorithm == "anchor") {
+    } else if (parameters->alignment_algorithm == "anchor" || parameters->alignment_algorithm == "spliced") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
       return AnchoredAlignmentNew(MyersNWWrapper, MyersSHWWrapper, read, index, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
 
-    } else if (parameters->alignment_algorithm == "anchorgotoh") {
+    } else if (parameters->alignment_algorithm == "anchorgotoh" || parameters->alignment_algorithm == "splicedgotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
@@ -39,7 +41,7 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
 
 #ifndef RELEASE_VERSION
 
-    } else if (parameters->alignment_algorithm == "anchormex") {
+    } else if (parameters->alignment_algorithm == "anchormex" || parameters->alignment_algorithm == "splicedmex") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");

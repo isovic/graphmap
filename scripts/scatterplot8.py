@@ -121,16 +121,17 @@ def plot_data(fig, ax, subplot_coords, x, y, c, query_length, ymin, ymax, l_medi
 
 		all_colors = 'bgrcmyk';
 
+		colors1 = [all_colors[val%len(all_colors)] for val in c[0::2]];
+		colors2 = [all_colors[val%len(all_colors)] for val in c[1::2]];
+
 		i = 0;
 		while (i < len(x)):
-			ax.plot(x[i:(i+2)], y[i:(i+2)], 'k');
+			ax.plot(x[i:(i+2)], y[i:(i+2)], color=all_colors[(c[i]) % len(all_colors)]);
 			i += 2;
 
 		# ax.plot(x, y, 'o');
 		# ax.scatter(x[0::2], y[0::2], s=10, facecolor='b', lw = 0.2)
 		# ax.scatter(x[1::2], y[1::2], s=10, facecolor='c', lw = 0.2)
-		colors1 = [all_colors[val%len(all_colors)] for val in c[0::2]];
-		colors2 = [all_colors[val%len(all_colors)] for val in c[1::2]];
 		ax.scatter(x[0::2], y[0::2], s=10, edgecolor=colors1, facecolor=colors1, lw = 0.2)
 		ax.scatter(x[1::2], y[1::2], s=10, edgecolor=colors2, facecolor=colors2, lw = 0.2)
 

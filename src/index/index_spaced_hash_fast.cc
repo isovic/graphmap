@@ -662,15 +662,15 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
   }
 
 
-#ifndef RELEASE_VERSION
-  FILE *fp_debug = fopen (FormatString("temp.kmercounts.%s.csv", shape_index_).c_str(), "w");
-  std::vector<size_t> kmer_counts_indices;
-  OrderedSortArray(kmer_counts_, num_kmers_, kmer_counts_indices);
-  for (int64_t i1=(kmer_counts_indices.size()-1); i1>=0; i1--) {
-    fprintf (fp_debug, "%6X\t%ld\n", kmer_counts_indices[i1], kmer_counts_[kmer_counts_indices[i1]]);
-  }
-  fclose(fp_debug);
-#endif
+//#ifndef RELEASE_VERSION
+//  FILE *fp_debug = fopen (FormatString("temp.kmercounts.%s.csv", shape_index_).c_str(), "w");
+//  std::vector<size_t> kmer_counts_indices;
+//  OrderedSortArray(kmer_counts_, num_kmers_, kmer_counts_indices);
+//  for (int64_t i1=(kmer_counts_indices.size()-1); i1>=0; i1--) {
+//    fprintf (fp_debug, "%6X\t%ld\n", kmer_counts_indices[i1], kmer_counts_[kmer_counts_indices[i1]]);
+//  }
+//  fclose(fp_debug);
+//#endif
 
   return 0;
 }

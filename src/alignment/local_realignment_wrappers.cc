@@ -504,7 +504,7 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 
   int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
                         (const unsigned char *) reference_data, reference_length,
-                        alphabet_length, band_width, MYERS_MODE_HW, &score, &positions, &num_positions,
+                        alphabet_length, -1, MYERS_MODE_HW, &score, &positions, &num_positions,
                         true, &alignment, &alignment_length);
 
   if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
@@ -560,7 +560,7 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
 
   int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
                         (const unsigned char *) reference_data, reference_length,
-                        alphabet_length, band_width, MYERS_MODE_NW, &score, &positions, &num_positions,
+                        alphabet_length, -1, MYERS_MODE_NW, &score, &positions, &num_positions,
                         true, &alignment, &alignment_length);
 
   if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
