@@ -814,15 +814,16 @@ int Index::InsertSequence_(const int8_t *sequence_data, uint64_t sequence_length
   num_sequences_ += 1;
   // Insert sequence in data + separator '!'
   for (uint64_t i = 0; i < sequence_length; ++i) {
-    if ((sequence_data[i] == 'A' || sequence_data[i] == 'C' || sequence_data[i] == 'G' || sequence_data[i] == 'T')) {
-      data_[data_ptr_++] = sequence_data[i];
-    }
-    else if ((sequence_data[i] == 'a' || sequence_data[i] == 'c' || sequence_data[i] == 'g' || sequence_data[i] == 't')) {
-      data_[data_ptr_++] = toupper(sequence_data[i]);
-    }
-    else {
-      data_[data_ptr_++] = 'N';
-    }
+    data_[data_ptr_++] = kBaseToUpper[sequence_data[i]];
+//    if ((sequence_data[i] == 'A' || sequence_data[i] == 'C' || sequence_data[i] == 'G' || sequence_data[i] == 'T')) {
+//      data_[data_ptr_++] = sequence_data[i];
+//    }
+//    else if ((sequence_data[i] == 'a' || sequence_data[i] == 'c' || sequence_data[i] == 'g' || sequence_data[i] == 't')) {
+//      data_[data_ptr_++] = toupper(sequence_data[i]);
+//    }
+//    else {
+//      data_[data_ptr_++] = 'N';
+//    }
   }
 
   data_[data_ptr_++] = '!';

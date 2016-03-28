@@ -184,6 +184,10 @@ int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& seque
   num_sequences_forward_ = 1;
   memmove(data_, sequence.get_data(), data_length_);
 
+  for (int64_t i=0; i<data_length_; i++) {
+    data_[i] = kBaseToUpper[data_[i]];
+  }
+
 
 
 //  int k = 6;

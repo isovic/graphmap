@@ -14,6 +14,8 @@
 #include <iostream>
 #include "sequences/sequence_file.h"
 #include "utility/utility_general.h"
+#include "utility/utility_conversion-inl.h"
+
 
 
 #define INDEX_VERSION     ((int64_t) 8)

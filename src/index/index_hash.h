@@ -19,8 +19,6 @@
 typedef std::vector<int64_t> HashIndexVector;
 typedef std::vector<int64_t> SAIndexVector;
 
-
-
 class IndexHash: public Index {
  public:
   IndexHash();
