@@ -273,7 +273,7 @@ int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength,
                     cigar->push_back('S');
                 } else {
                     delete cigar;
-                    return MYERS_STATUS_ERROR;
+                    return EDLIB_STATUS_ERROR;
                 }
             }
             if (i < alignmentLength) {
@@ -293,7 +293,7 @@ int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength,
     if (alignment_with_clipping != alignment)
       free(alignment_with_clipping);
 
-    return MYERS_STATUS_OK;
+    return EDLIB_STATUS_OK;
 }
 
 int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char** cigar_) {
@@ -326,7 +326,7 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
                     cigar->push_back('S');
                 } else {
                     delete cigar;
-                    return MYERS_STATUS_ERROR;
+                    return EDLIB_STATUS_ERROR;
                 }
             }
             if (i < alignmentLength) {
@@ -343,7 +343,7 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
     memmove(*cigar_, &(*cigar)[0], cigar->size() * sizeof(char));
     delete cigar;
 
-    return MYERS_STATUS_OK;
+    return EDLIB_STATUS_OK;
 }
 
 int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLength) {
@@ -369,7 +369,7 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
 
     int tIdx = -1;
     int qIdx = -1;
-    if (modeCode == MYERS_MODE_HW) {
+    if (modeCode == EDLIB_MODE_HW) {
         tIdx = position;
         for (int i = 0; i < alignmentLength; i++) {
           if (alignment[i] != EDLIB_I && alignment[i] != EDLIB_S)

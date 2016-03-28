@@ -241,7 +241,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
     alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data()), read->get_sequence_length(),
                                                (const unsigned char *) (index->get_data() + alignment_position_start), (alignment_position_end - alignment_position_start + 1),
                                                (unsigned char *) &(alignment[0]), alignment.size(),
-                                               (0), MYERS_MODE_NW);
+                                               (0), EDLIB_MODE_NW);
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "LocalRealignmentLinear");
   }
@@ -253,7 +253,7 @@ int LocalRealignmentLinear(AlignmentFunctionType AlignmentFunction, const Single
     alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data(), read->get_sequence_length(),
                                                  (const unsigned char *) (index->get_data() + l1_reference_start), reference_data_length,
                                                  (unsigned char *) &(alignment[0]), alignment.size(),
-                                                 (alignment_position_end - l1_reference_start), MYERS_MODE_HW);
+                                                 (alignment_position_end - l1_reference_start), EDLIB_MODE_HW);
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("alignment_position_start = %ld\nalignment_position_end = %ld\nl1_reference_start = %ld\nedit_distance = %ld\n",
@@ -307,7 +307,7 @@ int CalcEditDistanceLinear(EditDistanceFunctionType EditDistanceFunction, const 
   int64_t alignment_position_end = 0, edit_distance = 0;
   int ret_code = EditDistanceFunction(read->get_data(), read->get_sequence_length(),
                                    (int8_t *) (index->get_data() + l1_reference_start), reference_data_length,
-                                   &alignment_position_end, &edit_distance, MYERS_MODE_HW);
+                                   &alignment_position_end, &edit_distance, EDLIB_MODE_HW);
   alignment_position_end += l1_reference_start;
 
   if (ret_code != 0)
@@ -489,7 +489,7 @@ int CalcEditDistanceCircular(EditDistanceFunctionType EditDistanceFunction, cons
   int64_t best_aligning_position_end = 0, edit_distance = 0;
   int ret_code = EditDistanceFunction(read->get_data(), read->get_sequence_length(),
                                       (int8_t *) &(data_copy[l1_reference_start]), (l1_reference_end - l1_reference_start + 1),
-                                      &best_aligning_position_end, &edit_distance, MYERS_MODE_HW);
+                                      &best_aligning_position_end, &edit_distance, EDLIB_MODE_HW);
   best_aligning_position_end += l1_reference_start;
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("best_aligning_position_end = %ld\n", best_aligning_position_end), "LocalRealignmentCircular");

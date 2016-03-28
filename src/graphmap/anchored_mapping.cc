@@ -747,7 +747,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
                                                        (const unsigned char *) (reversed_ref_front), clip_count_front*2,
                                                        (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
-                                                       (0), MYERS_MODE_SHW);
+                                                       (0), EDLIB_MODE_SHW);
           LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str()), "[]");
         }
@@ -805,7 +805,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data() + query_start), query_alignment_length,
                                                    (const unsigned char *) (ref_data + ref_start), (ref_alignment_length),
                                                    (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
-                                                   (0), MYERS_MODE_NW);
+                                                   (0), EDLIB_MODE_NW);
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                 FormatString("Aligned anchor %d:\n%s\n", i, alignment_as_string.c_str()), "[]");
     }
@@ -904,7 +904,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (query_end) + 1, inbetween_query_length,
                                                        (const unsigned char *) (ref_data + ref_end) + 1, inbetween_ref_length,
                                                        (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
-                                                       (0), MYERS_MODE_NW);
+                                                       (0), EDLIB_MODE_NW);
           LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("Aligning in between anchors %d and %d:\n%s\n", i, (i+1), alignment_as_string.c_str()), "[]");
         }
@@ -988,7 +988,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
             alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
                                                          (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
                                                          (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
-                                                         (0), MYERS_MODE_SHW);
+                                                         (0), EDLIB_MODE_SHW);
             LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                       FormatString("Aligning the end of the read:\n%s\n", alignment_as_string.c_str()), "[]");
           }
@@ -1053,7 +1053,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data()), read->get_sequence_length(),
                                                (const unsigned char *) (ref_data + alignment_position_start), (alignment_position_end - alignment_position_start + 1),
                                                (unsigned char *) &(alignment[0]), alignment.size(),
-                                               (0), MYERS_MODE_NW);
+                                               (0), EDLIB_MODE_NW);
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
 

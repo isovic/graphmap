@@ -16,7 +16,7 @@
 #include <sstream>
 #include <algorithm>
 
-#include "libs/myers.h"
+#include "libs/edlib.h"
 #include "utility/utility_general.h"
 
 #define EDLIB_M 0

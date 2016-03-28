@@ -34,10 +34,16 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
   const unsigned char *target = (const unsigned char *) (reference_data + rough_reference_start);
   int target_length = rough_reference_end - rough_reference_start + 1;
   // Calculate the edit distance without the traceback using the HW alignment algorithm.
-  int myers_return_code = myersCalcEditDistance(query, query_length, target, target_length,
-                                                128, -1, MYERS_MODE_HW, &current_score, &current_positions, &current_num_positions,
-                                                false, &current_alignment, &current_alignment_length);
-  if (current_num_positions == 0 || myers_return_code != MYERS_STATUS_OK) {
+//  int myers_return_code = myersCalcEditDistance(query, query_length, target, target_length,
+//                                                128, -1, EDLIB_MODE_HW, &current_score, &current_positions, &current_num_positions,
+//                                                false, &current_alignment, &current_alignment_length);
+  int *start_locations = NULL;
+
+  int myers_return_code = edlibCalcEditDistance(query, query_length, target, target_length,
+                        128, -1, EDLIB_MODE_HW, false, false, &current_score, &current_positions, &start_locations, &current_num_positions,
+                        &current_alignment, &current_alignment_length);
+
+  if (current_num_positions == 0 || myers_return_code != EDLIB_STATUS_OK) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, true, "Something went wrong when calculating the ending position using Myers HW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
@@ -56,7 +62,9 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
   }
 
   if (current_positions) { free (current_positions); }  current_positions = NULL;
+  if (start_locations) { free(start_locations); } start_locations = NULL;
   if (current_alignment) { free(current_alignment); } current_alignment = NULL;
+
 
 
 
@@ -66,10 +74,11 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
 
   int current_band_width = 0;
 
-  myers_return_code = myersCalcEditDistance(reverse_query, query_length, reverse_target, (alignment_end + 1),
-                                                128, -1, MYERS_MODE_SHW, &current_score, &current_positions, &current_num_positions,
-                                                false, &current_alignment, &current_alignment_length, &current_band_width);
-  if (current_num_positions == 0 || myers_return_code != MYERS_STATUS_OK) {
+  myers_return_code = edlibCalcEditDistance(reverse_query, query_length, reverse_target, (alignment_end + 1),
+                        128, -1, EDLIB_MODE_SHW, false, false, &current_score, &current_positions, &start_locations, &current_num_positions,
+                        &current_alignment, &current_alignment_length, &current_band_width);
+
+  if (current_num_positions == 0 || myers_return_code != EDLIB_STATUS_OK) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, verbose_debug_output, "Something went wrong when calculating the starting position using Myers SHW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
@@ -89,6 +98,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
   }
 
   if (current_positions) { free (current_positions); }  current_positions = NULL;
+  if (start_locations) { free(start_locations); } start_locations = NULL;
   if (current_alignment) { free(current_alignment); } current_alignment = NULL;
   if (reverse_target) { delete[] reverse_target; } reverse_target = NULL;
   if (reverse_query) { delete[] reverse_query; } reverse_query = NULL;
@@ -501,13 +511,14 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 
   int *positions = NULL;
   int num_positions = 0;
+  int *start_locations = NULL;
 
-  int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+  int myers_return_code = edlibCalcEditDistance((const unsigned char *) read_data, read_length,
                         (const unsigned char *) reference_data, reference_length,
-                        alphabet_length, -1, MYERS_MODE_HW, &score, &positions, &num_positions,
-                        true, &alignment, &alignment_length);
+                        alphabet_length, -1, EDLIB_MODE_HW, false, true, &score, &positions, &start_locations, &num_positions,
+                        &alignment, &alignment_length);
 
-  if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
+  if (myers_return_code == EDLIB_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
 
@@ -532,6 +543,9 @@ int MyersSemiglobalWrapper(const int8_t *read_data, int64_t read_length,
 
   if (positions)
     free(positions);
+
+  if (start_locations)
+    free(start_locations);
 
   if (alignment)
       free(alignment);
@@ -557,13 +571,14 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
 
   int *positions = NULL;
   int num_positions = 0;
+  int *start_locations = NULL;
 
-  int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+  int myers_return_code = edlibCalcEditDistance((const unsigned char *) read_data, read_length,
                         (const unsigned char *) reference_data, reference_length,
-                        alphabet_length, -1, MYERS_MODE_NW, &score, &positions, &num_positions,
-                        true, &alignment, &alignment_length);
+                        alphabet_length, -1, EDLIB_MODE_NW, false, true, &score, &positions, &start_locations, &num_positions,
+                        &alignment, &alignment_length);
 
-  if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
+  if (myers_return_code == EDLIB_STATUS_ERROR || num_positions == 0 || alignment_length == 0) {
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
 
@@ -588,6 +603,9 @@ int MyersNWWrapper(const int8_t *read_data, int64_t read_length,
 
   if (positions)
     free(positions);
+
+  if (start_locations)
+    free(start_locations);
 
   if (alignment)
       free(alignment);
@@ -842,10 +860,12 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
 //                        (const unsigned char *) reference_data, reference_length,
 //                        alphabet_length, found_k*2, MYERS_MODE_SHW, &score, &positions, &num_positions,
 //                        true, &alignment, &alignment_length);
-  int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+  int *start_locations = NULL;
+
+  int myers_return_code = edlibCalcEditDistance((const unsigned char *) read_data, read_length,
                         (const unsigned char *) reference_data, reference_length,
-                        alphabet_length, band_width, MYERS_MODE_SHW, &score, &positions, &num_positions,
-                        true, &alignment, &alignment_length, &found_k);
+                        alphabet_length, -1, EDLIB_MODE_SHW, false, true, &score, &positions, &start_locations, &num_positions,
+                        &alignment, &alignment_length);
 
 //  printf ("read_length = %d\n", read_length);
 //  printf ("reference_length = %d\n", reference_length);
@@ -857,7 +877,7 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
 //  }
 //  fflush(stdout);
 
-  if (myers_return_code == MYERS_STATUS_ERROR) {
+  if (myers_return_code == EDLIB_STATUS_ERROR) {
     return ALIGNMENT_MYERS_INTERNAL_ERROR;
   }
   if (num_positions == 0) {
@@ -889,6 +909,9 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
   if (positions)
     free(positions);
 
+  if (start_locations)
+    free(start_locations);
+
   if (alignment)
       free(alignment);
 
@@ -910,13 +933,14 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
 
     int *positions = NULL;
     int num_positions = 0;
+    int *start_locations = NULL;
 
-    int myers_return_code = myersCalcEditDistance((const unsigned char *) read_data, read_length,
+    int myers_return_code = edlibCalcEditDistance((const unsigned char *) read_data, read_length,
                           (const unsigned char *) reference_data, reference_length,
-                          alphabet_length, -1, myers_mode_code, &score, &positions, &num_positions,
-                          false, &alignment, &alignment_length);
+                          alphabet_length, -1, myers_mode_code, false, false, &score, &positions, &start_locations, &num_positions,
+                          &alignment, &alignment_length);
 
-    if (myers_return_code == MYERS_STATUS_ERROR || num_positions == 0) {
+    if (myers_return_code == EDLIB_STATUS_ERROR || num_positions == 0) {
       return ALIGNMENT_MYERS_INTERNAL_ERROR;
     }
 
@@ -927,6 +951,9 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
 
     if (positions)
       free(positions);
+
+    if (start_locations)
+      free(start_locations);
 
     if (alignment)
         free(alignment);

@@ -18,7 +18,7 @@
 
 #include "utility/utility_general.h"
 #include "utility/program_parameters.h"
-#include "libs/myers.h"
+#include "libs/edlib.h"
 #include "alignment/cigargen.h"
 #include "log_system/log_system.h"
 #include "containers/region.h"
@@ -92,7 +92,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
 int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
                              const int8_t *reference_data, int64_t reference_length,
                              int64_t *ret_alignment_position_end,
-                             int64_t *ret_edit_distance, int myers_mode_code=MYERS_MODE_HW);
+                             int64_t *ret_edit_distance, int myers_mode_code=EDLIB_MODE_HW);
 
 int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
                            const int8_t *reference_data, int64_t reference_length,

@@ -20,7 +20,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
                 const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
                 const int8_t *ref_data, int64_t ref_len, int64_t clip_count_front,
                 int64_t alignment_position_start, bool align_end_to_end, AlignmentResults &aln) {
-  aln.aln_mode_code = MYERS_MODE_SHW;
+  aln.aln_mode_code = EDLIB_MODE_SHW;
   aln.query_start = 0;
   aln.query_end = clip_count_front - 1;
   aln.raw_pos_start = alignment_position_start;
@@ -106,7 +106,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
         alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
                                                      (const unsigned char *) (reversed_ref_front), clip_count_front*2,
                                                      (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
-                                                     (0), MYERS_MODE_SHW);
+                                                     (0), EDLIB_MODE_SHW);
         LOG_DEBUG_SPEC("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str());
       }
 
@@ -134,7 +134,7 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
   int64_t query_alignment_length = cluster_query_end - cluster_query_start + 1;
   int64_t ref_alignment_length = cluster_ref_end - cluster_ref_start + 1;
 
-  aln.aln_mode_code = MYERS_MODE_NW;
+  aln.aln_mode_code = EDLIB_MODE_NW;
   aln.query_start = cluster_query_start;
   aln.query_end = cluster_query_end;
   aln.raw_pos_start = cluster_ref_start;
@@ -162,7 +162,7 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
     alignment_as_string = PrintAlignmentToString((const unsigned char *) (read->get_data() + cluster_query_start), query_alignment_length,
                                                  (const unsigned char *) (ref_data + cluster_ref_start), (ref_alignment_length),
                                                  (unsigned char *) &(anchor_alignment[0]), anchor_alignment.size(),
-                                                 (0), MYERS_MODE_NW);
+                                                 (0), EDLIB_MODE_NW);
     LOG_DEBUG_SPEC("Aligned anchor %d:\n%s\n", cluster_id, alignment_as_string.c_str());
     LOG_DEBUG_SPEC("aln.query_start = %ld\n", aln.query_start);
     LOG_DEBUG_SPEC("aln.query_end = %ld\n", aln.query_end);
@@ -195,7 +195,7 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
     int64_t inbetween_query_length = (next_query_start - (cluster_query_end)) - 1;  /////I
     int64_t inbetween_ref_length = (next_ref_start - (cluster_ref_end)) - 1;  /////I
 
-    aln.aln_mode_code = MYERS_MODE_NW;
+    aln.aln_mode_code = EDLIB_MODE_NW;
     aln.query_start = cluster_query_end + 1;
     aln.query_end = next_query_start - 1;
     aln.raw_pos_start = cluster_ref_end + 1;
@@ -254,7 +254,7 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
         alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + (cluster_query_end) + 1, inbetween_query_length,
                                                      (const unsigned char *) (ref_data + cluster_ref_end) + 1, inbetween_ref_length,
                                                      (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
-                                                     (0), MYERS_MODE_NW);
+                                                     (0), EDLIB_MODE_NW);
         LOG_DEBUG_SPEC("Aligning in between anchors %d and %d:\n%s\n", cluster_id, (cluster_id+1), alignment_as_string.c_str());
       }
 
@@ -269,7 +269,7 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
               const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
               const int8_t *ref_data, int64_t ref_len, int64_t clip_count_back, int64_t ref_start,
               int64_t alignment_position_end, bool align_end_to_end, AlignmentResults &aln) {
-  aln.aln_mode_code = MYERS_MODE_SHW;
+  aln.aln_mode_code = EDLIB_MODE_SHW;
   aln.query_start = read->get_sequence_length() - clip_count_back;
   aln.query_end = read->get_sequence_length() - 1;
   aln.raw_pos_start = alignment_position_end + 1;
@@ -332,7 +332,7 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
           alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
                                                        (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
                                                        (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
-                                                       (0), MYERS_MODE_SHW);
+                                                       (0), EDLIB_MODE_SHW);
           LOG_DEBUG_SPEC("Aligning the end of the read:\n%s\n", alignment_as_string.c_str());
         }
 
@@ -499,7 +499,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
   default_aln.query_header = read->get_header();
   default_aln.query_len = read->get_sequence_length();
   default_aln.is_aligned = false;
-  default_aln.aln_mode_code = MYERS_MODE_NW;
+  default_aln.aln_mode_code = EDLIB_MODE_NW;
   default_aln.edit_distance = -1;
   default_aln.raw_alignment.clear();
   default_aln.alignment.clear();

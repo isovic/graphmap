@@ -22,7 +22,7 @@
 #include "utility/program_parameters.h"
 #include "utility/utility_conversion-inl.h"
 #include "containers/path_graph_entry.h"
-#include "libs/myers.h"
+#include "libs/edlib.h"
 #include "alignment/cigargen.h"
 #include "log_system/log_system.h"
 #include "containers/region.h"

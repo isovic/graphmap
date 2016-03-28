@@ -85,7 +85,7 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
   aln.query_header = read->get_header();
   aln.query_len = read->get_sequence_length();
   aln.is_aligned = true;
-  aln.aln_mode_code = MYERS_MODE_HW;
+  aln.aln_mode_code = EDLIB_MODE_HW;
   aln.alignment = aln.raw_alignment;
 
 //  VerboseAlignment(read, index, parameters, &aln);
