@@ -539,167 +539,6 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
     }
   }
 
-  return 0;
-}
-
-int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
-  if (mapping_data->intermediate_mappings.size() == 0) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
-    return 1;
-  }
-
-  EvaluateMappings_(false, mapping_data, read, parameters);
-  CollectFinalMappingsAndMapQ_(true, mapping_data, read, parameters);
-
-  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
-    if (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false) {
-      mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
-      mapping_data->unmapped_reason += FormatString("__Unaligned_because_get_mapping_data().is_mapped==false");
-      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
-
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
-      continue;
-    }
-
-    int64_t relative_position_left_part = 0;
-    int64_t relative_position_right_part = 0;
-    SeqOrientation orientation = kForward;
-    int64_t reference_id = -1;
-    int64_t position_ambiguity = 0;
-    std::string cigar_left_part = "*";
-    std::string cigar_right_part = "";
-
-    int64_t num_eq_ops = 0, num_x_ops = 0, num_i_ops = 0, num_d_ops = 0;
-
-    int64_t AS_left_part = 0, AS_right_part = 0;
-    double evalue_left_part = 0, evalue_right_part = 0;
-    int64_t nonclipped_length_left_part = 0, nonclipped_length_right_part = 0;
-    // TODO: Promijeniti interface ove funkcije da ne vraca edit distance kao povratnu vrijednost, nego preko parametra, a da povratna vrijednost bude samo status o uspjehu.
-
-    clock_t begin_clock = clock();
-    int edit_distance = HybridRealignment(read, index, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops);
-    clock_t end_clock = clock();
-    double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
-
-    CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index->get_data_length_forward(), evalue_params, &evalue_left_part);
-    CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index->get_data_length_forward(), evalue_params, &evalue_right_part);
-
-    int64_t sum_of_error_ops = num_x_ops + num_i_ops + num_d_ops;
-    float mismatch_rate = (((float) (num_x_ops + num_i_ops + num_d_ops)) / ((float) (num_eq_ops + num_x_ops + num_d_ops + num_i_ops)));
-    float match_rate = (((float) num_eq_ops) / ((float) read->get_sequence_length()));
-    float min_match_rate = (1.0f - parameters->error_rate);
-
-    float covered_bases_ratio = (((float) mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_max) / ((float) read->get_sequence_length()));
-    float factor_covered_bases = (sigmoid(covered_bases_ratio, 0.05, 0.05));
-    float factor_query_length = (((float) (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.end - mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.start)) / (((float) read->get_sequence_length()) * (1.0f - parameters->error_rate)));
-    if (factor_query_length > 1.0f)
-      factor_query_length = 1.0f;
-    float factor_readlength = std::min(((float) read->get_sequence_length()) / 2000.0f, 1.0f);
-
-    /// Check if something went wrong and the read is unmapped.
-    if (edit_distance < 0) {
-      mapping_data->unmapped_reason += FormatString("__HybridRealignment_returned_with_error__ret_value=%d", edit_distance);
-      mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
-      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
-
-      /// Keep the output if alignment is insane for debug purposes.
-      if (edit_distance != ALIGNMENT_NOT_SANE) {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but edit_distance < 0!\n"), "GenerateAlignments_");
-        continue;
-      } else {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
-      }
-    }
-
-    /// TODO: This needs to happen in all cases! Currently only for testing purposes for anchored alignment.
-    if (parameters->alignment_algorithm == "anchor") {
-      /// Check if something went wrong and the read is unmapped.
-      if (evalue_left_part > ((double) 1e+300) || evalue_right_part > ((double) 1e+300) ||
-          (evalue_left_part > ((double) 1e0) && mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_query < 0.10f * read->get_sequence_length())) {
-
-        mapping_data->unmapped_reason += FormatString("__Evalue_is_too_large__evalue_left_part=%e__evalue_right_part=%e", evalue_left_part, evalue_right_part);
-        mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
-        mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
-
-        /// Keep the output if alignment is insane for debug purposes.
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
-      }
-    }
-
-    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("cigar_right_part.size() = %d\n", cigar_right_part.size()), "GenerateAlignments_");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("evalue_left_part = %f\n", evalue_left_part), "GenerateAlignments_");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mismatch_rate = %f\n", mismatch_rate), "GenerateAlignments_");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("match_rate = %f\n", match_rate), "GenerateAlignments_");
-    }
-
-    AlignmentResults primary_alignment;
-
-    primary_alignment.is_aligned = true;
-    primary_alignment.is_reverse = (orientation == kForward) ? false : true;
-    primary_alignment.ref_start = relative_position_left_part; // + 1;
-    primary_alignment.ref_end = relative_position_left_part; // + 1;
-    primary_alignment.cigar = (orientation == kForward) ? (cigar_left_part) : (ReverseCigarString(cigar_left_part));
-
-    primary_alignment.mapping_quality = mapping_data->mapping_quality;
-    primary_alignment.edit_distance = edit_distance;
-    primary_alignment.alignment_score = AS_left_part;
-    primary_alignment.evalue = evalue_left_part;
-    primary_alignment.num_secondary_alns = mapping_data->num_same_mappings;
-
-    primary_alignment.num_eq_ops = num_eq_ops;
-    primary_alignment.num_x_ops = num_x_ops;
-    primary_alignment.num_i_ops = num_i_ops;
-    primary_alignment.num_d_ops = num_d_ops;
-    primary_alignment.nonclipped_length = nonclipped_length_left_part;
-
-    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
-    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_mapping = mapping_data->time_mapping;
-    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_alignment = elapsed_secs;
-    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_seed_lookup = mapping_data->time_region_seed_lookup;
-    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_hitsort = mapping_data->time_region_hitsort;
-    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_conversion = mapping_data->time_region_conversion;
-
-    if (parameters->evalue_threshold >= ((double) 0.0) && primary_alignment.evalue > parameters->evalue_threshold) {
-      primary_alignment.is_aligned = false;
-      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason += FormatString("_evalue=%f>%f", primary_alignment.evalue, parameters->evalue_threshold);
-    }
-    if (parameters->mapq_threshold >= 0 && primary_alignment.mapping_quality < parameters->mapq_threshold) {
-      primary_alignment.is_aligned = false;
-      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason += FormatString("_mapq=%ld<%ld", primary_alignment.mapping_quality, parameters->mapq_threshold);
-    }
-
-    mapping_data->final_mapping_ptrs.at(i)->AddAlignmentData(primary_alignment);
-
-    if (cigar_right_part.size() > 0) {
-      AlignmentResults secondary_alignment;
-      secondary_alignment = primary_alignment;
-      secondary_alignment.is_aligned = true;
-      secondary_alignment.cigar = (orientation == kForward) ? (cigar_right_part) : (ReverseCigarString(cigar_right_part));
-      secondary_alignment.ref_start = relative_position_right_part; // + 1;
-      secondary_alignment.ref_end = relative_position_right_part; // + 1;
-      secondary_alignment.alignment_score = AS_right_part;
-      secondary_alignment.evalue = evalue_right_part;
-      secondary_alignment.nonclipped_length = nonclipped_length_right_part;
-
-      if (primary_alignment.is_aligned == false)
-        secondary_alignment.is_aligned = false;
-
-      if (parameters->evalue_threshold >= ((double) 0.0) && secondary_alignment.evalue > parameters->evalue_threshold) {
-        secondary_alignment.is_aligned = false;
-//        secondary_alignment.get_alignment_primary().unmapped_reason += FormatString("_evalue=%f>%f", secondary_alignment.evalue, parameters->evalue_threshold);
-      }
-      if (parameters->mapq_threshold >= 0 && secondary_alignment.mapping_quality < parameters->mapq_threshold) {
-        secondary_alignment.is_aligned = false;
-//        primary_alignment.unmapped_reason += FormatString("_mapq=%ld<%ld", secondary_alignment.mapping_quality, parameters->mapq_threshold);
-      }
-
-      if (secondary_alignment.is_aligned == true)
-        mapping_data->final_mapping_ptrs.at(i)->AddAlignmentData(secondary_alignment);
-    }
-  }
-
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
@@ -710,6 +549,175 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
 
   return 0;
 }
+
+//int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+//  if (mapping_data->intermediate_mappings.size() == 0) {
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
+//    return 1;
+//  }
+//
+//  EvaluateMappings_(false, mapping_data, read, parameters);
+//  CollectFinalMappingsAndMapQ_(true, mapping_data, read, parameters);
+//
+//  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
+//    if (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false) {
+//      mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
+//      mapping_data->unmapped_reason += FormatString("__Unaligned_because_get_mapping_data().is_mapped==false");
+//      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
+//
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
+//      continue;
+//    }
+//
+//    int64_t relative_position_left_part = 0;
+//    int64_t relative_position_right_part = 0;
+//    SeqOrientation orientation = kForward;
+//    int64_t reference_id = -1;
+//    int64_t position_ambiguity = 0;
+//    std::string cigar_left_part = "*";
+//    std::string cigar_right_part = "";
+//
+//    int64_t num_eq_ops = 0, num_x_ops = 0, num_i_ops = 0, num_d_ops = 0;
+//
+//    int64_t AS_left_part = 0, AS_right_part = 0;
+//    double evalue_left_part = 0, evalue_right_part = 0;
+//    int64_t nonclipped_length_left_part = 0, nonclipped_length_right_part = 0;
+//    // TODO: Promijeniti interface ove funkcije da ne vraca edit distance kao povratnu vrijednost, nego preko parametra, a da povratna vrijednost bude samo status o uspjehu.
+//
+//    clock_t begin_clock = clock();
+//    int edit_distance = HybridRealignment(read, index, *parameters, mapping_data->final_mapping_ptrs.at(i), &relative_position_left_part, &cigar_left_part, &AS_left_part, &nonclipped_length_left_part, &relative_position_right_part, &cigar_right_part, &AS_right_part, &nonclipped_length_right_part, &orientation, &reference_id, &position_ambiguity, &num_eq_ops, &num_x_ops, &num_i_ops, &num_d_ops);
+//    clock_t end_clock = clock();
+//    double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
+//
+//    CalculateEValueDNA(AS_left_part, nonclipped_length_left_part, index->get_data_length_forward(), evalue_params, &evalue_left_part);
+//    CalculateEValueDNA(AS_right_part, nonclipped_length_right_part, index->get_data_length_forward(), evalue_params, &evalue_right_part);
+//
+//    int64_t sum_of_error_ops = num_x_ops + num_i_ops + num_d_ops;
+//    float mismatch_rate = (((float) (num_x_ops + num_i_ops + num_d_ops)) / ((float) (num_eq_ops + num_x_ops + num_d_ops + num_i_ops)));
+//    float match_rate = (((float) num_eq_ops) / ((float) read->get_sequence_length()));
+//    float min_match_rate = (1.0f - parameters->error_rate);
+//
+//    float covered_bases_ratio = (((float) mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_max) / ((float) read->get_sequence_length()));
+//    float factor_covered_bases = (sigmoid(covered_bases_ratio, 0.05, 0.05));
+//    float factor_query_length = (((float) (mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.end - mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().query_coords.start)) / (((float) read->get_sequence_length()) * (1.0f - parameters->error_rate)));
+//    if (factor_query_length > 1.0f)
+//      factor_query_length = 1.0f;
+//    float factor_readlength = std::min(((float) read->get_sequence_length()) / 2000.0f, 1.0f);
+//
+//    /// Check if something went wrong and the read is unmapped.
+//    if (edit_distance < 0) {
+//      mapping_data->unmapped_reason += FormatString("__HybridRealignment_returned_with_error__ret_value=%d", edit_distance);
+//      mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
+//      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
+//
+//      /// Keep the output if alignment is insane for debug purposes.
+//      if (edit_distance != ALIGNMENT_NOT_SANE) {
+//        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but edit_distance < 0!\n"), "GenerateAlignments_");
+//        continue;
+//      } else {
+//        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
+//      }
+//    }
+//
+//    /// TODO: This needs to happen in all cases! Currently only for testing purposes for anchored alignment.
+//    if (parameters->alignment_algorithm == "anchor") {
+//      /// Check if something went wrong and the read is unmapped.
+//      if (evalue_left_part > ((double) 1e+300) || evalue_right_part > ((double) 1e+300) ||
+//          (evalue_left_part > ((double) 1e0) && mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_query < 0.10f * read->get_sequence_length())) {
+//
+//        mapping_data->unmapped_reason += FormatString("__Evalue_is_too_large__evalue_left_part=%e__evalue_right_part=%e", evalue_left_part, evalue_right_part);
+//        mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
+//        mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
+//
+//        /// Keep the output if alignment is insane for debug purposes.
+//        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
+//      }
+//    }
+//
+//    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("cigar_right_part.size() = %d\n", cigar_right_part.size()), "GenerateAlignments_");
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("evalue_left_part = %f\n", evalue_left_part), "GenerateAlignments_");
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mismatch_rate = %f\n", mismatch_rate), "GenerateAlignments_");
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("match_rate = %f\n", match_rate), "GenerateAlignments_");
+//    }
+//
+//    AlignmentResults primary_alignment;
+//
+//    primary_alignment.is_aligned = true;
+//    primary_alignment.is_reverse = (orientation == kForward) ? false : true;
+//    primary_alignment.ref_start = relative_position_left_part; // + 1;
+//    primary_alignment.ref_end = relative_position_left_part; // + 1;
+//    primary_alignment.cigar = (orientation == kForward) ? (cigar_left_part) : (ReverseCigarString(cigar_left_part));
+//
+//    primary_alignment.mapping_quality = mapping_data->mapping_quality;
+//    primary_alignment.edit_distance = edit_distance;
+//    primary_alignment.alignment_score = AS_left_part;
+//    primary_alignment.evalue = evalue_left_part;
+//    primary_alignment.num_secondary_alns = mapping_data->num_same_mappings;
+//
+//    primary_alignment.num_eq_ops = num_eq_ops;
+//    primary_alignment.num_x_ops = num_x_ops;
+//    primary_alignment.num_i_ops = num_i_ops;
+//    primary_alignment.num_d_ops = num_d_ops;
+//    primary_alignment.nonclipped_length = nonclipped_length_left_part;
+//
+//    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
+//    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_mapping = mapping_data->time_mapping;
+//    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_alignment = elapsed_secs;
+//    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_seed_lookup = mapping_data->time_region_seed_lookup;
+//    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_hitsort = mapping_data->time_region_hitsort;
+//    mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().time_region_conversion = mapping_data->time_region_conversion;
+//
+//    if (parameters->evalue_threshold >= ((double) 0.0) && primary_alignment.evalue > parameters->evalue_threshold) {
+//      primary_alignment.is_aligned = false;
+//      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason += FormatString("_evalue=%f>%f", primary_alignment.evalue, parameters->evalue_threshold);
+//    }
+//    if (parameters->mapq_threshold >= 0 && primary_alignment.mapping_quality < parameters->mapq_threshold) {
+//      primary_alignment.is_aligned = false;
+//      mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason += FormatString("_mapq=%ld<%ld", primary_alignment.mapping_quality, parameters->mapq_threshold);
+//    }
+//
+//    mapping_data->final_mapping_ptrs.at(i)->AddAlignmentData(primary_alignment);
+//
+//    if (cigar_right_part.size() > 0) {
+//      AlignmentResults secondary_alignment;
+//      secondary_alignment = primary_alignment;
+//      secondary_alignment.is_aligned = true;
+//      secondary_alignment.cigar = (orientation == kForward) ? (cigar_right_part) : (ReverseCigarString(cigar_right_part));
+//      secondary_alignment.ref_start = relative_position_right_part; // + 1;
+//      secondary_alignment.ref_end = relative_position_right_part; // + 1;
+//      secondary_alignment.alignment_score = AS_right_part;
+//      secondary_alignment.evalue = evalue_right_part;
+//      secondary_alignment.nonclipped_length = nonclipped_length_right_part;
+//
+//      if (primary_alignment.is_aligned == false)
+//        secondary_alignment.is_aligned = false;
+//
+//      if (parameters->evalue_threshold >= ((double) 0.0) && secondary_alignment.evalue > parameters->evalue_threshold) {
+//        secondary_alignment.is_aligned = false;
+////        secondary_alignment.get_alignment_primary().unmapped_reason += FormatString("_evalue=%f>%f", secondary_alignment.evalue, parameters->evalue_threshold);
+//      }
+//      if (parameters->mapq_threshold >= 0 && secondary_alignment.mapping_quality < parameters->mapq_threshold) {
+//        secondary_alignment.is_aligned = false;
+////        primary_alignment.unmapped_reason += FormatString("_mapq=%ld<%ld", secondary_alignment.mapping_quality, parameters->mapq_threshold);
+//      }
+//
+//      if (secondary_alignment.is_aligned == true)
+//        mapping_data->final_mapping_ptrs.at(i)->AddAlignmentData(secondary_alignment);
+//    }
+//  }
+//
+//  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str()), "GenerateAlignments_");
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+//  }
+//
+//  return 0;
+//}
 
 int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParameters *parameters, MappingData *mapping_data, std::string &ret_aln_lines) {
   std::stringstream ss;
