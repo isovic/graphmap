@@ -850,9 +850,14 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
 
         DenseType &temp_map = bins_map1[i];
         int64_t j = 0;
+        int64_t k = 0;
         for (auto it = temp_map.begin(); it != temp_map.end(); it++) {
           if (it->second.count != 0.0f) {
+            k += 1;
             LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %.2f\t", j, it->second.count), "[]");
+            if ((k % 7) == 0) {
+              LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
+            }
           }
           j += 1;
         }
