@@ -629,9 +629,7 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
     return 3;
   }
 
-  LogSystem::GetInstance().Log(
-  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
-                                      true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- all_kmers_size_...\n"), "DeserializeIndex_");
   if (fread(&all_kmers_size_, sizeof(int64_t), 1, fp_in) != 1) {
     LogSystem::GetInstance().Error(
     SEVERITY_INT_FATAL,
@@ -641,7 +639,9 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
     return 1;
   }
 
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- started allocating space for kmers...\n"), "DeserializeIndex_");
   all_kmers_ = (int64_t *) malloc(sizeof(int64_t) * all_kmers_size_);
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- started reading the kmers from file...\n"), "DeserializeIndex_");
   if (fread(all_kmers_, sizeof(int64_t), all_kmers_size_, fp_in) != all_kmers_size_) {
     LogSystem::GetInstance().Error(
     SEVERITY_INT_FATAL,
@@ -651,6 +651,7 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
     return 3;
   }
 
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- initializing the kmer_hash_array_...\n"), "DeserializeIndex_");
   kmer_hash_array_ = (int64_t **) malloc(sizeof(int64_t *) * num_kmers_);
   int64_t kmer_ptr = 0;
   for (int64_t i = 0; i < num_kmers_; i++) {
