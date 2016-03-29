@@ -841,6 +841,26 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
     }
   }
 
+
+  // Debug verbose.
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
+      if (i == 0 || i == 8 || i == 11) {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("ref_id = %ld\n", i), "[]");
+
+        DenseType &temp_map = bins_map1[i];
+        int64_t j = 0;
+        for (auto it = temp_map.begin(); it != temp_map.end(); it++) {
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[%ld] %d\t", i, it->second.count), "[]");
+          j += 1;
+        }
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n", i), "[]");
+      }
+    }
+  }
+
+
+
   mapping_data->time_region_conversion = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();
 
