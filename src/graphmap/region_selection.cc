@@ -727,8 +727,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
   for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
     int8_t *seed = (int8_t *) &(read->get_data()[i]);
 
-//    for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
-    for (int64_t index_id = 0; index_id < 1; index_id++) {
+    for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
+//    for (int64_t index_id = 0; index_id < 1; index_id++) {
       IndexSpacedHashFast *index = (IndexSpacedHashFast *) indexes[index_id];
 
       if (index != NULL) {
