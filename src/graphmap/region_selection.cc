@@ -838,8 +838,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
       new_bin.bin_id = it->first;
       new_bin.bin_value = it->second.count;
       auto next_it = it;
-      if (prev_it != temp_map.begin()) { new_bin.bin_value += prev_it->second.count; }
-      if (next_it != temp_map.end()) { next_it++; new_bin.bin_value += next_it->second.count; }
+      if (prev_it != temp_map.begin()) { new_bin.bin_value += prev_it->second.count / 2.0f; }
+      if (next_it != temp_map.end()) { next_it++; new_bin.bin_value += next_it->second.count / 2.0f; }
       mapping_data->bins.push_back(new_bin);
       prev_it = it;
       j++;
