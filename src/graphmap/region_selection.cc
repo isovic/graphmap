@@ -831,12 +831,17 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
   for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
     DenseType &temp_map = bins_map1[i];
     int64_t j = 0;
+    auto prev_it = temp_map.begin();
     for (auto it = temp_map.begin(); it != temp_map.end(); it++) {
       ChromosomeBin new_bin;
       new_bin.reference_id = i;
       new_bin.bin_id = it->first;
       new_bin.bin_value = it->second.count;
+      auto next_it = it;
+      if (prev_it != temp_map.begin()) { new_bin.bin_value += prev_it->second.count; }
+      if (next_it != temp_map.end()) { next_it++; new_bin.bin_value += next_it->second.count; }
       mapping_data->bins.push_back(new_bin);
+      prev_it = it;
       j++;
     }
   }
