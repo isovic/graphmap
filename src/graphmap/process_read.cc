@@ -113,8 +113,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
   // Just verbose.
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 10 scoring bins:\n"), "ProcessRead");
-    for (int64_t i = 0; i < mapping_data->bins.size() && i < 10; i++) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 100 scoring bins:\n"), "ProcessRead");
+    for (int64_t i = 0; i < mapping_data->bins.size() && i < 100; i++) {
       Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
       ScoreRegistry local_score(region, i);
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
@@ -136,6 +136,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
 
+  int64_t num_regions_processed = 0;
   // Process regions one by one.
   for (int64_t i = 0; i < mapping_data->bins.size() && i < max_num_regions; i++) {
     // If the ret_check value is zero, then just continue as normal.
@@ -145,17 +146,22 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
       ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, parameters->bin_threshold_step, &bin_value_threshold, mapping_data, read, parameters);
     } else {
       if (mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value)
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished because mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value. mapping_data->bins[i].bin_value = %f, min_allowed_bin_value = %f\n", mapping_data->bins[i].bin_value, min_allowed_bin_value), "ProcessRead");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: i = %ld.\n", i), "ProcessRead");
         break;
     }
 
     // Region search needs to stop.
     if (ret_check < 0) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished returned with value to break! ret_check = %d\n", ret_check), "ProcessRead");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: i = %ld.\n", i), "ProcessRead");
       break;
       // Another iteration needs to be performed.
     } else if (ret_check > 0) {
       mapping_data->num_region_iterations += 1;
     }
+
+    num_regions_processed += 1;
 
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
@@ -187,6 +193,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
 //    CheckMinimumMappingConditions(mapping_data, parameters);
   }
+
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: num_regions_processed = %ld.\n", num_regions_processed), "ProcessRead");
 
   if (index_read)
     delete index_read;
