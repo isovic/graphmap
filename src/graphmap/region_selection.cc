@@ -814,7 +814,7 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
   }  // for (int64_t i=0; i<(readlength - parameters->k_region + 1); i++)
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n[BuildOccuranceMap] k_region = %d, num_seeds_with_no_hits = %ld, num_seeds_over_limit = %ld, total_num_hits = %ld\n", parameters->k_region, mapping_data->num_seeds_with_no_hits, mapping_data->num_seeds_over_limit, total_num_hits), "ProcessKmersInBins_");
-  LOG_DEBUG("total_num_hits = %ld\n", total_num_hits);
+  LOG_DEBUG_HIGH("total_num_hits = %ld\n", total_num_hits);
 
   mapping_data->time_region_counting = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();

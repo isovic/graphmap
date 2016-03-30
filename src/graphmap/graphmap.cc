@@ -169,7 +169,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   }
   indexes_.clear();
 
-  IndexSpacedHashFast *index_prim = new IndexSpacedHashFast();
+  IndexSpacedHashFast *index_prim = new IndexSpacedHashFast(SHAPE_TYPE_444);
   IndexSpacedHashFast *index_sec = NULL;
   indexes_.push_back(index_prim);
 

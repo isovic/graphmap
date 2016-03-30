@@ -95,13 +95,15 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   bin_value_threshold = std::max(bin_value_threshold, 2.0f);
   int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, bin_value_threshold);
   float min_allowed_bin_value = 0.0f;
-  if (parameters->parsimonious_mode) {
-    min_allowed_bin_value = (0.50f * mapping_data->bins.front().bin_value);
+  min_allowed_bin_value = (parameters->min_bin_percent * mapping_data->bins.front().bin_value);
 
-  } else {
-    min_allowed_bin_value = (parameters->min_bin_percent * mapping_data->bins.front().bin_value);
-//    min_allowed_bin_value = 0.0f;
-  }
+//  if (parameters->parsimonious_mode) {
+//    min_allowed_bin_value = (0.50f * mapping_data->bins.front().bin_value);
+//
+//  } else {
+//    min_allowed_bin_value = (parameters->min_bin_percent * mapping_data->bins.front().bin_value);
+////    min_allowed_bin_value = 0.0f;
+//  }
 
   int64_t max_num_regions = parameters->max_num_regions;
   if (parameters->alignment_approach == "overlapper") {
@@ -555,6 +557,11 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
   }
 
+
+//  printf ("mapping_data->mapping_quality = %d\n", mapping_data->mapping_quality);
+//  fflush(stdout);
+//  exit(1);
+
   return 0;
 }
 
@@ -793,8 +800,14 @@ int GraphMap::CollectFinalMappingsAndMapQ_(bool generate_final_mapping_ptrs, Map
       mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.at(0)));
   }
 
-  int64_t num_kmers = first_entry->get_mapping_data().num_covering_kmers;
-  int64_t min_num_kmers = (int64_t) std::ceil(((float) num_kmers) * (1.0f - parameters->margin_for_ambiguity));
+//  int64_t num_kmers = first_entry->get_mapping_data().num_covering_kmers;
+//  int64_t min_num_kmers = (int64_t) std::floor(((float) num_kmers) * (1.0f - parameters->margin_for_ambiguity));
+  int64_t num_cov_bases_query = first_entry->get_mapping_data().cov_bases_query;
+  int64_t min_num_cov_bases_query = (int64_t) std::floor(((float) num_cov_bases_query) * (1.0f - parameters->margin_for_ambiguity));
+//  std::cout << "parameters->margin_for_ambiguity = " << parameters->margin_for_ambiguity << std::endl;
+//  printf ("parameters->margin_for_ambiguity = %f\n", parameters->margin_for_ambiguity);
+//  printf ("(1.0f - parameters->margin_for_ambiguity) = %f\n", (1.0f - parameters->margin_for_ambiguity));
+//  printf ("(int64_t) std::floor(((float) num_cov_bases_query) * (1.0f - parameters->margin_for_ambiguity)) = %ld\n", (int64_t) std::floor(((float) num_cov_bases_query) * (1.0f - parameters->margin_for_ambiguity)));
 
   int64_t ambiguity = 1;
   int64_t num_equal_mappings = 1;
@@ -802,22 +815,23 @@ int GraphMap::CollectFinalMappingsAndMapQ_(bool generate_final_mapping_ptrs, Map
     if (mapping_data->intermediate_mappings.at(i)->get_mapping_data().is_mapped == true) {
       // Find all the paths that are longer than 10% of the longest one.
       // if (mapping_data->intermediate_mappings.at(i).lcs_length >= min_score && mapping_data->intermediate_mappings.at(i).lcs_length <= max_score) { // >= allowed_score_difference_for_ambiguity) {
-      if ((parameters->margin_for_ambiguity == 0.0f && mapping_data->intermediate_mappings.at(i)->get_mapping_data().num_covering_kmers == num_kmers) || (parameters->margin_for_ambiguity != 0.0f && mapping_data->intermediate_mappings.at(i)->get_mapping_data().num_covering_kmers >= min_num_kmers)) {
+// This was used until 30.03.2016.      if ((parameters->margin_for_ambiguity == 0.0f && mapping_data->intermediate_mappings.at(i)->get_mapping_data().num_covering_kmers == num_kmers) || (parameters->margin_for_ambiguity != 0.0f && mapping_data->intermediate_mappings.at(i)->get_mapping_data().num_covering_kmers >= min_num_kmers)) {
+      if ((parameters->margin_for_ambiguity == 0.0f && mapping_data->intermediate_mappings.at(i)->get_mapping_data().cov_bases_query == num_cov_bases_query) || (parameters->margin_for_ambiguity != 0.0f && mapping_data->intermediate_mappings.at(i)->get_mapping_data().cov_bases_query >= min_num_cov_bases_query)) {
         // Check if the path is different than the best one - sometimes they can be near duplicates.
         if ((mapping_data->intermediate_mappings.at(i)->get_mapping_data().ref_coords.start != first_entry->get_mapping_data().ref_coords.start || mapping_data->intermediate_mappings.at(i)->get_mapping_data().ref_coords.end != first_entry->get_mapping_data().ref_coords.end)) {
           // Count them for ambiguity (used in mapping quality).
           if (generate_final_mapping_ptrs == true) {
             if (parameters->output_multiple_alignments) {
               mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.at(i)));
-              ambiguity += 1;
             }
+            ambiguity += 1;
           } else {
             ambiguity += 1;
           }
 
           // Count only the paths that are not the same length of the longest path. Might be useful for metagenomic,
           // as some genomes can have identical regions.
-          if (mapping_data->intermediate_mappings.at(i)->get_mapping_data().num_covering_kmers == first_entry->get_mapping_data().num_covering_kmers) {
+          if (mapping_data->intermediate_mappings.at(i)->get_mapping_data().cov_bases_query == first_entry->get_mapping_data().cov_bases_query) {
             num_equal_mappings += 1;
           }
         }
@@ -837,6 +851,10 @@ int GraphMap::CollectFinalMappingsAndMapQ_(bool generate_final_mapping_ptrs, Map
   mapping_data->num_same_mappings = num_equal_mappings;
   mapping_data->mapping_quality = mapping_quality;
   mapping_data->metagen_alignment_score = metagen_alignment_score;
+
+//  printf ("num_cov_bases_query = %ld\n", num_cov_bases_query);
+//  printf ("min_num_cov_bases_query = %ld\n", min_num_cov_bases_query);
+//  fflush(stdout);
 
   return 0;
 }

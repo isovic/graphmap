@@ -22,7 +22,7 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file (fastq or fasta).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "in-fmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5 - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - MHAP overlap format (use with '-w owler').", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
   argparser.AddArgument(&parameters->calc_only_index, VALUE_TYPE_BOOL, "I", "only-index", "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->output_in_original_order, VALUE_TYPE_BOOL, "u", "ordered", "0", "SAM alignments will be output after the processing has finished, in the order of input reads.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "200", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
@@ -53,9 +53,9 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->max_num_regions, VALUE_TYPE_INT64, "g", "max-regions", "0", "If the final number of regions exceeds this amount, the read will be called unmapped. If 0, value will be dynamically determined. If < 0, no limit is set.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->max_num_regions_cutoff, VALUE_TYPE_INT64, "q", "reg-reduce", "0", "Attempt to heuristically reduce the number of regions if it exceeds this amount. Value <= 0 disables reduction but only if param -g is not 0. If -g is 0, the value of this parameter is set to 1/5 of maximum number of regions.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->is_reference_circular, VALUE_TYPE_BOOL, "C", "circular", "0", "Reference sequence is a circular genome.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->margin_for_ambiguity, VALUE_TYPE_DOUBLE, "F", "ambiguity", "0.05", "All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0 counts only identical mappings.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->margin_for_ambiguity, VALUE_TYPE_FLOAT, "F", "ambiguity", "0.02", "All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0 counts only identical mappings.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->output_multiple_alignments, VALUE_TYPE_BOOL, "Z", "secondary", "0", "If specified, all (secondary) alignments within (-F FLT) will be output to a file. Otherwise, only one alignment will be output.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->parsimonious_mode, VALUE_TYPE_BOOL, "P", "parsim", "0", "If specified, the parsimonious memory mode will be used. If omitted, a fast and sensitive (but 2x memory-hungry) mode will be used.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->parsimonious_mode, VALUE_TYPE_BOOL, "P", "parsim", "1", "Switches the parsimonious memory mode on or off. If false, a sensitive and slower (but 2x memory-hungry) mode will be used.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_bin_percent, VALUE_TYPE_DOUBLE, "", "min-bin-perc", "0.75", "Consider only bins with counts above FLT * max_bin, where max_bin is the count of the top scoring bin.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.10", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
 
@@ -68,9 +68,18 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->debug_read, VALUE_TYPE_INT64, "y", "debug-read", "-1", "ID of the read to give the detailed verbose output.", 0, "Debug options");
   argparser.AddArgument(&parameters->debug_read_by_qname, VALUE_TYPE_STRING, "Y", "debug-qname", "", "QNAME of the read to give the detailed verbose output. Has precedence over -y. Use quotes to specify.", 0, "Debug options");
-  argparser.AddArgument(&parameters->verbose_sam_output, VALUE_TYPE_INT64, "b", "verbose-sam", "0", "Helpful debug comments can be placed in SAM output lines (at the end). Comments can be turned off by setting this parameter to 0. Different values increase/decrease verbosity level.", 0, "Debug options");
+  argparser.AddArgument(&parameters->verbose_sam_output, VALUE_TYPE_INT64, "b", "verbose-sam", "0", "Helpful debug comments can be placed in SAM output lines (at the end). Comments can be turned off by setting this parameter to 0. Different values increase/decrease verbosity level.\n0 - verbose off\n1 - server mode, command line will be omitted to obfuscate paths.\n2 - umm this one was skipped by accident. The same as 0.\n>=3 - detailed verbose is added for each alignment, including timing measurements and other.\n4 - qnames and rnames will not be trimmed to the first space.\n5 - QVs will be omitted (if available).", 0, "Debug options");
 
   argparser.ProcessArguments(argc, argv);
+
+  // Store the command line in parameters.
+  std::stringstream ss_command_line;
+  for (int i=0; i<argc; i++) {
+    if (i > 0)
+      ss_command_line << " ";
+    ss_command_line << argv[i];
+  }
+  parameters->command_line = ss_command_line.str();
 
 
 
