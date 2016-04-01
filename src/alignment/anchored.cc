@@ -35,7 +35,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
   LOG_DEBUG_SPEC("Aligning the beginning of the read (overhang).\n");
 
   /// Check if we need to extend the alignment to the left boundary. Also, even if the user specified it, if we are to close to the boundary, just clip it.
-  if (align_end_to_end == false || ((alignment_position_start - clip_count_front*2) < region_ref_start)) {
+  if (align_end_to_end == false || ((alignment_position_start - clip_count_front*2) > 0 && (alignment_position_start - clip_count_front*2) < region_ref_start)) {
     std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
     aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_front.begin(), insertions_front.end());
     aln.edit_distance = insertions_front.size();
