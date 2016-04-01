@@ -120,23 +120,59 @@ class PathGraphEntry {
   static float CalcFPFactorStd_(float std, int64_t read_length, float error_rate);
 };
 
+// This one produced quite good results up until 01.04.2016. Testing with different sorting conditions.
+//struct path_graph_entry_greater_than_key
+//{
+//    inline bool operator() (PathGraphEntry* op1, PathGraphEntry* op2) {
+//      if (op1->get_fpfilter() != op2->get_fpfilter())
+//        return op1->get_fpfilter() > op2->get_fpfilter();
+//      else {
+//        if (op1->get_mapping_data().num_covering_kmers != op2->get_mapping_data().num_covering_kmers) {
+//          return (op1->get_mapping_data().num_covering_kmers > op2->get_mapping_data().num_covering_kmers);
+//        } else {
+//            return (op1->get_mapping_data().lcs_length > op2->get_mapping_data().lcs_length);
+//        }
+//      }
+//
+//      return false;
+//    }
+//};
 
 struct path_graph_entry_greater_than_key
 {
     inline bool operator() (PathGraphEntry* op1, PathGraphEntry* op2) {
-      if (op1->get_fpfilter() != op2->get_fpfilter())
-        return op1->get_fpfilter() > op2->get_fpfilter();
+      if (op1->get_mapping_data().cov_bases_max != op2->get_mapping_data().cov_bases_max)
+        return op1->get_mapping_data().cov_bases_max > op2->get_mapping_data().cov_bases_max;
       else {
-        if (op1->get_mapping_data().num_covering_kmers != op2->get_mapping_data().num_covering_kmers) {
-          return (op1->get_mapping_data().num_covering_kmers > op2->get_mapping_data().num_covering_kmers);
-        } else {
-            return (op1->get_mapping_data().lcs_length > op2->get_mapping_data().lcs_length);
-        }
+        return (op1->get_fpfilter() > op2->get_fpfilter());
+
+//        if (op1->get_mapping_data().num_covering_kmers != op2->get_mapping_data().num_covering_kmers) {
+//          return (op1->get_mapping_data().num_covering_kmers > op2->get_mapping_data().num_covering_kmers);
+//        } else {
+//        }
       }
 
       return false;
     }
 };
+
+// Version which works (maybe) slightly worse:
+//struct path_graph_entry_greater_than_key
+//{
+//    inline bool operator() (PathGraphEntry* op1, PathGraphEntry* op2) {
+//      if (op1->get_fpfilter() != op2->get_fpfilter())
+//        return op1->get_fpfilter() > op2->get_fpfilter();
+//      else {
+//        if (op1->get_mapping_data().cov_bases_max != op2->get_mapping_data().cov_bases_max) {
+//          return op1->get_mapping_data().cov_bases_max > op2->get_mapping_data().cov_bases_max;
+//        } else {
+//          return (op1->get_mapping_data().num_covering_kmers > op2->get_mapping_data().num_covering_kmers);
+//        }
+//      }
+//
+//      return false;
+//    }
+//};
 
 #endif /* PATH_GRAPH_ENTRY_H_ */
 
