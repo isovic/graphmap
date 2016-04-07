@@ -470,17 +470,18 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
   /// Aligning the begining of the read (in front of the first anchor).
   if (clip_count_front > 0) {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          "Aligning the begining of the read (overhang).\n", "LocalRealignmentLinear");
+
     /// Check if we need to extend the alignment to the left boundary. Also, even if the user specified it, if we are to close to the boundary, just clip it.
-    if (end_to_end == false || ((alignment_position_start - clip_count_front*2) < reference_start)) {
+    if (end_to_end == false) { // || ((alignment_position_start - clip_count_front*2) < reference_start)) {
       std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
       alignment.insert(alignment.begin(), insertions_front.begin(), insertions_front.end());
 
-    } else {
-      if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                            "Aligning the begining of the read (overhang).\n", "LocalRealignmentLinear");
-      }
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                          "Skipping alignment because end_to_end == false.\n", "LocalRealignmentLinear");
 
+    } else {
       /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
       int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
       int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
@@ -488,10 +489,29 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
       int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
       std::vector<unsigned char> leftover_left_alignment;
       int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
-                                       (int8_t *) (reversed_ref_front), (clip_count_front*2),
+                                       (int8_t *) (reversed_ref_front), std::min(clip_count_front*2, (alignment_position_start - reference_start)),
                                        -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_left_start, &leftover_left_end,
                                        &leftover_left_edit_distance, leftover_left_alignment);
+
+      if (ret_code_right == 0) {
+        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+          std::string alignment_as_string = "";
+
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                    FormatString("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1)), "[]");
+          alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
+                                                       (const unsigned char *) (reversed_ref_front), std::min(clip_count_front*2, (alignment_position_start - reference_start)),
+                                                       (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
+                                                       (0), MYERS_MODE_SHW);
+          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                    FormatString("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str()), "[]");
+        }
+      } else {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                              FormatString("ret_code_left = %d\n", ret_code_right), "[]");
+      }
+
       /// Check if the return code is ok. Otherwise, just clip the front.
       /// Added on 15.11.2015.: check if the edit distance of the front part is too high. EDlib will automatically return an error code, but SeqAn won't.
       /// An example is when the entire front part does not match (e.g. alignment of a read to a part of the reference consisted of N bases).
@@ -500,6 +520,8 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         // In this manner we just ignore the leading part, and clip it.
         std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
         alignment.insert(alignment.begin(), insertions_front.begin(), insertions_front.end());
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                            FormatString("Not using the alignment because: leftover_left_edit_distance = %ld, clip_count_front = %ld, std::min(clip_count_front*2, (alignment_position_start - reference_start))  = %ld\n", leftover_left_edit_distance, clip_count_front, std::min(clip_count_front*2, (alignment_position_start - reference_start))), "LocalRealignmentLinear");
 
       } else {
         if (leftover_left_alignment.size() == 0) {
@@ -511,19 +533,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           alignment_position_start -= leftover_left_end + 1;
           if (reversed_alignment)
             free(reversed_alignment);
-        }
-
-        if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-          std::string alignment_as_string = "";
-
-          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                                    FormatString("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1)), "[]");
-          alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
-                                                       (const unsigned char *) (reversed_ref_front), clip_count_front*2,
-                                                       (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
-                                                       (0), MYERS_MODE_SHW);
-          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                                    FormatString("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str()), "[]");
         }
 
         if (reversed_query_front)
@@ -724,24 +733,46 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
 
   /// Aligning the end of the read.
   if (clip_count_back > 0) {
-    /// Handle the clipping at the end, or extend alignment to the end of the sequence.
-    if (end_to_end == false || (alignment_position_end + 1 + clip_count_back * 2) >= (reference_start + reference_length)) {
-        std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
-        alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
-
-    } else {
-      if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                             "Aligning the end of the read (overhang).\n", "LocalRealignmentLinear");
-      }
 
+    /// Handle the clipping at the end, or extend alignment to the end of the sequence.
+    if (end_to_end == false) { // } || (alignment_position_end + 1 + clip_count_back * 2) >= (reference_start + reference_length)) {
+        std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
+        alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                            "Skipping alignment of the end, because either end_to_end == false or (alignment_position_end + 1 + clip_count_back * 2) >= (reference_start + reference_length).\n", "LocalRealignmentLinear");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                            FormatString("end_to_end = %s, (alignment_position_end + 1 + clip_count_back * 2) = %ld, (reference_start + reference_length) = %ld\n", (end_to_end == false) ? "false" : "true",
+                                            (alignment_position_end + 1 + clip_count_back * 2), (reference_start + reference_length)), "LocalRealignmentLinear");
+
+    } else {
       int64_t leftover_right_start = 0, leftover_right_end = 0, leftover_right_edit_distance = 0;
       std::vector<unsigned char> leftover_right_alignment;
       int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),
-                                       (int8_t *) (ref_data + alignment_position_end + 1), (clip_count_back*2),
+                                       (int8_t *) (ref_data + alignment_position_end + 1), std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)),// (clip_count_back*2),
                                        -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_right_start, &leftover_right_end,
                                        &leftover_right_edit_distance, leftover_right_alignment);
+
+      if (ret_code_right == 0) {
+          if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
+            std::string alignment_as_string = "";
+            alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
+                                                         (const unsigned char *) (ref_data + alignment_position_end + 1), (reference_start + reference_length - alignment_position_end - 1),
+                                                         (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
+                                                         (0), MYERS_MODE_SHW);
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                      FormatString("Aligning the end of the read:\n%s\n", alignment_as_string.c_str()), "[]");
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                      FormatString("leftover_right_start = %ld, leftover_right_end = %ld\n", leftover_right_start, leftover_right_end), "[]");
+          }
+      } else {
+            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                                      FormatString("ret_code_right = %d\n", ret_code_right), "[]");
+
+      }
+
       /// Check if the return code is ok. Otherwise, just clip the back.
       /// Added on 15.11.2015.: check if the edit distance of the back part is too high. EDlib will automatically return an error code, but SeqAn won't.
       /// An example is when the entire back part does not match (e.g. alignment of a read to a part of the reference consisted of N bases).
@@ -751,21 +782,14 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
         alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
 
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
+                                            FormatString("Not using the alignment because: leftover_right_edit_distance = %ld, clip_count_back = %ld, std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1))  = %ld\n", leftover_right_edit_distance, clip_count_back, std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)) ), "LocalRealignmentLinear");
+
       } else {
         if (leftover_right_alignment.size() == 0) {
           std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
           alignment.insert(alignment.end(), insertions_back.begin(), insertions_back.end());
         } else {
-
-          if (parameters.verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters.debug_read) {
-            std::string alignment_as_string = "";
-            alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
-                                                         (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
-                                                         (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
-                                                         (0), MYERS_MODE_SHW);
-            LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                                      FormatString("Aligning the end of the read:\n%s\n", alignment_as_string.c_str()), "[]");
-          }
 
           /// Check for a special case when previous global alignment ended with deletions or insertions, and the new one starts with deletions or insertions.
           /// Switching from deletions to insertions is basically a mismatch streak.
