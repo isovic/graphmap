@@ -441,7 +441,7 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
     // Check if there are leading/trailing deletions. These should be removed.
     int64_t leading_del_offset = 0;
     for (leading_del_offset=0; leading_del_offset<alignment.size(); leading_del_offset++) { if (alignment[leading_del_offset] != 'D') break; }
-    int64_t trailing_del_offset = 0;
+    int64_t trailing_del_offset = (alignment.size()-1);
     for (trailing_del_offset=(alignment.size()-1); trailing_del_offset>=0; trailing_del_offset--) { if (alignment[trailing_del_offset] != 'D') break; }
 
     ret_alignment.insert(ret_alignment.end(), alignment.begin()+leading_del_offset, (alignment.begin() + trailing_del_offset + 1));
@@ -452,7 +452,7 @@ int SeqAnSHWWrapper(const int8_t *read_data, int64_t read_length,
     }
 
     *ret_alignment_position_start = 0; // positions[0] - (reconstructed_length - 1);
-    *ret_alignment_position_end = reference_length; // positions[0];
+    *ret_alignment_position_end = reference_length - 1; // positions[0];
     *ret_edit_distance = (int64_t) seqan_edit_distance;
   }
 
@@ -935,7 +935,7 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
     // Check if there are leading/trailing deletions. These should be removed.
     int64_t leading_del_offset = 0;
     for (leading_del_offset=0; leading_del_offset<alignment_length; leading_del_offset++) { if (alignment[leading_del_offset] != 'D') break; }
-    int64_t trailing_del_offset = 0;
+    int64_t trailing_del_offset = (alignment_length-1);
     for (trailing_del_offset=(alignment_length-1); trailing_del_offset>=0; trailing_del_offset--) { if (alignment[trailing_del_offset] != 'D') break; }
 
     ret_alignment.insert(ret_alignment.end(), alignment+leading_del_offset, (alignment + trailing_del_offset + 1));
@@ -946,7 +946,7 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
     }
 
     *ret_alignment_position_start = 0; // positions[0] - (reconstructed_length - 1);
-    *ret_alignment_position_end = reference_length; // positions[0];
+    *ret_alignment_position_end = reference_length - 1; // positions[0];
     *ret_edit_distance = (int64_t) score;
 
   }

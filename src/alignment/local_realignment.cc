@@ -536,7 +536,17 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
 
   int64_t nonclipped_length = 0;
 
-  for (int i = 0; i < alignment.size(); i++) {
+  int64_t start_op = 0, end_op = alignment.size() - 1;
+  // if (skip_leading_and_trailing_insertions == true) {
+    for (start_op = 0; start_op < alignment.size(); start_op++, read_position++) {
+      if (alignment[start_op] != EDLIB_I && alignment[start_op] != EDLIB_S) { break; }
+    }
+    for (end_op = (alignment.size() - 1); end_op >= 0; end_op--) {
+      if (alignment[end_op] != EDLIB_I && alignment[end_op] != EDLIB_S) { break; }
+    }
+  // }
+
+  for (int i = start_op; i <= end_op; i++) {
     char align_op = 255;
     align_op = alignment[i];
 
@@ -544,7 +554,6 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
       if (read_data[read_position] == ref_data[alignment_position_start + ref_position]) {
         num_eq += 1;
         alignment_score += match;
-
       } else {
         num_x += 1;
         alignment_score -= mismatch;

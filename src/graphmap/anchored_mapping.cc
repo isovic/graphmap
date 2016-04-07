@@ -843,6 +843,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   CountAlignmentOperations(alignment, read->get_data(), ref_data, reference_id, alignment_position_start, orientation,
                            parameters.evalue_match, parameters.evalue_mismatch, parameters.evalue_gap_open, parameters.evalue_gap_extend,
                            ret_eq_op, ret_x_op, ret_i_op, ret_d_op, ret_AS_left_part, ret_nonclipped_left_part);
+  // exit(1);
 
   if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
     std::string alignment_as_string = "";
@@ -852,6 +853,14 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
                                                (0), MYERS_MODE_NW);
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                              FormatString("Alignment:\n%s\n\nalignment_position_start = %ld\n\n", alignment_as_string.c_str(), alignment_position_start), "AnchoredAlignment");
+
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Alignment array:\n"), "[]");
+    for (int i1=0; i1<alignment.size(); i1++) {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
+    }
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("AS left part: %ld\n", *ret_AS_left_part), "AnchoredAlignment");
   }
 
 
@@ -884,16 +893,6 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     *ret_orientation = orientation;
     *ret_reference_id = reference_id;
     *ret_position_ambiguity = 0;
-
-    if (parameters.verbose_level > 5 && read->get_sequence_id() == parameters.debug_read) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("Alignment array:\n"), "[]");
-      for (int i1=0; i1<alignment.size(); i1++) {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("%d", alignment[i1]), "[]");
-      }
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("\n"), "[]");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
-
-    }
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
@@ -1609,6 +1608,7 @@ int AnchoredAlignmentMex(bool is_linear, bool end_to_end, AlignmentFunctionTypeM
       }
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("\n"), "[]");
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("CIGAR string:\n%s\n", ret_cigar_left_part->c_str()), "AnchoredAlignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, ((int64_t) read->get_sequence_id()) == parameters.debug_read, FormatString("AS left part: %ld\n", ret_AS_left_part), "AnchoredAlignment");
     }
 
     if (CheckAlignmentSane(alignment, read, index, reference_id, best_aligning_position)) {
