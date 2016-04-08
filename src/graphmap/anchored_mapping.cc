@@ -184,9 +184,11 @@ int FilterAnchorBreakpoints(int64_t min_cluster_length, float min_cluster_covera
   std::sort(cluster_coverages.begin(), cluster_coverages.end());
   float median = 0.0f;
   int64_t num_clusters = cluster_coverages.size();
-  if (num_clusters > 0) {
+  if (num_clusters > 1) {
     median = ((num_clusters % 2) == 0) ? ((cluster_coverages[num_clusters/2] + cluster_coverages[num_clusters/2+1]) / 2.0f) :
                                          cluster_coverages[(int64_t) floor(((float) num_clusters) / 2.0f)];
+  } else if (num_clusters == 1) {
+    median = cluster_coverages[0];
   }
   float mean = 0.0f;
   for (int64_t i=0; i<cluster_coverages.size(); i++) {
@@ -471,7 +473,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
   /// Aligning the begining of the read (in front of the first anchor).
   if (clip_count_front > 0) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
-                                          "Aligning the begining of the read (overhang).\n", "LocalRealignmentLinear");
+                                          "Aligning the beginning of the read (overhang).\n", "LocalRealignmentLinear");
 
     /// Check if we need to extend the alignment to the left boundary. Also, even if the user specified it, if we are to close to the boundary, just clip it.
     if (end_to_end == false) { // || ((alignment_position_start - clip_count_front*2) < reference_start)) {
@@ -484,12 +486,21 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
     } else {
       /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
       int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
-      int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+      // int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+      int8_t *reversed_ref_front = NULL;
+      int64_t reversed_ref_len = 0;
+      if (clip_count_front*2  > (alignment_position_start - reference_start)) {
+        reversed_ref_front = reverse_data(ref_data + 0, (alignment_position_start - reference_start));
+        reversed_ref_len = alignment_position_start - reference_start;
+      } else {
+        int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+        reversed_ref_len = clip_count_front*2;
+      }
 
       int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
       std::vector<unsigned char> leftover_left_alignment;
       int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
-                                       (int8_t *) (reversed_ref_front), std::min(clip_count_front*2, (alignment_position_start - reference_start)),
+                                       (int8_t *) (reversed_ref_front), reversed_ref_len,
                                        -1, parameters.match_score, -parameters.mismatch_penalty, -parameters.gap_open_penalty, -parameters.gap_extend_penalty,
                                        &leftover_left_start, &leftover_left_end,
                                        &leftover_left_edit_distance, leftover_left_alignment);
@@ -501,7 +512,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
           LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
                                                     FormatString("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1)), "[]");
           alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
-                                                       (const unsigned char *) (reversed_ref_front), std::min(clip_count_front*2, (alignment_position_start - reference_start)),
+                                                       (const unsigned char *) (reversed_ref_front), reversed_ref_len,
                                                        (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
                                                        (0), MYERS_MODE_SHW);
           LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters.debug_read,
