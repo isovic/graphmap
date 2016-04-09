@@ -493,7 +493,7 @@ int AnchoredAlignment(bool is_linear, bool end_to_end, AlignmentFunctionType Ali
         reversed_ref_front = reverse_data(ref_data + 0, (alignment_position_start - reference_start));
         reversed_ref_len = alignment_position_start - reference_start;
       } else {
-        int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+        reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
         reversed_ref_len = clip_count_front*2;
       }
 
