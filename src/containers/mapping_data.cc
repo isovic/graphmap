@@ -90,6 +90,7 @@ std::string MappingData::VerboseMappingDataToString_(const std::vector<PathGraph
     ss << "local_score_id = " << mapping_data->at(i)->get_mapping_data().local_score_id;
     ss << "\n      ° " << mapping_data->at(i)->VerboseToString();
     ss << "\n      ° r_id = " << mapping_data->at(i)->get_region_data().reference_id << ", fwd_r_id = " << (mapping_data->at(i)->get_region_data().reference_id % index->get_num_sequences_forward()) << ", region_index = " << mapping_data->at(i)->get_region_data().region_index;
+    ss << "\n        ° \"" << index->get_headers()[mapping_data->at(i)->get_region_data().reference_id % index->get_num_sequences_forward()] << "\"";
     int64_t relative_position = 0;
     int64_t absolute_position = 0;
     SeqOrientation orientation = kForward;

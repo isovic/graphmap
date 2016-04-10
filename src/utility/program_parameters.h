@@ -89,7 +89,7 @@ struct ProgramParameters {
   std::string infmt = "auto";
   std::string outfmt = "sam";
 
-  bool extend_aln_to_end = true;
+//  bool extend_aln_to_end = true;
 
   bool use_extended_cigar = false;
 
@@ -97,6 +97,10 @@ struct ProgramParameters {
 
   double min_bin_percent = 0.75f;
   double bin_threshold_step = 0.10f;
+
+  bool use_spliced = false;
+  bool use_split = false;
+  bool disable_end_to_end = true;
 };
 
 int ProcessArgs(int argc, char **argv, ProgramParameters *parameters);

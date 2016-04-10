@@ -91,11 +91,12 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
 //  float threshold_step = 0.10f;
   float bin_value_threshold = mapping_data->bins.front().bin_value;
-  bin_value_threshold = (mapping_data->bins.front().bin_value * (1.0f - parameters->bin_threshold_step));
+  bin_value_threshold = std::floor(mapping_data->bins.front().bin_value * (1.0f - parameters->bin_threshold_step));
   bin_value_threshold = std::max(bin_value_threshold, 2.0f);
   int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, bin_value_threshold);
+
   float min_allowed_bin_value = 0.0f;
-  min_allowed_bin_value = (parameters->min_bin_percent * mapping_data->bins.front().bin_value);
+  min_allowed_bin_value = std::floor(parameters->min_bin_percent * mapping_data->bins.front().bin_value);
 
 //  if (parameters->parsimonious_mode) {
 //    min_allowed_bin_value = (0.50f * mapping_data->bins.front().bin_value);
@@ -113,6 +114,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
   mapping_data->num_region_iterations = 0;
 
+  LOG_DEBUG_SPEC("min_allowed_bin_value = %f, bin_value_threshold = %f\n", min_allowed_bin_value, bin_value_threshold);
+
   // Just verbose.
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 100 scoring bins:\n"), "ProcessRead");
@@ -120,8 +123,8 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
       Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
       ScoreRegistry local_score(region, i);
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
-                                   FormatString("[i = %ld] ref_id = %ld, location_start = %ld (%lX), location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n",
-                                                i, (mapping_data->bins[i].reference_id % indexes[0]->get_num_sequences_forward()), region.start, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+                                   FormatString("[i = %ld] ref_id = %ld, ref_id_fwd = %ld, location_start = %ld (%lX), location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n",
+                                                i,mapping_data->bins[i].reference_id, (mapping_data->bins[i].reference_id % indexes[0]->get_num_sequences_forward()), region.start, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
     }
   }
 
@@ -332,12 +335,13 @@ Region GraphMap::CalcRegionFromBin_(int64_t sorted_bins_index, const MappingData
 // If it returns value > 0, then the search needs to continue, but the ret code specifies why (return from EvaluateMappings_ function).
 int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allowed_bin_value, float threshold_step, float *bin_value_threshold, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
   if (mapping_data->bins[current_region].bin_value < (*bin_value_threshold)) {
+    LOG_DEBUG_SPEC("mapping_data->bins[current_region].bin_value = %f, *bin_value_threshold = %f\n", mapping_data->bins[current_region].bin_value, *bin_value_threshold);
     // Check if there are "ok" mappings, should we continue iterating.
     int ret_evaluate_mappings = EvaluateMappings_(false, mapping_data, read, parameters);
 
     if (ret_evaluate_mappings == 0) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings), "RunAlignment");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping.\n\n\n"), "RunAlignment");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because all basic thresholds have been satisfied in the region batch. A potentially good mapping is already found.\n\n\n"), "RunAlignment");
 
       return -1;
 
@@ -350,12 +354,12 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
       }
 
       // We need to go into another iteration.
-      *bin_value_threshold -= (mapping_data->bins.front().bin_value * (threshold_step));
+      *bin_value_threshold -= std::floor(mapping_data->bins.front().bin_value * (threshold_step));
       *bin_value_threshold = std::max(*bin_value_threshold, 2.0f);
       int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, *bin_value_threshold);
 
       if (*bin_value_threshold < min_allowed_bin_value) {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because bin_value_threshold < (0.25 * bins_.front().bin_value).\n\n\n"), "RunAlignment");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, parameters->num_threads == 1 || read->get_sequence_id() == parameters->debug_read, FormatString("Stopping because bin_value_threshold < (%f * bins_.front().bin_value). *bin_value_threshold = %f, min_allowed_bin_value = %f\n\n\n", threshold_step, *bin_value_threshold, min_allowed_bin_value), std::string(__FUNCTION__));
 //          std::cout << "\tbins_.front().bin_value = " << bins_.front().bin_value << "\n";
 //          std::cout << "\tbin_value_threshold = " << bin_value_threshold << "\n";
 //          std::cout << "\t0.25 * bins_.front().bin_value = " << 0.25 * bins_.front().bin_value << "\n";
@@ -378,6 +382,7 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
   return 0;
 }
 
+// Returns 0 if a mapping seems to satisfy some basic thresholds. Otherwise, returns value > 0.
 int GraphMap::EvaluateMappings_(bool evaluate_edit_distance, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
   if (mapping_data->intermediate_mappings.size() == 0)
     return 1;

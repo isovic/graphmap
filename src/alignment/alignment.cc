@@ -12,8 +12,10 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
 //  bool align_end_to_end = true;
 //  bool spliced_alignment = true;
 //  bool spliced_alignment = false;
-  bool align_end_to_end = parameters->alignment_algorithm != "spliced";
-  bool spliced_alignment = parameters->alignment_algorithm == "spliced";
+//  bool align_end_to_end = parameters->alignment_algorithm != "spliced";
+//  bool spliced_alignment = parameters->alignment_algorithm == "spliced";
+  bool align_end_to_end = parameters->use_spliced || parameters->use_split || (!parameters->disable_end_to_end);
+  bool spliced_alignment = parameters->use_spliced || parameters->use_split;
 
     if (parameters->alignment_algorithm == "gotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach.\n", "Alignment");

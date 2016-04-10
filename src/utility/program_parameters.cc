@@ -34,16 +34,19 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n myers       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n gotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with end-to-end extension.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
   argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
   argparser.AddArgument(&parameters->match_score, VALUE_TYPE_INT64, "M", "match", "5", "Match score for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
+#ifndef RELEASE_VERSION
+  argparser.AddArgument(&parameters->mex_score, VALUE_TYPE_INT64, "T", "mex", "1", "Mex score.", 0, "Alignment options");
+#endif
   argparser.AddArgument(&parameters->mismatch_penalty, VALUE_TYPE_INT64, "X", "mismatch", "4", "Mismatch penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
   argparser.AddArgument(&parameters->gap_open_penalty, VALUE_TYPE_INT64, "G", "gapopen", "8", "Gap open penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
   argparser.AddArgument(&parameters->gap_extend_penalty, VALUE_TYPE_INT64, "E", "gapext", "6", "Gap extend penalty for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
   argparser.AddArgument(&parameters->evalue_threshold, VALUE_TYPE_DOUBLE, "z", "evalue", "1e0", "Threshold for E-value. If E-value > FLT, read will be called unmapped. If FLT < 0.0, thredhold not applied.", 0, "Alignment options");
   argparser.AddArgument(&parameters->mapq_threshold, VALUE_TYPE_INT64, "c", "mapq", "1", "Threshold for mapping quality. If mapq < INT, read will be called unmapped.", 0, "Alignment options");
   argparser.AddArgument(&parameters->use_extended_cigar, VALUE_TYPE_BOOL, "", "extcigar", "0", "Use the extended CIGAR format for output alignments.", 0, "Alignment options");
-#ifndef RELEASE_VERSION
-  argparser.AddArgument(&parameters->mex_score, VALUE_TYPE_INT64, "T", "mex", "1", "Mex score.", 0, "Alignment options");
-#endif
-  argparser.AddArgument(&parameters->extend_aln_to_end, VALUE_TYPE_BOOL, "", "extend-to-end", "1", "Switches extension of anchored alignment to read/reference ends. If false, alignments will be bound by the first and last anchor. Otherwise, alignment will proceed until an end of one of the sequences is hit.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->use_spliced, VALUE_TYPE_BOOL, "", "spliced", "0", "Align clusters of anchors independently and report them as separate alignments. Does not align in-between clusters. Works only for anchored alignment modes.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->use_split, VALUE_TYPE_BOOL, "", "split", "0", "Align clusters of anchors independently and report them as separate alignments. Does not align in-between clusters. Works only for anchored alignment modes.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->disable_end_to_end, VALUE_TYPE_BOOL, "", "no-end2end", "0", "Disables extending of the alignments to the ends of a read. Works only for anchored modes.", 0, "Alignment options");
+//  argparser.AddArgument(&parameters->extend_aln_to_end, VALUE_TYPE_BOOL, "", "extend-to-end", "1", "Switches extension of anchored alignment to read/reference ends. If false, alignments will be bound by the first and last anchor. Otherwise, alignment will proceed until an end of one of the sequences is hit.", 0, "Alignment options");
 
   argparser.AddArgument(&parameters->k_graph, VALUE_TYPE_INT64, "k", "", "6", "Graph construction kmer size.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->num_links, VALUE_TYPE_INT64, "l", "", "9", "Number of edges per vertex.", 0, "Algorithmic options");
@@ -54,10 +57,11 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->max_num_regions_cutoff, VALUE_TYPE_INT64, "q", "reg-reduce", "0", "Attempt to heuristically reduce the number of regions if it exceeds this amount. Value <= 0 disables reduction but only if param -g is not 0. If -g is 0, the value of this parameter is set to 1/5 of maximum number of regions.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->is_reference_circular, VALUE_TYPE_BOOL, "C", "circular", "0", "Reference sequence is a circular genome.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->margin_for_ambiguity, VALUE_TYPE_FLOAT, "F", "ambiguity", "0.02", "All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0 counts only identical mappings.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->output_multiple_alignments, VALUE_TYPE_BOOL, "Z", "secondary", "0", "If specified, all (secondary) alignments within (-F FLT) will be output to a file. Otherwise, only one alignment will be output.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->output_multiple_alignments, VALUE_TYPE_BOOL, "Z", "secondary", "1", "If specified, all (secondary) alignments within (-F FLT) will be output to a file. Otherwise, only one alignment will be output.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->parsimonious_mode, VALUE_TYPE_BOOL, "P", "parsim", "1", "Switches the parsimonious memory mode on or off. If false, a sensitive and slower (but 2x memory-hungry) mode will be used.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_bin_percent, VALUE_TYPE_DOUBLE, "", "min-bin-perc", "0.75", "Consider only bins with counts above FLT * max_bin, where max_bin is the count of the top scoring bin.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.10", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
+//  argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.10", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.25", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
@@ -149,6 +153,14 @@ int ProcessArgs(int argc, char **argv, ProgramParameters *parameters)
   if (argparser.GetArgumentByLongName("indexdir")->is_set == false) {
     parameters->index_reference_dir = parameters->reference_path + std::string(".gmidx");
   }
+
+#ifndef RELEASE_VERSION
+  if (parameters->debug_read >= 0 || parameters->debug_read_by_qname != "") {
+    parameters->verbose_level = 9;
+    parameters->num_threads = 1;
+    parameters->num_reads_to_process = 1;
+  }
+#endif
 
   /// Write this out for every debug verbose level.
   if (parameters->verbose_level > 5) {

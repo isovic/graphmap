@@ -138,18 +138,35 @@ class PathGraphEntry {
 //    }
 //};
 
+//struct path_graph_entry_greater_than_key
+//{
+//    inline bool operator() (PathGraphEntry* op1, PathGraphEntry* op2) {
+//      if (op1->get_mapping_data().cov_bases_max != op2->get_mapping_data().cov_bases_max)
+//        return op1->get_mapping_data().cov_bases_max > op2->get_mapping_data().cov_bases_max;
+//      else {
+////        if (op1->get_fpfilter() != op2->get_fpfilter()) {
+//          return (op1->get_fpfilter() > op2->get_fpfilter());
+////        } else {
+////          return (op1->get_mapping_data().query_coords.start);
+////        }
+//
+////        if (op1->get_mapping_data().num_covering_kmers != op2->get_mapping_data().num_covering_kmers) {
+////          return (op1->get_mapping_data().num_covering_kmers > op2->get_mapping_data().num_covering_kmers);
+////        } else {
+////        }
+//      }
+//
+//      return false;
+//    }
+//};
+
 struct path_graph_entry_greater_than_key
 {
     inline bool operator() (PathGraphEntry* op1, PathGraphEntry* op2) {
-      if (op1->get_mapping_data().cov_bases_max != op2->get_mapping_data().cov_bases_max)
-        return op1->get_mapping_data().cov_bases_max > op2->get_mapping_data().cov_bases_max;
+      if (op1->get_fpfilter() != op2->get_fpfilter())
+        return op1->get_fpfilter() > op2->get_fpfilter();
       else {
-        return (op1->get_fpfilter() > op2->get_fpfilter());
-
-//        if (op1->get_mapping_data().num_covering_kmers != op2->get_mapping_data().num_covering_kmers) {
-//          return (op1->get_mapping_data().num_covering_kmers > op2->get_mapping_data().num_covering_kmers);
-//        } else {
-//        }
+        return op1->get_mapping_data().cov_bases_max > op2->get_mapping_data().cov_bases_max;
       }
 
       return false;

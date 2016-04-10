@@ -179,6 +179,7 @@ class Vertices {
         reference_ends[vertex_idx] <<
             "]; d[" << (query_ends[vertex_idx] - query_starts[vertex_idx]) << ", " << (reference_ends[vertex_idx] - reference_starts[vertex_idx]) <<
             "]; length = " << num_kmers[vertex_idx] <<
+            "; dist_ratio = " << ((double) std::min((reference_ends[vertex_idx] - reference_starts[vertex_idx]), (query_ends[vertex_idx] - query_starts[vertex_idx]))) / ((double) std::max((reference_ends[vertex_idx] - reference_starts[vertex_idx]), (query_ends[vertex_idx] - query_starts[vertex_idx]))) <<
             "; cov_bases_query = " << covered_bases_queries[vertex_idx] << "; cov_bases_ref = " << covered_bases_references[vertex_idx] << "; registry_num = " << registry_numbers[vertex_idx];
 
     return ret.str();

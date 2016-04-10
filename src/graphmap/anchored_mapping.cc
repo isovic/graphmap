@@ -43,7 +43,8 @@ bool CheckDistanceStep(const Vertices& registry_entries, int64_t index_first, in
 
   return false;
 }
-int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
+
+int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_length, int64_t min_cluster_covered_bases, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
                      ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
@@ -126,8 +127,7 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
     // Filter clusters which are too small.
 //    if ((min_num_anchors_in_cluster > 0 && min_cluster_length > 0 && min_cluster_coverage > 0) && ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster && cluster_length < min_cluster_length) {
     if (ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster &&
-        cluster_length < min_cluster_length &&
-        ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster) {
+        cluster_length < min_cluster_length || covered_bases < min_cluster_covered_bases) {
       ret_clusters[i]->lcskpp_indices.clear();
       continue;
     }
@@ -472,13 +472,21 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
 /// The new version:
   /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
   std::vector<int> first_filtered_lcskpp_indices;
+  std::vector<int> second_filtered_lcskpp_indices;
   std::vector<int32_t> first_filtered_clusters;
 //   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, 300, 2, 50, 2, first_filtered_lcskpp_indices, NULL);
 //   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2.0f + 0.01f, std::max(read->get_sequence_length() * 0.10f, 200.0f), 2, 50, 2, first_filtered_lcskpp_indices, NULL);
-   FilterAnchors(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+
+//  FilterAnchorsByDiff(read, local_score, parameters, lcskpp_indices, first_filtered_lcskpp_indices);
+//  FilterAnchorsByChaining(read, local_score, parameters, first_filtered_lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, second_filtered_lcskpp_indices, NULL);
+
+  FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+  FilterAnchorsByDiff(read, local_score, parameters, first_filtered_lcskpp_indices, second_filtered_lcskpp_indices);
+
+//  FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, second_filtered_lcskpp_indices, NULL);
 
   //  FilterAnchorBreakpoints(read->get_sequence_length() * MIN_CLUSTER_LENGTH_FACTOR, MIN_CLUSTER_COVERAGE_FACTOR, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
-    GenerateClusters(2, 50, 20, first_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+  GenerateClusters(2, 50, 50, 0.0, second_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
 
   // Find the L1 parameters (median line and the confidence intervals).
   float l_diff = read->get_sequence_length() * parameters->error_rate;
@@ -489,13 +497,9 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, cluster_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
   if (ret_L1) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("An error occured, L1 function (I) returned with %d!\n", ret_L1), "L1-PostProcessRegionWithLCS_");
-    if (ret_L1 == 1) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("  lcskpp_indices.size() == 0\n"), "L1-PostProcessRegionWithLCS_");
-    } else if (ret_L1 == 2) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("  num_points_under_max_dev_threshold == 0\n"), "L1-PostProcessRegionWithLCS_");
-    }
-
+    LOG_DEBUG_SPEC("An error occured, L1 function (I) returned with %d!\n", ret_L1);
+    if (ret_L1 == 1) {  LOG_DEBUG_SPEC("  lcskpp_indices.size() == 0\n"); }
+    else if (ret_L1 == 2) { LOG_DEBUG_SPEC("  num_points_under_max_dev_threshold == 0\n"); }
 
     #ifndef RELEASE_VERSION
       if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
@@ -504,7 +508,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false);
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
-        VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &first_filtered_lcskpp_indices, 0, 0, false);
+        VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &second_filtered_lcskpp_indices, 0, 0, false);
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing LCSk anchors to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
         VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, 0, 0, false, &cluster_ids);
       }
@@ -613,7 +617,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
     VerboseLocalScoresToFile(FormatString("temp/local_scores/LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &lcskpp_indices, 0, 0, false, NULL);
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors to file LCSL1-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
-    VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &first_filtered_lcskpp_indices, 0, 0, false);
+    VerboseLocalScoresToFile(FormatString("temp/local_scores/LCSL1-%ld.csv", local_score->get_scores_id()), read, local_score, &second_filtered_lcskpp_indices, 0, 0, false);
 
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Writing cluster anchors (again) to file double_LCS-%ld.\n",  local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS_");
     VerboseLocalScoresToFile(FormatString("temp/local_scores/double_LCS-%ld.csv", local_score->get_scores_id()), read, local_score, &cluster_indices, l, 3.0f * confidence_L1, false, &cluster_ids);
