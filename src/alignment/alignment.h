@@ -18,11 +18,12 @@
 
 #include "sequences/single_sequence.h"
 #include "utility/utility_general.h"
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 #include "utility/utility_conversion-inl.h"
 #include "containers/path_graph_entry.h"
 #include "libs/edlib.h"
 #include "alignment/cigargen.h"
+#include "alignment_wrappers.h"
 #include "log_system/log_system.h"
 #include "containers/region.h"
 #include "seqan/basic.h"
@@ -31,8 +32,6 @@
 #include "seqan/stream.h"
 #include "utility/evalue.h"
 
-#include "alignment/local_realignment_wrappers.h"
-#include "alignment/local_realignment.h"
 
 
 
@@ -63,5 +62,8 @@ int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_en
                     int64_t *ret_start_on_aln, int64_t *ret_start_on_read, int64_t *ret_start_on_ref);
 
 int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, int64_t ref_start, int64_t ref_len, AlignmentResults *aln_l, AlignmentResults *aln_r);
+
+
+int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read=NULL, const Index* index=NULL, int64_t reference_hit_id=-1, int64_t reference_hit_pos=-1);
 
 #endif /* SRC_ALIGNMENT_ALIGNMENT_H_ */

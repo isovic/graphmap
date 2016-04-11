@@ -15,7 +15,7 @@
 #include "containers/region.h"
 #include "containers/score_registry.h"
 #include "utility/utility_general.h"
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 //#include "sam/sam_entry.h"
 #include "containers/vertices.h"
 #include "containers/results.h"

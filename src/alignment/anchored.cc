@@ -5,8 +5,8 @@
  *      Author: isovic
  */
 
+#include <alignment/alignment_wrappers.h>
 #include "alignment/alignment.h"
-#include "alignment/local_realignment_wrappers.h"
 
 enum ClusterAlnType {
   kAlnBeginning = 0,

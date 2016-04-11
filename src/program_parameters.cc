@@ -5,7 +5,7 @@
  *      Author: ivan
  */
 
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 #include "argparser.h"
 #include "utility/utility_general.h"
 

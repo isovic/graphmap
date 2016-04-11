@@ -15,7 +15,7 @@
 #include "sequences/single_sequence.h"
 #include "sequences/sequence_file.h"
 #include "containers/vertices.h"
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 
 #include "containers/score_registry.h"
 #include "utility/utility_general.h"

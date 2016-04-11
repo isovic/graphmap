@@ -18,10 +18,8 @@
 
 #include "index/index_sa.h"
 
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 #include "utility/utility_general.h"
-
-#include "alignment/local_realignment.h"
 
 #include "owler/owler.h"
 

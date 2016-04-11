@@ -5,7 +5,7 @@
  *      Author: isovic
  */
 
-#include "alignment/local_realignment_wrappers.h"
+#include "alignment_wrappers.h"
 
 
 

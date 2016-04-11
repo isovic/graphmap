@@ -9,8 +9,7 @@
 #define MAPPING_DATA_H_
 
 #include "log_system/log_system.h"
-#include "alignment/local_realignment.h"
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 #include "utility/utility_general.h"
 #include "containers/region.h"
 #include "index/index.h"
@@ -19,6 +18,7 @@
 #include "index/index_spaced_hash.h"
 #include "containers/vertices.h"
 #include "utility/evalue.h"
+#include "containers/path_graph_entry.h"
 
 //#define UNMAPPED_CODE_NO_VALID_GRAPH_PATHS  (1 << 0)
 

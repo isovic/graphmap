@@ -5,8 +5,8 @@
  *      Author: isovic
  */
 
+#include <alignment/alignment_wrappers.h>
 #include "alignment/alignment.h"
-#include "alignment/local_realignment_wrappers.h"
 
 int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
                         const SingleSequence *read, const Index *index, const ProgramParameters *parameters,

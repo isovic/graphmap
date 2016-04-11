@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "utility/utility_general.h"
-#include "utility/program_parameters.h"
+#include "program_parameters.h"
 #include "libs/edlib.h"
 #include "alignment/cigargen.h"
 #include "log_system/log_system.h"
