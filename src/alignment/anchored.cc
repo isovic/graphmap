@@ -62,6 +62,8 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
       reversed_ref_len = clip_count_front*2;
     }
 
+//    if (clip_count_front == 0 || reversed_ref_len == 0) { return 1; }
+
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
     std::vector<unsigned char> leftover_left_alignment;
     int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
@@ -156,6 +158,8 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
   aln.ref_end = aln.raw_pos_end - ref_index_start;
   aln.raw_alignment.clear();
 
+//  if (query_alignment_length == 0 || ref_alignment_length == 0) { return 1; }
+
   int64_t anchor_alignment_position_start = 0, anchor_alignment_position_end = 0, anchor_edit_distance = 0;
   std::vector<unsigned char> anchor_alignment;
   int ret_code1 = AlignmentFunctionNW(read->get_data() + cluster_query_start, (query_alignment_length),
@@ -177,6 +181,10 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
     LOG_DEBUG_SPEC("Aligned anchor %d:\n%s\n", cluster_id, alignment_as_string.c_str());
     LOG_DEBUG_SPEC("aln.query_start = %ld\n", aln.query_start);
     LOG_DEBUG_SPEC("aln.query_end = %ld\n", aln.query_end);
+    LOG_DEBUG_SPEC("aln.ref_start = %ld\n", aln.ref_start);
+    LOG_DEBUG_SPEC("aln.ref_end = %ld\n", aln.ref_end);
+    LOG_DEBUG_SPEC("aln.raw_start = %ld\n", aln.raw_pos_start);
+    LOG_DEBUG_SPEC("aln.raw_end = %ld\n", aln.raw_pos_end);
   }
 
   aln.raw_alignment.insert(aln.raw_alignment.end(), anchor_alignment.begin(), anchor_alignment.end());
@@ -241,6 +249,8 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
 
     } else if (inbetween_query_length > 0 && inbetween_ref_length > 0) {
       LOG_DEBUG_SPEC("Performing the alignment.\n");
+
+//      if (inbetween_query_length == 0 || inbetween_ref_length == 0) { return 1; }
 
       int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
       std::vector<unsigned char> between_anchor_alignment;
@@ -312,9 +322,14 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
 
     int64_t query_end = region_results->get_mapping_data().clusters.back().query.end; // + clip_count_back;  /////I
     int64_t leftover_right_start = 0, leftover_right_end = 0, leftover_right_edit_distance = 0;
+    int64_t ref_len_for_aln = std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1));
+
+//    if (ref_len_for_aln == 0) {
+//    }
+
     std::vector<unsigned char> leftover_right_alignment;
     int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),
-                                     (int8_t *) (ref_data + alignment_position_end + 1), std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)),
+                                     (int8_t *) (ref_data + alignment_position_end + 1), ref_len_for_aln,
                                      -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                      &leftover_right_start, &leftover_right_end,
                                      &leftover_right_edit_distance, leftover_right_alignment);
@@ -339,7 +354,16 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
       std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
       aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_back.begin(), insertions_back.end());
       aln.edit_distance = insertions_back.size();
+      // Start and end positions need to be moved to one base prior the ones defined at the beginning of the function.
+      // This is because there are no actual bases to move the start position to, all are insertions.
+      aln.raw_pos_start = alignment_position_end;
+      aln.raw_pos_end = alignment_position_end;
+      aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
+      aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
+      aln.ref_start = aln.raw_pos_start - ref_index_start;
+      aln.ref_end = aln.raw_pos_end - ref_index_start;
       aln.is_aligned = true;
+
       if (ret_code_right == 0) {
         LOG_DEBUG_SPEC("Not using the alignment because edit distance too big (edit_distance = %ld, max = %ld, clip_count_back = %ld), clipping the end instead!\n", leftover_right_edit_distance, clip_count_back/2, clip_count_back);
       } else {
@@ -351,6 +375,14 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
         std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
         aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_back.begin(), insertions_back.end());
         aln.edit_distance = insertions_back.size();
+        // Start and end positions need to be moved to one base prior the ones defined at the beginning of the function.
+        // This is because there are no actual bases to move the start position to, all are insertions.
+        aln.raw_pos_start = alignment_position_end;
+        aln.raw_pos_end = alignment_position_end;
+        aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
+        aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
+        aln.ref_start = aln.raw_pos_start - ref_index_start;
+        aln.ref_end = aln.raw_pos_end - ref_index_start;
         aln.is_aligned = true;
 
       } else {
@@ -578,24 +610,51 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     ///////////////////////////
     ///////////////////////////
     /// Align in between the anchors.
-    int ret_code_inbetween = AlignInBetweenAnchors(AlignmentFunctionNW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, i, alns[num_alns]);
-    alns_anchor_type[num_alns] = kAlnInBetween;
-    num_alns += 1;
-    if (ret_code_inbetween) { return ret_code_inbetween; }
-
+    if ((i + 1) < region_results->get_mapping_data().clusters.size()) {
+      int ret_code_inbetween = AlignInBetweenAnchors(AlignmentFunctionNW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, i, alns[num_alns]);
+      alns_anchor_type[num_alns] = kAlnInBetween;
+      num_alns += 1;
+      if (ret_code_inbetween) { return ret_code_inbetween; }
+    }
   }
 
   /// Aligning the end of the read.
   if (clip_count_back > 0) {
+    LOG_DEBUG_SPEC("Trying to align the end of the read. clip_count_back = %ld\n", clip_count_back);
     int ret_code_back = AlignBack(AlignmentFunctionSHW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, clip_count_back, ref_start, alignment_position_end, align_end_to_end, alns[num_alns]);
-    alns_anchor_type[num_alns] = kAlnEnding;
-    num_alns += 1;
+//    if (!ret_code_back) {
+      alns_anchor_type[num_alns] = kAlnEnding;
+      num_alns += 1;
+//    }
     if (ret_code_back) { return ret_code_back; }
   }
 
   // Check whether the alignment is supposed to be spliced or all together. If it's spliced, omit the non-cluster alignments.
   if (spliced_alignment == false) {
+//    LOG_DEBUG_SPEC("Before joining:\n");
+//    for (int32_t i5=alns.size()-3; i5<alns.size(); i5++) {
+//      LOG_DEBUG_SPEC("i5 = %ld / %ld\n", (i5+1), alns.size());
+//      LOG_DEBUG_SPEC("aln.query_start = %ld\n", alns[i5].query_start);
+//      LOG_DEBUG_SPEC("aln.query_end = %ld\n", alns[i5].query_end);
+//      LOG_DEBUG_SPEC("aln.ref_start = %ld\n", alns[i5].ref_start);
+//      LOG_DEBUG_SPEC("aln.ref_end = %ld\n", alns[i5].ref_end);
+//      LOG_DEBUG_SPEC("aln.raw_start = %ld\n", alns[i5].raw_pos_start);
+//      LOG_DEBUG_SPEC("aln.raw_end = %ld\n", alns[i5].raw_pos_end);
+//      LOG_DEBUG_SPEC("alns[alns.size()-3].is_aligned = %s\n", (alns[i5].is_aligned == true) ? "true" : "false");
+//      LOG_DEBUG_SPEC("anchor_type = %s\n", (alns_anchor_type[i5] == kAlnBeginning) ? "beginning" : (alns_anchor_type[i5] == kAlnCluster) ? "cluster" : (alns_anchor_type[i5] == kAlnInBetween) ? "inbetween" : "ending");
+//      LOG_DEBUG_SPEC_NEWLINE;
+//    }
+//    LOG_DEBUG_SPEC("alns.size() = %ld, num_alns = %ld\n", alns.size(), num_alns);
+
     JoinAlignmentResults(alns, read, ref_data);
+
+//    LOG_DEBUG_SPEC("aln.query_start = %ld\n", alns[0].query_start);
+//    LOG_DEBUG_SPEC("aln.query_end = %ld\n", alns[0].query_end);
+//    LOG_DEBUG_SPEC("aln.ref_start = %ld\n", alns[0].ref_start);
+//    LOG_DEBUG_SPEC("aln.ref_end = %ld\n", alns[0].ref_end);
+//    LOG_DEBUG_SPEC("aln.raw_start = %ld\n", alns[0].raw_pos_start);
+//    LOG_DEBUG_SPEC("aln.raw_end = %ld\n", alns[0].raw_pos_end);
+//    LOG_DEBUG_SPEC_NEWLINE;
 
   } else {
     FillFrontAndBackInsertions(alns);
