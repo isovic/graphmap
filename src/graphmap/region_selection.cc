@@ -72,6 +72,7 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
   ///// This part counts the occurrences in bins. /////
   ////////////////////////////////////////////////////
   // Filling the bins with values, so we get an occurrence map.
+  float max_bin_value = -1.0f;
   mapping_data->time_region_seed_lookup = 0.0;
   int64_t total_num_hits = 0;
   diff_clock = clock();
@@ -146,6 +147,8 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
             }
 
             bins_chromosome[reference_index][position_bin] += 1.0f;
+            if (bins_chromosome[reference_index][position_bin] > max_bin_value) { max_bin_value = bins_chromosome[reference_index][position_bin]; }
+
             last_update_chromosome[reference_index][position_bin] = (i + 1);
           }  // for (int64_t j=hits_start; j<(hits_start + num_hits); j++)
         }
@@ -160,22 +163,21 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
   mapping_data->time_region_counting = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();
 
-  int64_t num_bins_above_zero = 0;
+  float min_allowed_bin_value = std::max(2.0f, (float) std::floor(parameters->min_bin_percent * max_bin_value));
+  int64_t num_bins_above_min = 0;
   for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
     for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
-      if (bins_chromosome[i][j] > 0.0f) {
-        num_bins_above_zero += 1;
-      }
+      if (bins_chromosome[i][j] > min_allowed_bin_value) { num_bins_above_min += 1; }
     }
   }
 
   // Convert the bins to a more compact form, which will be easier to sort.
   // The tuple will contain: reference_id, bin_index, bin_count.
   mapping_data->bins.clear();
-  mapping_data->bins.resize(num_bins_above_zero);
+  mapping_data->bins.resize(num_bins_above_min);
   for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
     for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
-      if (bins_chromosome[i][j] > 0.0f) {
+      if (bins_chromosome[i][j] > min_allowed_bin_value) {
         ChromosomeBin new_bin;
         new_bin.reference_id = i;
         new_bin.bin_id = j;
