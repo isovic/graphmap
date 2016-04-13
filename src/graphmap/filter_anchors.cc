@@ -10,6 +10,11 @@
 
 //#define DEBUG_TEST1
 
+const int32_t chain_dist_aab = 5;
+const int32_t chain_dist_dbm = 15;
+
+
+
 #define Dist(x1, y1, x2, y2) sqrt((double) (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
 
 // @parameter dist_aab Accept All Bandwidths (aab) if query and reference distsaces are smaller than this value. This value should be very small (~5bp). Used to prevent breaking chains for very small indels - the indel_bandwidth_margin is not used in this case.
@@ -154,8 +159,6 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
   int64_t chain_len_lookahead = max_dist;
-  const int32_t chain_dist_aab = 5;
-  const int32_t chain_dist_dbm = 20;
 
   const Vertices& registry_entries = local_score->get_registry_entries();
 
@@ -316,9 +319,6 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
                      ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
-
-  const int32_t chain_dist_aab = 5;
-  const int32_t chain_dist_dbm = 20;
 
   ret_clusters.clear();
 
