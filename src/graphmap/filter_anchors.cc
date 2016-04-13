@@ -12,7 +12,9 @@
 
 #define Dist(x1, y1, x2, y2) sqrt((double) (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
 
-int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rpos, double indel_bandwidth_margin, int32_t fwd_length, double *score_gap, double *score_dist) {
+// @parameter dist_aab Accept All Bandwidths (aab) if query and reference distsaces are smaller than this value. This value should be very small (~5bp). Used to prevent breaking chains for very small indels - the indel_bandwidth_margin is not used in this case.
+// @parameter dist_dbm Double Bandwidth Margin (dbm) is a heuristic which doubles the indel_bandwidth_margin if both query and reference distances are all smaller than dist_dbm. For longer homopolimer runs (which are e.g. still shorter than 20bp), there might be valid indels which have a larger gap in one dimension.
+int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rpos, double indel_bandwidth_margin, int32_t fwd_length, int32_t dist_aab, int32_t dist_dbm, double *score_gap, double *score_dist) {
 //  int32_t min_dist = (next_qpos <= qpos) ? (qpos - next_qpos) :
 //                     (next_qpos >= (qpos + seed_length_q)) ? (next_qpos - qpos - seed_length_q) :
 //                     -1;
@@ -27,12 +29,16 @@ int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rp
   *score_gap = -a;
   *score_dist = -mismatch / 2.0;     // Divide by two because not necessarily all bases on the diagonal are mismatches, some might be matches. Just a heuristic.
 
+  int32_t x_dist = abs(qpos - next_qpos);
+  int32_t y_dist = abs(rpos - next_rpos);
+
   int32_t bandwidth = indel_bandwidth_margin * dist;
+  if (x_dist < dist_aab && y_dist < dist_aab) { bandwidth = dist; }
+  else if (x_dist < dist_dbm && y_dist < dist_dbm) { bandwidth = indel_bandwidth_margin * 2.0f * dist; }
+
 //  int32_t bandwidth = indel_bandwidth_margin * fwd_length;
 //  printf ("  -> fwd_length = %d, dist = %f, mismatch = %f, band = %f\n", fwd_length, dist, mismatch, band);
 //  fflush(stdout);
-
-  int32_t x_dist = abs(qpos - next_qpos);
 
   if ((fwd_length <= 0 || x_dist <= fwd_length) && band <= bandwidth) {
     // All is good.
@@ -47,8 +53,6 @@ int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rp
     return 2;
 
   } else if ((fwd_length > 0 && x_dist > fwd_length) && band > bandwidth) {
-//    printf ("band = %f, bandwidth = %d\n", band, bandwidth);
-//    fflush(stdout);
     // All numbers are too high, break the chain.
     return 3;
   }
@@ -119,6 +123,8 @@ void CalcAnchorLengthStatistics(const ScoreRegistry* local_score, const std::vec
 
 int FilterAnchorsByDiff(const SingleSequence* read, ScoreRegistry* local_score, const ProgramParameters *parameters,
                   const std::vector<int> &lcskpp_indices, std::vector<int> &ret_filtered_lcskpp_indices) {
+  LOG_DEBUG_SPEC("Anchors on function input: %ld\n", lcskpp_indices.size());
+
   double avg = 0.0f, std_dev = 0.0f;
   CalcAnchorLengthStatistics(local_score, lcskpp_indices, &avg, &std_dev);
   double min_diff = avg - 3*std_dev;
@@ -137,7 +143,8 @@ int FilterAnchorsByDiff(const SingleSequence* read, ScoreRegistry* local_score, 
     }
   }
 
-  LOG_DEBUG_SPEC("Filtered %ld anchors.\n", ret_filtered_lcskpp_indices.size() - lcskpp_indices.size());
+  LOG_DEBUG_SPEC("Anchors on function output: %ld\n", ret_filtered_lcskpp_indices.size());
+  LOG_DEBUG_SPEC("Filtered %ld anchors.\n\n", ret_filtered_lcskpp_indices.size() - lcskpp_indices.size());
 
   return 0;
 }
@@ -147,6 +154,9 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
   int64_t chain_len_lookahead = max_dist;
+  const int32_t chain_dist_aab = 5;
+  const int32_t chain_dist_dbm = 20;
+
   const Vertices& registry_entries = local_score->get_registry_entries();
 
   std::vector<std::vector<int32_t> > chains;
@@ -193,7 +203,7 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
       LOG_DEBUG_SPEC_NO_HEADER("  Considering anchor %ld (i = %ld, lcskpp_indices[%ld] = %d, chains.back().back() = %d): start = [%d, %d], end = [%d, %d]. max_score_id = %ld\n", next_id, i, next_id, lcskpp_indices[next_id], chains.back().back(), next_qpos_start, next_rpos_start, next_qpos_end, next_rpos_end, max_score_id);
 
       double score_gap = 0.0, score_mismatch = 0.0;
-      int64_t ret_val = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead, &score_gap, &score_mismatch);
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead, chain_dist_aab, chain_dist_dbm, &score_gap, &score_mismatch);
 
       if (ret_val > 0) {
         LOG_DEBUG_SPEC_NO_HEADER("    - Breaking. CalcScore returned a value > 0 (ret_val = %ld)\n", ret_val);
@@ -307,7 +317,12 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
+  const int32_t chain_dist_aab = 5;
+  const int32_t chain_dist_dbm = 20;
+
   ret_clusters.clear();
+
+  LOG_DEBUG_SPEC("Starting to generate clusters from lcskpp filtered anchors. lcskpp_indices.size() = %ld\n", lcskpp_indices.size());
 
   if (lcskpp_indices.size() == 0) { return 1; }
 
@@ -338,6 +353,8 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
       new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
       new_cluster->num_anchors += 1;
 
+      LOG_DEBUG_SPEC("  Adding a new lcskpp index to an empty cluster. Cluster ID: %ld.\n", ret_clusters.size());
+
 //      printf ("Tu sam 1! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
 //      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
 //      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
@@ -353,23 +370,29 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
       int32_t prev_qpos_start = 0, prev_rpos_start = 0, prev_qpos_end = 0, prev_rpos_end = 0;
       GetPositionsFromRegistry(registry_entries, lcskpp_indices, (i + 1), &prev_qpos_start, &prev_rpos_start, &prev_qpos_end, &prev_rpos_end);
 
-      int64_t ret_val = CalcScore(qpos_start, rpos_start, prev_qpos_end, prev_rpos_end, indel_bandwidth_margin, -1, &score_gap, &score_dist);
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, prev_qpos_end, prev_rpos_end, indel_bandwidth_margin, -1, chain_dist_aab, chain_dist_dbm, &score_gap, &score_dist);
 
       if (ret_val > 0) {
+        LOG_DEBUG_SPEC("  Closing the cluster. Cluster ID: %ld, ret_val = %ld.\n\n", ret_clusters.size(), ret_val);
         ret_clusters.push_back(new_cluster);
         new_cluster = new ClusterAndIndices;
       }
+
       new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);
       new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
       new_cluster->num_anchors += 1;
+      LOG_DEBUG_SPEC("  Adding a new lcskpp index to Cluster ID: %ld, new_cluster->lcskpp_indices.size() = %ld (after adding).\n", ret_clusters.size(), new_cluster->lcskpp_indices.size());
 //      printf ("Tu sam 2! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
 //      fflush(stdout);
     }
   }
 
   if (new_cluster->lcskpp_indices.size() != 0) {
+    LOG_DEBUG_SPEC("  Closing the cluster. Cluster ID: %ld.\n\n", ret_clusters.size());
     ret_clusters.push_back(new_cluster);
   }
+
+  LOG_DEBUG_SPEC_NEWLINE;
 
   /// Generate the final ret_clusters that will be returned and used further.
   for (int64_t i=0; i<ret_clusters.size(); i++) {
@@ -378,14 +401,25 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
     ret_clusters[i]->ref.start = registry_entries.reference_starts[ret_clusters[i]->lcskpp_indices.front()];
     ret_clusters[i]->ref.end = registry_entries.reference_ends[ret_clusters[i]->lcskpp_indices.back()] - 1;
 
+    LOG_DEBUG_SPEC("Anchors in Cluster %ld:\n", i);
+    for (int64_t j=0; j<ret_clusters[i]->lcskpp_indices.size(); j++) {
+      LOG_DEBUG_SPEC("  start = [%ld, %ld], end = [%ld, %ld]\n", registry_entries.query_starts[ret_clusters[i]->lcskpp_indices[j]], registry_entries.reference_starts[ret_clusters[i]->lcskpp_indices[j]],
+                     registry_entries.query_ends[ret_clusters[i]->lcskpp_indices[j]], registry_entries.reference_ends[ret_clusters[i]->lcskpp_indices[j]]);
+    }
+    LOG_DEBUG_SPEC_NEWLINE;
+
     int64_t cluster_length = ret_clusters[i]->query.end - ret_clusters[i]->query.start + 1;
     int64_t covered_bases = ret_clusters[i]->coverage;
     float cluster_coverage = ((float) covered_bases) / ((float) cluster_length);
 
     // Filter clusters which are too small.
 //    if ((min_num_anchors_in_cluster > 0 && min_cluster_length > 0 && min_cluster_coverage > 0) && ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster && cluster_length < min_cluster_length) {
-    if ((ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster) &&
-        (cluster_length < min_cluster_length || covered_bases < min_cluster_covered_bases)) {
+
+    if ((ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster &&
+        (cluster_length < min_cluster_length)) || covered_bases < min_cluster_covered_bases) {
+
+      LOG_DEBUG_SPEC("  Filtering cluster %ld because lengths not satisfied. ret_clusters[i]->lcskpp_indices.size() = %ld / %ld, cluster_length = %ld / %ld, covered_bases = %ld / %ld\n",
+                     i, ret_clusters[i]->lcskpp_indices.size(), min_num_anchors_in_cluster, cluster_length, min_cluster_length, covered_bases, min_cluster_covered_bases);
       ret_clusters[i]->lcskpp_indices.clear();
       continue;
     }
@@ -413,6 +447,8 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
       ret_clusters.erase(ret_clusters.begin() + i);
     }
   }
+
+  LOG_DEBUG_SPEC_NEWLINE;
 
   return 0;
 }
