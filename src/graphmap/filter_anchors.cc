@@ -81,207 +81,6 @@ void GetPositionsFromRegistry2(const Vertices& registry_entries, int64_t vertex_
   *rpos_end = registry_entries.reference_ends[vertex_id];
 }
 
-//int FilterAnchors1(const SingleSequence* seq, ScoreRegistry* local_score, const ProgramParameters *parameters,
-//                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
-//                  std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
-//
-////  int32_t bandwidth = 10;
-//  //  int32_t max_dist = 0.10f * seq->get_sequence_length();
-//
-////  double bandwidth_margin = 0.10f;
-////  int32_t max_dist = 200;
-////  int32_t lookahead_dist_factor = 2;
-//  int64_t chain_len_lookahead = max_dist;
-//
-//  const Vertices& registry_entries = local_score->get_registry_entries();
-//
-//  std::vector<std::vector<int32_t> > chains;
-//  std::vector<int32_t> chain_cov_bases;
-//
-//  {
-//    std::vector<int32_t> new_chain;
-//    new_chain.reserve(lcskpp_indices.size());
-//    chains.push_back(new_chain);
-//    chain_cov_bases.push_back(0);
-//  }
-//  for (int64_t i=0; i<lcskpp_indices.size(); i++) {
-//    int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
-//    GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
-//    int32_t cov_bases = std::max((qpos_end - qpos_start), (rpos_end - rpos_start));
-////    int32_t qpos = get128_qpos(hits[lcskpp_indices[i]]);
-////    int32_t rpos = get128_rpos(hits[lcskpp_indices[i]]);
-//
-//#ifdef DEBUG_TEST1
-//    printf ("[i = %ld] Taking the next seed. qpos = %d, rpos = %d\n", i, qpos_start, rpos_start);
-//    fflush(stdout);
-////    if (chains.back().size() > 0) {
-////      printf ("Chain info:\n");
-////      printf ("  get128_qpos(hits[chains.back().front() = %d, get128_qpos(hits[chains.back().back()]) = %d\n", get128_qpos(hits[chains.back().front()]), get128_qpos(hits[chains.back().back()]));
-////      printf ("  get128_rpos(hits[chains.back().front() = %d, get128_rpos(hits[chains.back().back()]) = %d\n", get128_rpos(hits[chains.back().front()]), get128_rpos(hits[chains.back().back()]));
-////    }
-//#endif
-//
-//    double max_score = 1;
-//    int64_t max_score_id = -1;
-//    int64_t next_id = (i + 1);
-//    while (next_id < lcskpp_indices.size()) {
-////      int32_t next_qpos = get128_qpos(hits[lcskpp_indices[next_id]]);
-////      int32_t next_rpos = get128_rpos(hits[lcskpp_indices[next_id]]);
-//      int32_t next_qpos_start = 0, next_rpos_start = 0, next_qpos_end = 0, next_rpos_end = 0;
-//      GetPositionsFromRegistry(registry_entries, lcskpp_indices, next_id, &next_qpos_start, &next_rpos_start, &next_qpos_end, &next_rpos_end);
-//      int32_t next_cov_bases = std::max((next_qpos_end - next_qpos_start), (next_rpos_end - next_rpos_start));
-//
-//      #ifdef DEBUG_TEST1
-//            printf ("  [next_id = %ld] Considering next seed for chaining. qpos = %d, rpos = %d\n", next_id, next_qpos_start, next_rpos_start);
-//            fflush(stdout);
-//      #endif
-//      double score_gap = 0.0, score_mismatch = 0.0;
-//      int64_t ret_val = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead, &score_gap, &score_mismatch);
-//      double score = score_gap; // + score_mismatch;
-//      #ifdef DEBUG_TEST1
-//            if (ret_val > 0) { printf ("  Break.\n"); break; }
-//      #endif
-//      if (ret_val > 0) { break; }
-//      if (max_score > 0 || score > max_score) {
-//        #ifdef DEBUG_TEST1
-//                printf ("  New max score found. Previously: score = %d, score_id = %d. Now: score = %d, score_id = %d\n", max_score, max_score_id, score, next_id);
-//                fflush(stdout);
-//        #endif
-//        max_score = score;
-//        max_score_id = next_id;
-//      }
-//      next_id += 1;
-//    }
-//    if (max_score_id == -1) {
-//      chains[chains.size()-1].push_back(lcskpp_indices[i]);
-//      chain_cov_bases.back() += cov_bases;
-//
-//      #ifdef DEBUG_TEST1
-//            printf ("  -> Num chains: %ld, last chain size: %ld\n", chains.size(), chains.back().size());
-//            fflush(stdout);
-//      #endif
-//      std::vector<int32_t> new_chain;
-//      new_chain.reserve(lcskpp_indices.size() - i);
-//      chains.push_back(new_chain);
-//      chain_cov_bases.push_back(0);
-////      i = max_score_id - 1;
-//      #ifdef DEBUG_TEST1
-//            printf ("  (I) Going for next i. i = %ld\n", i);
-//            printf ("\n");
-//            fflush(stdout);
-//      #endif
-//      continue;
-//    }
-//    int32_t max_qpos_start = 0, max_rpos_start = 0, max_qpos_end = 0, max_rpos_end = 0;
-//    GetPositionsFromRegistry(registry_entries, lcskpp_indices, max_score_id, &max_qpos_start, &max_rpos_start, &max_qpos_end, &max_rpos_end);
-//    int32_t max_cov_bases = std::max((max_qpos_end - max_qpos_start), (max_rpos_end - max_rpos_start));
-//    chains[chains.size()-1].push_back(lcskpp_indices[max_score_id]);
-//    chain_cov_bases.back() += max_cov_bases;
-//    i = max_score_id - 1;
-//    #ifdef DEBUG_TEST1
-//        printf ("  -> Num chains: %ld, last chain size: %ld\n", chains.size(), chains.back().size());
-//        printf ("  (II) Going for next i. i = %ld\n", i);
-//        printf ("\n");
-//        fflush(stdout);
-//    #endif
-//  }
-//
-//#ifdef DEBUG_TEST1
-//  for (int64_t i=0; i<chains.size(); i++) {
-//    printf ("Chain %ld, size: %ld\n", i, chains[i].size());
-//    fflush(stdout);
-//    for (int64_t j=0; j<chains[i].size(); j++) {
-//      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
-//      GetPositionsFromRegistry2(registry_entries, chains[i][j], &qpos_start, &rpos_start, &qpos_end, &rpos_end);
-//      printf ("  [%ld] %d %d\n", j, qpos_start, rpos_start);
-//      fflush(stdout);
-//    }
-//    printf ("\n");
-//    fflush(stdout);
-//  }
-//#endif
-//
-//  ret_filtered_lcskpp_indices.size();
-//  if (ret_cluster_ids) {
-//    ret_cluster_ids->clear();
-//  }
-//
-//  int64_t num_filtered_indices = 0;
-//  for (int64_t i=0; i<chains.size(); i++) { num_filtered_indices += chains[i].size(); }
-//  ret_filtered_lcskpp_indices.reserve(num_filtered_indices);
-//  if (ret_cluster_ids) { ret_cluster_ids->reserve(num_filtered_indices); }
-//
-////  // Attempt to join neighbouring clusters if they are on the same (similar) diagonal.
-////  printf ("Attempting join neighbouring chains.\n");
-////  fflush(stdout);
-////  int64_t prev_chain = 0;
-////  for (int64_t i=1; i<chains.size(); i++) {
-////    if (chains[i].size() == 0) {
-////      continue;
-////    }
-////    printf ("i = %ld / %ld\n", (i + 1), chains.size());
-////    printf ("  prev_chain = %ld, prev_chain.length() = %ld\n", prev_chain, chains[prev_chain].size());
-////    fflush(stdout);
-////    int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
-////    GetPositionsFromRegistry2(registry_entries, chains[i].back(), &qpos_start, &rpos_start, &qpos_end, &rpos_end);
-////
-////    int32_t prev_qpos_start = 0, prev_rpos_start = 0, prev_qpos_end = 0, prev_rpos_end = 0;
-////    GetPositionsFromRegistry2(registry_entries, chains[prev_chain].back(), &prev_qpos_start, &prev_rpos_start, &prev_qpos_end, &prev_rpos_end);
-////
-////    double score_gap = 0.0, score_mismatch = 0.0;
-////    int64_t ret_val = CalcScore(prev_qpos_end, prev_rpos_end, qpos_start, rpos_start, 0.15f, -1, &score_gap, &score_mismatch);
-////
-////    if (ret_val == 0) {
-////      chains[prev_chain].insert(chains[prev_chain].end(), chains[i].begin(), chains[i].end());
-////      chains[i].clear();
-////    } else {
-////      prev_chain = i;
-////    }
-//////    printf ("[%ld] (front) %d %d, (back) %d %d\n", i, qpos_start, rpos_start, prev_qpos_start, prev_rpos_start);
-//////    fflush(stdout);
-////  }
-////  exit(1);
-//
-//  // Remove chains with too low of a count.
-//  for (int64_t i=0; i<chains.size(); i++) {
-//    if (chains[i].size() <= cluster_size_cutoff && chain_cov_bases[i] < min_covered_bases) { continue; }
-//
-////    if (chain_cov_bases[i] < min_covered_bases) { continue; }
-////    for (int64_t j=(chains[i].size()-1); j>=0; j--) {
-//    for (int64_t j=0; j<chains[i].size(); j++) {
-//      ret_filtered_lcskpp_indices.push_back(chains[i][j]);
-//      if (ret_cluster_ids) {
-//        ret_cluster_ids->push_back(chains.size() - i);
-//      }
-//    }
-//  }
-//
-//#ifdef DEBUG_TEST1
-//  printf ("\n");
-//  printf ("Chain sizes:\n");
-//  for (int64_t i=0; i<chains.size(); i++) {
-//    printf ("%ld ", chains[i].size());
-//  }
-//  printf ("\n");
-////  for (int64_t i=0; i<chain_sizes.size(); i++) {
-////    printf ("%ld ", chain_sizes[i]);
-////  }
-//  printf ("\n");
-//#endif
-//
-//#ifdef DEBUG_TEST1
-//  printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
-//#endif
-//
-//  return 0;
-//
-//}
-
-
-
-
-
-
 double CalcAnchorDiff(double qpos_start, double qpos_end, double rpos_start, double rpos_end) {
   double r_diff = rpos_end - rpos_start;
   double q_diff = qpos_end - qpos_start;
@@ -501,5 +300,191 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
 //  exit(1);
 
   return 0;
+}
 
+int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_length, int64_t min_cluster_covered_bases, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
+                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
+                     std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
+
+  ret_clusters.clear();
+
+  if (lcskpp_indices.size() == 0) { return 1; }
+
+  ClusterAndIndices *new_cluster = NULL;
+
+  new_cluster = new ClusterAndIndices;
+
+//  printf ("lcskpp_indices.size() = %ld\n", lcskpp_indices.size());
+//  printf ("local_score->get_registry_entries().size() = %ld\n", local_score->get_registry_entries().num_vertices);
+//  printf ("lcskpp_indices.back() = %ld\n", lcskpp_indices.back());
+//  printf ("lcskpp_indices.front() = %ld\n", lcskpp_indices.front());
+//  fflush(stdout);
+
+//  new_cluster->query.start = local_score->get_registry_entries().query_starts[lcskpp_indices.back()];
+//  new_cluster->query.end = local_score->get_registry_entries().query_ends[lcskpp_indices.front()] - 1;      // The '- 1' is because anchor end coordinate points to one base after the last inclusive base. Clusters should demarcate the exact start and end positions (start is the first base, end is the last base).
+//  new_cluster->ref.start = local_score->get_registry_entries().reference_starts[lcskpp_indices.back()];
+//  new_cluster->ref.end = local_score->get_registry_entries().reference_ends[lcskpp_indices.front()] - 1;
+//
+
+  const Vertices& registry_entries = local_score->get_registry_entries();
+
+  double indel_bandwidth_margin = 0.20f;
+  double score_gap = 0.0, score_dist = 0.0;
+
+  for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
+    if (new_cluster->lcskpp_indices.size() == 0) {
+      new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);
+      new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
+      new_cluster->num_anchors += 1;
+
+//      printf ("Tu sam 1! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
+//      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+//      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+//      printf ("    start: [%d, %d], end: [%d, %d], i = %ld\n", qpos_start, rpos_start, qpos_end, rpos_end, i);
+//      fflush(stdout);
+
+    } else {
+      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+//      printf ("    start: [%d, %d], end: [%d, %d], i = %ld\n", qpos_start, rpos_start, qpos_end, rpos_end, i);
+//      fflush(stdout);
+
+      int32_t prev_qpos_start = 0, prev_rpos_start = 0, prev_qpos_end = 0, prev_rpos_end = 0;
+      GetPositionsFromRegistry(registry_entries, lcskpp_indices, (i + 1), &prev_qpos_start, &prev_rpos_start, &prev_qpos_end, &prev_rpos_end);
+
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, prev_qpos_end, prev_rpos_end, indel_bandwidth_margin, -1, &score_gap, &score_dist);
+
+      if (ret_val > 0) {
+        ret_clusters.push_back(new_cluster);
+        new_cluster = new ClusterAndIndices;
+      }
+      new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);
+      new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
+      new_cluster->num_anchors += 1;
+//      printf ("Tu sam 2! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
+//      fflush(stdout);
+    }
+  }
+
+  if (new_cluster->lcskpp_indices.size() != 0) {
+    ret_clusters.push_back(new_cluster);
+  }
+
+  /// Generate the final ret_clusters that will be returned and used further.
+  for (int64_t i=0; i<ret_clusters.size(); i++) {
+    ret_clusters[i]->query.start = registry_entries.query_starts[ret_clusters[i]->lcskpp_indices.front()];
+    ret_clusters[i]->query.end = registry_entries.query_ends[ret_clusters[i]->lcskpp_indices.back()] - 1;
+    ret_clusters[i]->ref.start = registry_entries.reference_starts[ret_clusters[i]->lcskpp_indices.front()];
+    ret_clusters[i]->ref.end = registry_entries.reference_ends[ret_clusters[i]->lcskpp_indices.back()] - 1;
+
+    int64_t cluster_length = ret_clusters[i]->query.end - ret_clusters[i]->query.start + 1;
+    int64_t covered_bases = ret_clusters[i]->coverage;
+    float cluster_coverage = ((float) covered_bases) / ((float) cluster_length);
+
+    // Filter clusters which are too small.
+//    if ((min_num_anchors_in_cluster > 0 && min_cluster_length > 0 && min_cluster_coverage > 0) && ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster && cluster_length < min_cluster_length) {
+    if ((ret_clusters[i]->lcskpp_indices.size() <= min_num_anchors_in_cluster) &&
+        (cluster_length < min_cluster_length || covered_bases < min_cluster_covered_bases)) {
+      ret_clusters[i]->lcskpp_indices.clear();
+      continue;
+    }
+
+    ret_filtered_lcskpp_indices.insert(ret_filtered_lcskpp_indices.end(), ret_clusters[i]->lcskpp_indices.begin(), ret_clusters[i]->lcskpp_indices.end());
+//    printf ("ret_filtered_lcskpp_indices.size() = %ld\n", ret_filtered_lcskpp_indices.size());
+//    fflush(stdout);
+
+    /// Create indices for debugging purposes (so we can differentiate clusters).
+    if (ret_cluster_ids) {
+      std::vector<int32_t> cluster_indices(ret_clusters[i]->lcskpp_indices.size(), i);
+      ret_cluster_ids->insert(ret_cluster_ids->end(), cluster_indices.begin(), cluster_indices.end());
+    }
+
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), std::string(__FUNCTION__));
+    for (int64_t j=0; j<ret_clusters[i]->lcskpp_indices.size(); j++) {
+      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+      GetPositionsFromRegistry2(registry_entries, ret_clusters[i]->lcskpp_indices[j], &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("    [%ld] start: [%d, %d], end: [%d, %d]\n", j, qpos_start, rpos_start, qpos_end, rpos_end), "[]");
+    }
+  }
+
+  for (int64_t i = (ret_clusters.size() - 1); i >= 0; i--) {
+    if (ret_clusters[i]->lcskpp_indices.size() == 0) {
+      ret_clusters.erase(ret_clusters.begin() + i);
+    }
+  }
+
+  return 0;
+}
+
+int GenerateClustersDummy(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
+                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
+                     std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
+
+  ret_clusters.clear();
+
+  if (lcskpp_indices.size() == 0) { return 1; }
+
+  ClusterAndIndices *new_cluster = NULL;
+
+  new_cluster = new ClusterAndIndices;
+
+  new_cluster->query.start = local_score->get_registry_entries().query_starts[lcskpp_indices.back()];
+  new_cluster->query.end = local_score->get_registry_entries().query_ends[lcskpp_indices.front()] - 1;      // The '- 1' is because anchor end coordinate points to one base after the last inclusive base. Clusters should demarcate the exact start and end positions (start is the first base, end is the last base).
+  new_cluster->ref.start = local_score->get_registry_entries().reference_starts[lcskpp_indices.back()];
+  new_cluster->ref.end = local_score->get_registry_entries().reference_ends[lcskpp_indices.front()] - 1;
+
+  for (int64_t i=(lcskpp_indices.size() - 1); i >= 0; i--) {
+    new_cluster->lcskpp_indices.push_back(lcskpp_indices[i]);
+    new_cluster->coverage += local_score->get_registry_entries().covered_bases_queries[lcskpp_indices[i]];
+    new_cluster->num_anchors += 1;
+  }
+
+  ret_clusters.push_back(new_cluster);
+
+  /// Generate the final ret_clusters that will be returned and used further.
+  for (int64_t i=0; i<ret_clusters.size(); i++) {
+    int64_t cluster_length = ret_clusters[i]->query.end - ret_clusters[i]->query.start + 1;
+    int64_t covered_bases = ret_clusters[i]->coverage;
+    float cluster_coverage = ((float) covered_bases) / ((float) cluster_length);
+
+    ret_filtered_lcskpp_indices.insert(ret_filtered_lcskpp_indices.end(), ret_clusters[i]->lcskpp_indices.begin(), ret_clusters[i]->lcskpp_indices.end());
+
+    /// Create indices for debugging purposes (so we can differentiate clusters).
+    if (ret_cluster_ids) {
+      std::vector<int32_t> cluster_indices(ret_clusters[i]->lcskpp_indices.size(), i);
+      ret_cluster_ids->insert(ret_cluster_ids->end(), cluster_indices.begin(), cluster_indices.end());
+    }
+
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[Cluster %ld] cluster_length = %ld, covered_bases = %ld\n", i, cluster_length, covered_bases), "L1-PostProcessRegionWithLCS_");
+  }
+
+  return 0;
+}
+
+int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_score, const MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters, const std::vector<ClusterAndIndices *> &clusters) {
+  FILE *fp = fopen(out_file.c_str(), "a");
+  if (fp == NULL) { return 1; }
+
+  int64_t num_nonempty_clusters = 0;
+  for (int64_t i=0; i<clusters.size(); i++) {
+    if (clusters[i] && clusters[i]->lcskpp_indices.size() > 0) { num_nonempty_clusters += 1; }
+  }
+
+  // 1. Number of clusters, 2. Read ID, 3. Read len, 4. Target ID, 4. Target len, 5. Target reversed
+  fprintf (fp, "region\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\n", local_score->get_scores_id(), num_nonempty_clusters, read->get_sequence_id(), read->get_sequence_length(),
+           (local_score->get_region().reference_id % indexes[0]->get_num_sequences_forward()), indexes[0]->get_reference_lengths()[local_score->get_region().reference_id], (int32_t) local_score->get_region().reference_id >= indexes[0]->get_num_sequences_forward());
+  int64_t current_cluster = 0;
+  for (int64_t i=0; i<clusters.size(); i++) {
+    if (clusters[i] && clusters[i]->lcskpp_indices.size() > 0) {
+      current_cluster += 1;
+      // Cluster line:
+      //  cluster_id qstart qend rstart rend num_anchors num_covered_bases
+      fprintf (fp, "cluster\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\t%d\n", current_cluster, clusters[i]->query.start, clusters[i]->query.end, clusters[i]->ref.start, clusters[i]->ref.end, clusters[i]->num_anchors, clusters[i]->coverage);
+    }
+  }
+  fprintf (fp, "#\n");
+  fclose(fp);
+  return 0;
 }
