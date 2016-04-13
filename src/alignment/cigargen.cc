@@ -445,10 +445,10 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
   int64_t start_op = 0, end_op = alignment.size() - 1;
   if (skip_leading_and_trailing_insertions == true) {
     for (start_op = 0; start_op < alignment.size(); start_op++, read_position++) {
-      if (alignment[start_op] != EDLIB_I) { break; }
+      if (alignment[start_op] != EDLIB_I && alignment[start_op] != EDLIB_S) { break; }
     }
     for (end_op = (alignment.size() - 1); end_op >= 0; end_op--) {
-      if (alignment[end_op] != EDLIB_I) { break; }
+      if (alignment[end_op] != EDLIB_I && alignment[start_op] != EDLIB_S) { break; }
     }
   }
 

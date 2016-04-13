@@ -32,35 +32,56 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
   aln.is_aligned = true;
   aln.raw_alignment.clear();
 
+  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
+  int64_t reference_id = region_results->get_region_data().reference_id;
+  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
+  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
+
   LOG_DEBUG_SPEC("Aligning the beginning of the read (overhang).\n");
 
   /// Check if we need to extend the alignment to the left boundary. Also, even if the user specified it, if we are to close to the boundary, just clip it.
-  if (align_end_to_end == false || ((alignment_position_start - clip_count_front*2) > 0 && (alignment_position_start - clip_count_front*2) < region_ref_start)) {
+  if (align_end_to_end == false) { // || ((alignment_position_start - clip_count_front*2) > 0 && (alignment_position_start - clip_count_front*2) < region_ref_start)) {
     std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
     aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_front.begin(), insertions_front.end());
     aln.edit_distance = insertions_front.size();
 
-    LOG_DEBUG_SPEC("Skipping alignment of the beginning. align_end_to_end = %s, (alignment_position_start - clip_count_front*2) = %ld should be less than region_ref_start = %ld\n", (align_end_to_end == false) ? "false" : "true", ((alignment_position_start - clip_count_front*2)), region_ref_start);
+//    LOG_DEBUG_SPEC("Skipping alignment of the beginning. align_end_to_end = %s, (alignment_position_start - clip_count_front*2) = %ld should be less than region_ref_start = %ld\n", (align_end_to_end == false) ? "false" : "true", ((alignment_position_start - clip_count_front*2)), region_ref_start);
+    LOG_DEBUG_SPEC("Skipping alignment because end_to_end == false.\n");
   } else {
     LOG_DEBUG_SPEC("Performing the alignment.\n");
 
     /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
     int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
-    int8_t *reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+    int8_t *reversed_ref_front = NULL;
+    int64_t reversed_ref_len = 0;
+    if (clip_count_front*2  > (alignment_position_start - reference_start)) {
+      reversed_ref_front = reverse_data(ref_data + 0, (alignment_position_start - reference_start));
+      reversed_ref_len = alignment_position_start - reference_start;
+    } else {
+      reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+      reversed_ref_len = clip_count_front*2;
+    }
 
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
     std::vector<unsigned char> leftover_left_alignment;
     int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
-                                     (int8_t *) (reversed_ref_front), (clip_count_front*2),
-                                     -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
-                                     &leftover_left_start, &leftover_left_end,
-                                     &leftover_left_edit_distance, leftover_left_alignment);
+                                              (int8_t *) (reversed_ref_front), reversed_ref_len,
+                                              -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
+                                              &leftover_left_start, &leftover_left_end,
+                                              &leftover_left_edit_distance, leftover_left_alignment);
 
+    if (ret_code_right == 0) {
+      if (parameters->verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters->debug_read) {
+        std::string alignment_as_string = "";
 
-//    printf ("clip_count_front = %ld\n", clip_count_front);
-//    printf ("aln.ref_start = %ld\n", alignment_position_start - (leftover_left_end + 1) - ref_index_start);
-//    printf ("aln.ref_end = %ld\n", alignment_position_start - (leftover_left_end + 1) + leftover_left_end - ref_index_start);
-//    printf ("diff = %ld\n", (alignment_position_start + leftover_left_end - ref_index_start) - (alignment_position_start - ref_index_start));
+        LOG_DEBUG_SPEC("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1));
+        alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
+                                                     (const unsigned char *) (reversed_ref_front), reversed_ref_len,
+                                                     (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
+                                                     (0), EDLIB_MODE_SHW);
+        LOG_DEBUG_SPEC("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str());
+      }
+    }
 
     /// Check if the return code is ok. Otherwise, just clip the front.
     /// Added on 15.11.2015.: check if the edit distance of the front part is too high. EDlib will automatically return an error code, but SeqAn won't.
@@ -72,16 +93,17 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
       aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_front.begin(), insertions_front.end());
       aln.edit_distance = insertions_front.size();
 
-      if (leftover_left_edit_distance > clip_count_front/2) {
-        LOG_DEBUG_SPEC("Edit distance too big (edit_distance = %ld, max = %ld), clipping the end instead!\n", leftover_left_edit_distance, clip_count_front/2);
+      if (ret_code_right == 0) {
+        LOG_DEBUG_SPEC("Not using the alignment because edit distance too big (edit_distance = %ld, max = %ld), clipping the end instead!\n", leftover_left_edit_distance, clip_count_front/2);
       } else {
-        LOG_DEBUG_SPEC("AlignmentFunctionSHW returned with an error! ret_code_right = %ld\n", ret_code_right);
+        LOG_DEBUG_SPEC("Not using the alignment because AlignmentFunctionSHW returned with an error! ret_code_right = %ld\n", ret_code_right);
       }
 
     } else {
       if (leftover_left_alignment.size() == 0) {
         std::vector<unsigned char> insertions_front(clip_count_front, EDLIB_I);
         aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_front.begin(), insertions_front.end());
+
       } else {
         unsigned char *reversed_alignment = reverse_data(&(leftover_left_alignment[0]), leftover_left_alignment.size());
         aln.raw_alignment.insert(aln.raw_alignment.end(), reversed_alignment, reversed_alignment + leftover_left_alignment.size());
@@ -97,17 +119,6 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
         aln.ref_end = aln.raw_pos_end - ref_index_start;
         if (reversed_alignment)
           free(reversed_alignment);
-      }
-
-      if (parameters->verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters->debug_read) {
-        std::string alignment_as_string = "";
-
-        LOG_DEBUG_SPEC("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1));
-        alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
-                                                     (const unsigned char *) (reversed_ref_front), clip_count_front*2,
-                                                     (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
-                                                     (0), EDLIB_MODE_SHW);
-        LOG_DEBUG_SPEC("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str());
       }
 
       if (reversed_query_front)
@@ -280,17 +291,22 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
   aln.ref_end = aln.raw_pos_end - ref_index_start;
   aln.raw_alignment.clear();
 
+  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
+  int64_t reference_id = region_results->get_region_data().reference_id;
+  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
+  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
+
   LOG_DEBUG_SPEC("Aligning the end of the read (overhang).\n");
 
   /// Handle the clipping at the end, or extend alignment to the end of the sequence.
-  if (align_end_to_end == false || (alignment_position_end + 1 + clip_count_back * 2) >= (ref_start + ref_len)) {
+  if (align_end_to_end == false) { // || (alignment_position_end + 1 + clip_count_back * 2) >= (ref_start + ref_len)) {
       std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
       aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_back.begin(), insertions_back.end());
       aln.edit_distance = insertions_back.size();
       aln.is_aligned = true;
 
-      LOG_DEBUG_SPEC("Skipping alignment of the end.\n");
-      LOG_DEBUG_SPEC("Skipping alignment of the end. align_end_to_end = %s, (alignment_position_end + 1 + clip_count_back * 2) = %ld should be less than (ref_start + ref_len) = %ld\n", (align_end_to_end == false) ? "false" : "true", (alignment_position_end + 1 + clip_count_back * 2), (ref_start + ref_len));
+      LOG_DEBUG_SPEC("Skipping alignment of the end because either end_to_end == false.\n");
+//      LOG_DEBUG_SPEC("Skipping alignment of the end. align_end_to_end = %s, (alignment_position_end + 1 + clip_count_back * 2) = %ld should be less than (ref_start + ref_len) = %ld\n", (align_end_to_end == false) ? "false" : "true", (alignment_position_end + 1 + clip_count_back * 2), (ref_start + ref_len));
   } else {
     LOG_DEBUG_SPEC("Performing the alignment.\n");
 
@@ -298,24 +314,36 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
     int64_t leftover_right_start = 0, leftover_right_end = 0, leftover_right_edit_distance = 0;
     std::vector<unsigned char> leftover_right_alignment;
     int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),
-                                     (int8_t *) (ref_data + alignment_position_end + 1), (clip_count_back*2),
+                                     (int8_t *) (ref_data + alignment_position_end + 1), std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)),
                                      -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                      &leftover_right_start, &leftover_right_end,
                                      &leftover_right_edit_distance, leftover_right_alignment);
+
+    if (ret_code_right == 0) {
+      if (parameters->verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters->debug_read) {
+        std::string alignment_as_string = "";
+        alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
+                                                     (const unsigned char *) (ref_data + alignment_position_end + 1), std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)),
+                                                     (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
+                                                     (0), EDLIB_MODE_SHW);
+        LOG_DEBUG_SPEC("Aligning the end of the read:\n%s\n", alignment_as_string.c_str());
+      }
+    }
+
     /// Check if the return code is ok. Otherwise, just clip the back.
     /// Added on 15.11.2015.: check if the edit distance of the back part is too high. EDlib will automatically return an error code, but SeqAn won't.
     /// An example is when the entire back part does not match (e.g. alignment of a read to a part of the reference consisted of N bases).
-    if (ret_code_right != 0 || leftover_right_edit_distance > clip_count_back/2) {
+    if (ret_code_right != 0 || leftover_right_edit_distance > clip_count_back/1.9f) {
       // TODO: This is a nasty hack. EDlib used to crash when query and target are extremely small, e.g. query = "C" and target = "TC".
       // In this manner we just ignore the trailing part, and clip it.
       std::vector<unsigned char> insertions_back(clip_count_back, EDLIB_I);
       aln.raw_alignment.insert(aln.raw_alignment.end(), insertions_back.begin(), insertions_back.end());
       aln.edit_distance = insertions_back.size();
       aln.is_aligned = true;
-      if (leftover_right_edit_distance > clip_count_back/2) {
-        LOG_DEBUG_SPEC("Edit distance too big (edit_distance = %ld, max = %ld, clip_count_back = %ld), clipping the end instead!\n", leftover_right_edit_distance, clip_count_back/2, clip_count_back);
+      if (ret_code_right == 0) {
+        LOG_DEBUG_SPEC("Not using the alignment because edit distance too big (edit_distance = %ld, max = %ld, clip_count_back = %ld), clipping the end instead!\n", leftover_right_edit_distance, clip_count_back/2, clip_count_back);
       } else {
-        LOG_DEBUG_SPEC("AlignmentFunctionSHW returned with an error! ret_code_right = %ld\n", ret_code_right);
+        LOG_DEBUG_SPEC("Not using the alignment because AlignmentFunctionSHW returned with an error! ret_code_right = %ld\n", ret_code_right);
       }
 
     } else {
@@ -326,15 +354,6 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
         aln.is_aligned = true;
 
       } else {
-
-        if (parameters->verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters->debug_read) {
-          std::string alignment_as_string = "";
-          alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
-                                                       (const unsigned char *) (ref_data + alignment_position_end + 1), clip_count_back*2,
-                                                       (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
-                                                       (0), EDLIB_MODE_SHW);
-          LOG_DEBUG_SPEC("Aligning the end of the read:\n%s\n", alignment_as_string.c_str());
-        }
 
         aln.raw_alignment.insert(aln.raw_alignment.end(), leftover_right_alignment.begin(), leftover_right_alignment.end());
         aln.edit_distance = leftover_right_edit_distance;

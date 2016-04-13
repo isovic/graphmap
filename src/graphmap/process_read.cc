@@ -509,9 +509,11 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
 
       /// Keep the output if alignment is insane for debug purposes.
       if (ret_aln != ALIGNMENT_NOT_SANE) {
+        region_data->get_mapping_metadata().unmapped_reason += FormatString("__(Alignment_is_sane_but_there_is_another_problem)");
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but ret_aln != 0 (ret_aln = %d)!\n", ret_aln), "GenerateAlignments_");
         continue;
       } else {
+        region_data->get_mapping_metadata().unmapped_reason += FormatString("__(Alignment_is_insane)");
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane (ret_aln = %d)!\n", ret_aln), "GenerateAlignments_");
       }
     }
@@ -526,22 +528,6 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
         }
       }
     }
-
-//    /// TODO: This needs to happen in all cases! Currently only for testing purposes for anchored alignment.
-//    if (parameters->alignment_algorithm == "anchor") {
-//      /// Check if something went wrong and the read is unmapped.
-//      if (evalue_left_part > ((double) 1e+300) || evalue_right_part > ((double) 1e+300) ||
-//          (evalue_left_part > ((double) 1e0) && mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().cov_bases_query < 0.10f * read->get_sequence_length())) {
-//
-//        mapping_data->unmapped_reason += FormatString("__Evalue_is_too_large__evalue_left_part=%e__evalue_right_part=%e", evalue_left_part, evalue_right_part);
-//        mapping_data->final_mapping_ptrs.at(i)->SetAligned(false);
-//        mapping_data->final_mapping_ptrs.at(i)->get_mapping_metadata().unmapped_reason = mapping_data->unmapped_reason;
-//
-//        /// Keep the output if alignment is insane for debug purposes.
-//        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane!\n"), "GenerateAlignments_");
-//      }
-//    }
-
   }
 
   /// Check if after everything, there are no valid alignments. If so, concatenate all unmapped_reasons into the top one.
@@ -561,11 +547,6 @@ int GraphMap::GenerateAlignments2_(MappingData *mapping_data, const Index *index
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str()), "GenerateAlignments_");
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
   }
-
-
-//  printf ("mapping_data->mapping_quality = %d\n", mapping_data->mapping_quality);
-//  fflush(stdout);
-//  exit(1);
 
   return 0;
 }
