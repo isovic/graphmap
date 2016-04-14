@@ -18,6 +18,7 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
   int64_t ref_id = (orientation == kForward) ? (abs_ref_id) : (abs_ref_id - index->get_num_sequences_forward());
   int64_t ref_start = index->get_reference_starting_pos()[region.reference_id];
   int64_t ref_len = index->get_reference_lengths()[region.reference_id];
+  int64_t reference_length = index->get_reference_lengths()[abs_ref_id];
 
   int8_t *reg_data = NULL;       // The data of the region.
   int64_t reg_data_len = 0;         // Length of the region_data.
@@ -26,6 +27,8 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
   bool is_cleanup_required = NULL;  // If true, the region_data will have to be freed manually.
   int64_t l1_start = 0;             // The start position of the L1 determined boundaries, but within the region (relative to region start).
   int64_t l1_end = 0;               // The end position of the L1 determined boundaries, but within the region (relative to region start).
+
+  int64_t region_ref_start = region.start;            // Position of the start of the region on the original Index data. E.g. reg_data[0] is the same base as index->get_data()[index_pos].
 
   // Here, a pointer to the beginning of the region is obtained. If the region was linear, reg_data just points to a location in the Index.
   // If the region was circular, reg_data points to a newly allocated memory for the concatenated region, and needs to be cleared.
@@ -105,8 +108,25 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
     LOG_DEBUG_SPEC("Alignment is circular and will be split.\n");
     AlignmentResults aln_l;
     AlignmentResults aln_r;
-    // In case orientation == kReverse, the SplitCircularAlignment function will u
     SplitCircularAlignment(&aln, pos_of_ref_end, ref_start, ref_len, &aln_l, &aln_r);
+
+    // These need to be fixed. The rest of the above code thinks that the region is linear and not circular.
+    // In case the region is linear, anchors/clusters will have absolute reference coordinates.
+    // The absolute coordinates allow the reference data to be accessed seemlesly.
+    // For the circular alignment, the data needed to be copied into a new array, which is indexed from zero.
+    // That's why the ref coordinates of anchors/clusters do not correspond to their reference positions. The region
+    // information still contains still contains the region's start position on the reference, and this one will be
+    // subtracted from the ref coordinates of anchors/clusters when calculating aln.reg_pos_start and aln.reg_pos_end.
+    // For this reason we need to increase it back to obtain correct coodinates.
+//    aln.reg_pos_start += region_ref_start;
+//    aln.reg_pos_end += region_ref_start;
+//    aln.raw_pos_start += region_ref_start;
+//    aln.raw_pos_end += region_ref_start;
+//    aln.ref_start += region_ref_start;
+//    aln.ref_end += region_ref_start;
+
+//    SplitCircularAlignment(&aln, pos_of_ref_end, 0, reference_length, &aln_l, &aln_r);
+
     region_results->AddAlignmentData(aln_l);
     region_results->AddAlignmentData(aln_r);
   }
@@ -114,6 +134,8 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
   /// Fill out statistics for each alignment (E-value calculation, couting of CIGAR operations, etc.) and check if the alignments are sane.
   for (int32_t i=0; i<region_results->get_alignments().size(); i++) {
     AlignmentResults *curr_aln = &region_results->get_alignments()[i];
+
+    if (curr_aln->is_aligned == false) { continue; }
 
     /// Verbose debug.
     LOG_DEBUG_SPEC("Alignment part %d / %d:\n", i, region_results->get_alignments().size());

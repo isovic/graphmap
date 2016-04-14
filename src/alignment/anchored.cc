@@ -130,8 +130,6 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     }
   }
 
-//  exit(1);
-
   return 0;
 }
 
@@ -327,6 +325,11 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
 //    if (ref_len_for_aln == 0) {
 //    }
 
+    if (clip_count_back == 0) {
+    }
+
+    LOG_DEBUG_SPEC("clip_count_back = %ld, ref_len_for_aln = %ld\n", clip_count_back, ref_len_for_aln);
+
     std::vector<unsigned char> leftover_right_alignment;
     int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),
                                      (int8_t *) (ref_data + alignment_position_end + 1), ref_len_for_aln,
@@ -512,8 +515,9 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
   int64_t abs_ref_id = region.reference_id;
   int64_t ref_id = region.reference_id % index->get_num_sequences_forward();
-  int64_t ref_start = index->get_reference_starting_pos()[abs_ref_id];
-  int64_t ref_len = index->get_reference_lengths()[abs_ref_id];
+  int64_t ref_data_start = index->get_reference_starting_pos()[abs_ref_id];
+  int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
+  int64_t reference_length = index->get_reference_lengths()[abs_ref_id];
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
 
   int8_t *ref_data  = (int8_t *) index->get_data();       // The data of the region.
@@ -528,8 +532,10 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
     // Here, a pointer to the beginning of the region is obtained. If the region was linear, reg_data just points to a location in the Index.
     // If the region was circular, reg_data points to a newly allocated memory for the concatenated region, and needs to be cleared.
-    int retval_region = GetRegionData(index, &region, &ref_data, &ref_len, &region_ref_start, &pos_of_ref_end, &is_cleanup_required);
-    ref_start = 0;
+    int retval_region = GetRegionData(index, &region, &ref_data, &ref_data_len, &region_ref_start, &pos_of_ref_end, &is_cleanup_required);
+    ref_data_start = 0;
+
+//    LOG_DEBUG_HIGH("\nConcatenating regions for circular alignment.\n");
   }
 
 
@@ -545,7 +551,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
   default_aln.is_reverse = (orientation == kReverse) ? true : false;
   default_aln.ref_id = ref_id;
   default_aln.ref_header = index->get_headers()[ref_id];
-  default_aln.ref_len = index->get_reference_lengths()[ref_id];
+  default_aln.ref_len = reference_length;
   default_aln.query_id = read->get_sequence_absolute_id();
   default_aln.query_header = read->get_header();
   default_aln.query_len = read->get_sequence_length();
@@ -588,7 +594,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
   /// Aligning the begining of the read (in front of the first anchor).
   if (clip_count_front > 0) {
-    int ret_code_front = AlignFront(AlignmentFunctionSHW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, clip_count_front, alignment_position_start, align_end_to_end, alns[num_alns]);
+    int ret_code_front = AlignFront(AlignmentFunctionSHW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, clip_count_front, alignment_position_start, align_end_to_end, alns[num_alns]);
     alns_anchor_type[num_alns] = kAlnBeginning;
     num_alns += 1;
     if (ret_code_front) { return ret_code_front; }
@@ -602,7 +608,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
     ///////////////////////////
     /// Align the anchor.
-    int ret_code_anchor = AlignAnchor(AlignmentFunctionNW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, i, alns[num_alns]);
+    int ret_code_anchor = AlignAnchor(AlignmentFunctionNW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, i, alns[num_alns]);
     alns_anchor_type[num_alns] = kAlnCluster;
     num_alns += 1;
     if (ret_code_anchor) { return ret_code_anchor; }
@@ -611,7 +617,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     ///////////////////////////
     /// Align in between the anchors.
     if ((i + 1) < region_results->get_mapping_data().clusters.size()) {
-      int ret_code_inbetween = AlignInBetweenAnchors(AlignmentFunctionNW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, i, alns[num_alns]);
+      int ret_code_inbetween = AlignInBetweenAnchors(AlignmentFunctionNW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, i, alns[num_alns]);
       alns_anchor_type[num_alns] = kAlnInBetween;
       num_alns += 1;
       if (ret_code_inbetween) { return ret_code_inbetween; }
@@ -621,7 +627,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
   /// Aligning the end of the read.
   if (clip_count_back > 0) {
     LOG_DEBUG_SPEC("Trying to align the end of the read. clip_count_back = %ld\n", clip_count_back);
-    int ret_code_back = AlignBack(AlignmentFunctionSHW, read, index, parameters, region_results, ref_start, region_ref_start, ref_data, ref_len, clip_count_back, ref_start, alignment_position_end, align_end_to_end, alns[num_alns]);
+    int ret_code_back = AlignBack(AlignmentFunctionSHW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, clip_count_back, ref_data_start, alignment_position_end, align_end_to_end, alns[num_alns]);
 //    if (!ret_code_back) {
       alns_anchor_type[num_alns] = kAlnEnding;
       num_alns += 1;
@@ -707,18 +713,73 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
       region_results->AddAlignmentData(aln);
 
     } else {
-      LOG_DEBUG_SPEC("Alignment is circular and will be split.\n");
+      LOG_DEBUG_SPEC("Alignment is circular and will be split. pos_of_ref_end = %ld, ref_len = %ld\n", pos_of_ref_end, ref_data_len);
+
+      // These need to be fixed. The rest of the above code thinks that the region is linear and not circular.
+      // In case the region is linear, anchors/clusters will have absolute reference coordinates.
+      // The absolute coordinates allow the reference data to be accessed seemlesly.
+      // For the circular alignment, the data needed to be copied into a new array, which is indexed from zero.
+      // That's why the ref coordinates of anchors/clusters do not correspond to their reference positions. The region
+      // information still contains still contains the region's start position on the reference, and this one will be
+      // subtracted from the ref coordinates of anchors/clusters when calculating aln.reg_pos_start and aln.reg_pos_end.
+      // For this reason we need to increase it back to obtain correct coodinates.
+      aln.reg_pos_start += region_ref_start;
+      aln.reg_pos_end += region_ref_start;
+      aln.raw_pos_start += region_ref_start;
+      aln.raw_pos_end += region_ref_start;
+      aln.ref_start += region_ref_start;
+      aln.ref_end += region_ref_start;
+
       AlignmentResults aln_l;
       AlignmentResults aln_r;
-      SplitCircularAlignment(&aln, pos_of_ref_end, ref_start, ref_len, &aln_l, &aln_r);
+      SplitCircularAlignment(&aln, pos_of_ref_end, 0, reference_length, &aln_l, &aln_r);
+//      LOG_DEBUG_SPEC("aln:\n");
+//      LOG_DEBUG_SPEC("  aln.query_start = %ld\n", aln.query_start);
+//      LOG_DEBUG_SPEC("  aln.query_end = %ld\n", aln.query_end);
+//      LOG_DEBUG_SPEC("  aln.ref_data_start = %ld\n", aln.ref_start);
+//      LOG_DEBUG_SPEC("  aln.ref_end = %ld\n", aln.ref_end);
+//      LOG_DEBUG_SPEC("  aln.raw_start = %ld\n", aln.raw_pos_start);
+//      LOG_DEBUG_SPEC("  aln.raw_end = %ld\n", aln.raw_pos_end);
+//      LOG_DEBUG_SPEC("  aln.reg_pos_start = %ld\n", aln.reg_pos_start);
+//      LOG_DEBUG_SPEC("  aln.reg_pos_end = %ld\n", aln.reg_pos_end);
+//      LOG_DEBUG_SPEC("  aln.is_aligned = %s\n", (aln.is_aligned == true) ? "true" : "false");
+//      LOG_DEBUG_SPEC("reference_length = %ld\n", reference_length);
+//      LOG_DEBUG_SPEC_NEWLINE;
+//      LOG_DEBUG_SPEC("aln_l:\n");
+//      LOG_DEBUG_SPEC("  aln_l.query_start = %ld\n", aln_l.query_start);
+//      LOG_DEBUG_SPEC("  aln_l.query_end = %ld\n", aln_l.query_end);
+//      LOG_DEBUG_SPEC("  aln_l.ref_start = %ld\n", aln_l.ref_start);
+//      LOG_DEBUG_SPEC("  aln_l.ref_end = %ld\n", aln_l.ref_end);
+//      LOG_DEBUG_SPEC("  aln_l.raw_start = %ld\n", aln_l.raw_pos_start);
+//      LOG_DEBUG_SPEC("  aln_l.raw_end = %ld\n", aln_l.raw_pos_end);
+//      LOG_DEBUG_SPEC("  aln_l.reg_pos_start = %ld\n", aln_l.reg_pos_start);
+//      LOG_DEBUG_SPEC("  aln_l.reg_pos_end = %ld\n", aln_l.reg_pos_end);
+//      LOG_DEBUG_SPEC("  aln_l.is_aligned = %s\n", (aln_l.is_aligned == true) ? "true" : "false");
+//      LOG_DEBUG_SPEC_NEWLINE;
+//      LOG_DEBUG_SPEC("aln_r:\n");
+//      LOG_DEBUG_SPEC("  aln_r.query_start = %ld\n", aln_r.query_start);
+//      LOG_DEBUG_SPEC("  aln_r.query_end = %ld\n", aln_r.query_end);
+//      LOG_DEBUG_SPEC("  aln_r.ref_start = %ld\n", aln_r.ref_start);
+//      LOG_DEBUG_SPEC("  aln_r.ref_end = %ld\n", aln_r.ref_end);
+//      LOG_DEBUG_SPEC("  aln_r.raw_start = %ld\n", aln_r.raw_pos_start);
+//      LOG_DEBUG_SPEC("  aln_r.raw_end = %ld\n", aln_r.raw_pos_end);
+//      LOG_DEBUG_SPEC("  aln_r.reg_pos_start = %ld\n", aln_r.reg_pos_start);
+//      LOG_DEBUG_SPEC("  aln_r.reg_pos_end = %ld\n", aln_r.reg_pos_end);
+//      LOG_DEBUG_SPEC("  aln_r.is_aligned = %s\n", (aln_r.is_aligned == true) ? "true" : "false");
+
       region_results->AddAlignmentData(aln_l);
       region_results->AddAlignmentData(aln_r);
+//      if (aln_l.is_aligned == true && aln_r.is_aligned == true) {
+//        LOG_DEBUG_HIGH("\nCircular!\n");
+//      }
     }
   }
 
   /// Fill out statistics for each alignment (E-value calculation, couting of CIGAR operations, etc.) and check if the alignments are sane.
   for (int32_t i=0; i<region_results->get_alignments().size(); i++) {
     AlignmentResults *curr_aln = &region_results->get_alignments()[i];
+
+    if (curr_aln->is_aligned == false) { continue; }
 
     /// Verbose debug.
     LOG_DEBUG_SPEC("Alignment part %d / %d:\n", (i + 1), region_results->get_alignments().size());
@@ -736,7 +797,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_start : curr_aln->raw_pos_end, abs_ref_id, 0, NULL, &final_aln_pos_start, NULL);
     index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_end : curr_aln->raw_pos_start, abs_ref_id, 0, NULL, &final_aln_pos_end, NULL);
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
-    curr_aln->ref_end = final_aln_pos_end; // % ref_len;
+    curr_aln->ref_end = final_aln_pos_end; // % ref_data_len;
 
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
@@ -745,7 +806,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->raw_pos_start);
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
-    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), ref_data, abs_ref_id, curr_aln->raw_pos_start, orientation,
+    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->raw_pos_start, orientation,
                              parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
                              &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
 //    LOG_DEBUG_SPEC("Calculating the E-value.\n");

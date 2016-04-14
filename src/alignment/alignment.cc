@@ -75,8 +75,8 @@ void VerboseAlignment(const SingleSequence *read, const Index *index, const Prog
        aln->raw_pos_start, aln->raw_pos_end, aln->edit_distance);
     LOG_DEBUG_SPEC("Alignment:\n%s\n",
        alignment_as_string.c_str());
-    LOG_DEBUG_SPEC("\nref_start = %ld\nref_end = %ld\nraw_pos_start = %ld\nraw_pos_end = %ld\nquery_start = %ld\nquery_end = %ld\nreg_pos_start = %ld\nreg_pos_end = %ld\norientation = %s\nread_len = %ld\n",
-                   aln->ref_start, aln->ref_end, aln->raw_pos_start, aln->raw_pos_end, aln->query_start, aln->query_end, aln->reg_pos_start, aln->reg_pos_end, (aln->orientation == kForward) ? "fwd" : "rev", read->get_sequence_length());
+    LOG_DEBUG_SPEC("\nref_start = %ld\nref_end = %ld\nraw_pos_start = %ld\nraw_pos_end = %ld\nquery_start = %ld\nquery_end = %ld\nreg_pos_start = %ld\nreg_pos_end = %ld\norientation = %s\nread_len = %ld\nis_aligned = %s\n",
+                   aln->ref_start, aln->ref_end, aln->raw_pos_start, aln->raw_pos_end, aln->query_start, aln->query_end, aln->reg_pos_start, aln->reg_pos_end, (aln->orientation == kForward) ? "fwd" : "rev", read->get_sequence_length(), (aln->is_aligned == true) ? "true" : "false");
   }
 }
 
@@ -169,19 +169,33 @@ int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_en
 // pos_of_ref_end is the distance from the beginning of the region to the last base of the reference, before the beginning of the reference is concatenated.
 // ref_start is used to 'rewind' the right part of the circular alignment.
 int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, int64_t ref_start, int64_t ref_len, AlignmentResults *aln_l, AlignmentResults *aln_r) {
-  *aln_l = *aln;
-  *aln_r = *aln;
 
   if (aln->reg_pos_start > pos_of_ref_end) {
+    *aln_r = *aln;
+
     // The entire alignment is on the right part of the circular region.
     aln_l->is_aligned = false;
+
+    // Fix the starting (and ending) coordinates of the right alignment part, because they would currently
+    // be placed outside of the reference coordinate space.
+    aln_r->ref_start = aln_r->ref_start - ref_len;             // Update the reference alignment coordinates. This one will be converted to local ref coord.
+    aln_r->ref_end = aln_r->ref_end - ref_len;                                // Update the reference alignment coordinates. This one will be converted to local ref coord.
+    aln_r->raw_pos_start = aln_r->raw_pos_start - ref_len;     // Update the reference alignment coordinates. This one will be converted to local ref coord.
+    aln_r->raw_pos_end = aln_r->raw_pos_end - ref_len;                       // Update the reference alignment coordinates. This one will be converted to local ref coord.
+
     return 0;
 
   } else if (aln->reg_pos_end <= pos_of_ref_end) {
+    *aln_l = *aln;
+
     // The entire alignment is on the left part of the circular region.
     aln_r->is_aligned = false;
+
     return 0;
   }
+
+  *aln_l = *aln;
+  *aln_r = *aln;
 
   int64_t end_on_aln = 0, end_on_read = 0, end_on_ref = 0;
   int64_t start_on_aln = 0, start_on_read = 0, start_on_ref = 0;
@@ -191,8 +205,10 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
                   &start_on_aln, &start_on_read, &start_on_ref);
 
   // Trim the left part of the alignment.
-  aln_l->raw_pos_end = aln_l->raw_pos_start + end_on_ref;     // Update the reference alignment coordinates.
+  aln_l->ref_end = aln_r->ref_start + end_on_ref;             // Update the reference alignment coordinates. This one will be converted to local ref coord.
+  aln_l->raw_pos_end = aln_l->raw_pos_start + end_on_ref;     // Update the raw reference alignment coordinates. This one will be left unchanged.
   aln_l->reg_pos_end = aln_l->reg_pos_start + end_on_ref;     // Update the region alignment coordinates.
+  aln_l->query_end = aln_l->query_start + end_on_read;        // Update the query coordinate.
   int64_t clip_l = aln_l->query_len - (end_on_read + 1);
   uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
   memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
@@ -205,9 +221,12 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
   if (aln_l->orientation == kReverse) ReverseArray(aln_l->alignment);
 
   // Trim the right part of the alignment.
-  aln_r->raw_pos_start = aln_r->raw_pos_start + start_on_ref - ref_len;
-  aln_r->raw_pos_end = aln_r->raw_pos_end - ref_len;
-  aln_r->reg_pos_start = aln_r->reg_pos_start + start_on_ref;
+  aln_r->ref_start = aln_r->ref_start + start_on_ref - ref_len;             // Update the reference alignment coordinates. This one will be converted to local ref coord.
+  aln_r->ref_end = aln_r->ref_end - ref_len;                                // Update the reference alignment coordinates. This one will be converted to local ref coord.
+  aln_r->raw_pos_start = aln_r->raw_pos_start + start_on_ref - ref_len;     // Update the reference alignment coordinates. This one will be converted to local ref coord.
+  aln_r->raw_pos_end = aln_r->raw_pos_end  - ref_len;                       // Update the reference alignment coordinates. This one will be converted to local ref coord.
+  aln_r->reg_pos_start = aln_r->reg_pos_start + start_on_ref;               // Update the region alignment coordinates.
+  aln_r->query_start = aln_r->query_start + start_on_read;                  // Update the query coordinate.
   int64_t clip_r = start_on_read;
   int64_t copy_r = (aln->raw_alignment.size() - start_on_aln);
   uint8_t *alignment_r = (uint8_t *) malloc(sizeof(uint8_t) * (copy_r + clip_r + 1));
