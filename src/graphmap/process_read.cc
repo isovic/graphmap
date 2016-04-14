@@ -37,7 +37,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   ///// Perform Region Selection /////
   ////////////////////////////////////
   clock_t begin_clock = clock();
-  int64_t bin_size = (parameters->alignment_approach == "overlapper") ? -1 : read->get_sequence_length() / 3;
+  int64_t bin_size = (parameters->overlapper == true) ? -1 : read->get_sequence_length() / 3;
 
 //  RegionSelection_(bin_size, mapping_data, indexes, read, parameters);
 //  RegionSelectionNoBins_(bin_size, mapping_data, indexes, read, parameters);
@@ -97,7 +97,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, bin_value_threshold);
 
   float min_allowed_bin_value = 0.0f;
-  min_allowed_bin_value = std::floor(parameters->min_bin_percent * mapping_data->bins.front().bin_value);
+  min_allowed_bin_value = std::min(std::floor(parameters->min_bin_percent * mapping_data->bins.front().bin_value), 2.0);
 
 //  if (parameters->parsimonious_mode) {
 //    min_allowed_bin_value = (0.50f * mapping_data->bins.front().bin_value);
@@ -108,10 +108,13 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 //  }
 
   int64_t max_num_regions = parameters->max_num_regions;
-  if (parameters->alignment_approach == "overlapper") {
-    max_num_regions = mapping_data->bins.size();
-    min_allowed_bin_value = std::min(0.10f * read->get_sequence_length(), 100.0f);
-  }
+  if (max_num_regions < 0) { max_num_regions = mapping_data->bins.size(); }
+
+// This was commented out on 14.04.2016.
+//  if (parameters->` == true) {
+//    max_num_regions = mapping_data->bins.size();
+//    min_allowed_bin_value = std::min(0.10f * read->get_sequence_length(), 100.0f);
+//  }
 
   mapping_data->num_region_iterations = 0;
 
@@ -121,6 +124,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 100 scoring bins:\n"), "ProcessRead");
     for (int64_t i = 0; i < mapping_data->bins.size() && i < 100; i++) {
+      if (mapping_data->bins[i].bin_value == 0) { break; }
       Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
       ScoreRegistry local_score(region, i);
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
@@ -148,13 +152,14 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     // If the ret_check value is zero, then just continue as normal.
     int ret_check = 0;
 
-    if (parameters->alignment_approach != "overlapper") {
+    if (parameters->overlapper == false) {
       ret_check = CheckRegionSearchFinished_(i, min_allowed_bin_value, parameters->bin_threshold_step, &bin_value_threshold, mapping_data, read, parameters);
     } else {
-      if (mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value)
+      if (mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value) {
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("CheckRegionSearchFinished because mapping_data->bins[i].bin_value < 1 || mapping_data->bins[i].bin_value < min_allowed_bin_value. mapping_data->bins[i].bin_value = %f, min_allowed_bin_value = %f\n", mapping_data->bins[i].bin_value, min_allowed_bin_value), "ProcessRead");
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: i = %ld.\n", i), "ProcessRead");
         break;
+      }
     }
 
     // Region search needs to stop.

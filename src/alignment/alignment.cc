@@ -14,7 +14,8 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
 //  bool spliced_alignment = false;
 //  bool align_end_to_end = parameters->alignment_algorithm != "spliced";
 //  bool spliced_alignment = parameters->alignment_algorithm == "spliced";
-  bool align_end_to_end = parameters->use_spliced || parameters->use_split || (!parameters->disable_end_to_end);
+//  bool align_end_to_end = !parameters->use_spliced || !parameters->use_split || (!parameters->disable_end_to_end);
+  bool align_end_to_end = !parameters->use_spliced && !parameters->use_split && (!parameters->disable_end_to_end);
   bool spliced_alignment = parameters->use_spliced || parameters->use_split;
 
     if (parameters->alignment_algorithm == "gotoh") {
