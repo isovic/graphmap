@@ -110,23 +110,6 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
     AlignmentResults aln_r;
     SplitCircularAlignment(&aln, pos_of_ref_end, ref_start, ref_len, &aln_l, &aln_r);
 
-    // These need to be fixed. The rest of the above code thinks that the region is linear and not circular.
-    // In case the region is linear, anchors/clusters will have absolute reference coordinates.
-    // The absolute coordinates allow the reference data to be accessed seemlesly.
-    // For the circular alignment, the data needed to be copied into a new array, which is indexed from zero.
-    // That's why the ref coordinates of anchors/clusters do not correspond to their reference positions. The region
-    // information still contains still contains the region's start position on the reference, and this one will be
-    // subtracted from the ref coordinates of anchors/clusters when calculating aln.reg_pos_start and aln.reg_pos_end.
-    // For this reason we need to increase it back to obtain correct coodinates.
-//    aln.reg_pos_start += region_ref_start;
-//    aln.reg_pos_end += region_ref_start;
-//    aln.raw_pos_start += region_ref_start;
-//    aln.raw_pos_end += region_ref_start;
-//    aln.ref_start += region_ref_start;
-//    aln.ref_end += region_ref_start;
-
-//    SplitCircularAlignment(&aln, pos_of_ref_end, 0, reference_length, &aln_l, &aln_r);
-
     region_results->AddAlignmentData(aln_l);
     region_results->AddAlignmentData(aln_r);
   }
