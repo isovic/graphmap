@@ -185,25 +185,25 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
   if (parameters.calc_only_index == false) {
     // Check if index already exists, if not generate it.
-    FILE *fp = fopen(parameters.index_reference_dir.c_str(), "r");
+    FILE *fp = fopen(parameters.index_file.c_str(), "r");
     if (fp == NULL) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
     } else {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
     }
-    int prim_index_loaded = index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_reference_dir, (parameters.verbose_level > 0));
+    int prim_index_loaded = index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
     if (prim_index_loaded) { return 1; }
 
     if (parameters.parsimonious_mode == false ) {
-      fp = fopen((parameters.index_reference_dir + std::string("sec")).c_str(), "r");
+      fp = fopen((parameters.index_file + std::string("sec")).c_str(), "r");
       if (fp == NULL) {
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
       } else {
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
         fclose (fp);
       }
-      int sec_index_loaded = index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_reference_dir + std::string("sec"), (parameters.verbose_level > 0));
+      int sec_index_loaded = index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
       if (sec_index_loaded) { return 1; }
     }
 
@@ -214,12 +214,12 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
 
     index_prim->GenerateFromFile(parameters.reference_path);
-    index_prim->StoreToFile(parameters.index_reference_dir);
+    index_prim->StoreToFile(parameters.index_file);
 
     if (parameters.parsimonious_mode == false) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
       index_sec->GenerateFromFile(parameters.reference_path);
-      index_sec->StoreToFile(parameters.index_reference_dir + std::string("sec"));
+      index_sec->StoreToFile(parameters.index_file + std::string("sec"));
     }
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index generated in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
   }

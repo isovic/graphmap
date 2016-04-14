@@ -16,9 +16,9 @@
 #include <sstream>
 
 #define SOFTWARE_NAME "GraphMap"
-#define GRAPHMAP_CURRENT_VERSION "v0.22"
+#define GRAPHMAP_CURRENT_VERSION "v0.3.0"
 #define GRAPHMAP_CURRENT_VERSION_RELEASE_DATE (std::string(__DATE__) + std::string(" at ") + std::string(__TIME__)) // __TIMESTAMP__ // "12 October 2014"
-#define COPYRIGHT "Copyright Ivan Sovic, Mile Sikic and Niranjan Nagarajan, 2015.\n" \
+#define COPYRIGHT "Copyright Ivan Sovic, Mile Sikic and Niranjan Nagarajan, 2015, 2016.\n" \
                   "\n" \
                   "Affiliations: Ivan Sovic (1, 3), Mile Sikic (2), Niranjan Nagarajan (3)\n" \
                   "  (1) Ruder Boskovic Institute, Zagreb, Croatia\n" \
@@ -36,6 +36,8 @@
   "  (3) Genome Institute of Singapore, A*STAR, Singapore\n"
 
 struct ProgramParameters {
+  std::string subprogram = "";
+
   int64_t k_region = 13;                    // 'j', Kmer size for region search (binning).
   int64_t k_graph = 6;                      // 'k', Kmer size for graph building.
   int64_t num_links = 9;                   // 'l', Number of backward edges to check.
@@ -46,7 +48,7 @@ struct ProgramParameters {
   std::string debug_read_by_qname = "";
   int64_t num_threads = -1;                 // 't', Number of threads to use. If equal to -1, number of threads will be equal to number of processors.
   std::string reference_path = "";          // 'r', The path to the reference file.
-  std::string index_reference_dir = "";    // 'i', The path to the reference file's index. If it does not exist, index will be created in this path.
+  std::string index_file = "";    // 'i', The path to the reference file's index. If it does not exist, index will be created in this path.
   std::string reads_path = "";              // 'd', The path to the reads file, in FASTA or FASTQ format.
   std::string out_sam_path = "";            // 'o', The output path. If left blank, all sam output will be placed to stdout.
   int64_t verbose_sam_output = 0;           // 'b', Helpful debug comments can be placed in SAM output lines (at the end), however, some tools (like SAMtools) don't quite like them. Comments can be turned of by setting this variable to 0. Different values increase/decrease verbosity level.
@@ -103,7 +105,8 @@ struct ProgramParameters {
   bool disable_end_to_end = true;
 };
 
-int ProcessArgs(int argc, char **argv, ProgramParameters *parameters);
+int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);
+int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters);
 void VerboseProgramParameters(ProgramParameters *parameters);
 void VerboseShortHelpAndExit(int argc, char **argv);
 
