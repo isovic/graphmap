@@ -22,7 +22,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file (fastq or fasta).", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "in-fmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
 //  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
@@ -38,7 +38,9 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n sg       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n sggotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with Gotoh.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
+#ifndef RELEASE_VERSION
   argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "approach", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n (Currently no other options are provided. This is a placeholder for future features, such as cDNA mapping)", 0, "Alignment options");
+#endif
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.", 0, "Alignment options");
   argparser.AddArgument(&parameters->overlapper, VALUE_TYPE_BOOL, "", "overlapper", "0", "Perform overlapping instead of mapping. Skips self-hits if reads and reference files contain same sequences, and outputs lenient secondary alignments.", 0, "Alignment options");
 
@@ -180,6 +182,12 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
     VerboseShortHelpAndExit(argc, argv);
   }
 
+  if (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh" &&
+      parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex") {
+    fprintf (stderr, "Unknown alignment algorithm '%s'!\n\n", parameters->alignment_algorithm.c_str());
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
 #ifndef RELEASE_VERSION
   if (parameters->debug_read >= 0 || parameters->debug_read_by_qname != "") {
     parameters->verbose_level = 9;
@@ -205,14 +213,14 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   ArgumentParser argparser;
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "indexdir", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file (fastq or fasta).", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "in-fmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
-//  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n mhap - MHAP overlap format.\n paf  - PAF (Minimap) overlap format.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->calc_only_index, VALUE_TYPE_BOOL, "I", "only-index", "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "200", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "mhap", "Format in which to output results. Options are:\n mhap - MHAP overlap format.\n paf  - PAF (Minimap) overlap format.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->calc_only_index, VALUE_TYPE_BOOL, "I", "index-only", "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
+//  argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Rebuild index even if it already exists in given path.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "1024", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
 
   argparser.AddArgument(&parameters->error_rate, VALUE_TYPE_FLOAT, "e", "error-rate", "0.45", "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "-1", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
@@ -220,12 +228,12 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
-//  argparser.AddArgument(&parameters->start_read, VALUE_TYPE_INT64, "s", "start", "0", "Ordinal number of the read from which to start processing data.", 0, "Other options");
-//  argparser.AddArgument(&parameters->num_reads_to_process, VALUE_TYPE_INT64, "n", "numreads", "-1", "Number of reads to process per batch. Value of '-1' processes all reads.", 0, "Other options");
+  argparser.AddArgument(&parameters->start_read, VALUE_TYPE_INT64, "s", "start", "0", "Ordinal number of the read from which to start processing data.", 0, "Other options");
+  argparser.AddArgument(&parameters->num_reads_to_process, VALUE_TYPE_INT64, "n", "numreads", "-1", "Number of reads to process per batch. Value of '-1' processes all reads.", 0, "Other options");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");
 
-//  argparser.AddArgument(&parameters->debug_read, VALUE_TYPE_INT64, "y", "debug-read", "-1", "ID of the read to give the detailed verbose output.", 0, "Debug options");
-//  argparser.AddArgument(&parameters->debug_read_by_qname, VALUE_TYPE_STRING, "Y", "debug-qname", "", "QNAME of the read to give the detailed verbose output. Has precedence over -y. Use quotes to specify.", 0, "Debug options");
+  argparser.AddArgument(&parameters->debug_read, VALUE_TYPE_INT64, "y", "debug-read", "-1", "ID of the read to give the detailed verbose output.", 0, "Debug options");
+  argparser.AddArgument(&parameters->debug_read_by_qname, VALUE_TYPE_STRING, "Y", "debug-qname", "", "QNAME of the read to give the detailed verbose output. Has precedence over -y. Use quotes to specify.", 0, "Debug options");
 
   argparser.ProcessArguments(argc, argv);
 
@@ -264,21 +272,21 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
     parameters->debug_read_by_qname = parameters->debug_read_by_qname.substr(1, (parameters->debug_read_by_qname.size() - 2));
   }
 
-  /// For the 'overlapper' mode use anchored alignment by default, no other alignments should be possible. Except perhaps anchorgotoh...
-  if (parameters->alignment_approach == "overlapper") {
-    if (parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh") {
-      parameters->alignment_algorithm = "anchor";
-    }
-    if (argparser.GetArgumentByLongName("evalue")->is_set == false) {
-      parameters->evalue_threshold = 1e0;
-    }
-    if (argparser.GetArgumentByLongName("ambiguity")->is_set == false) {
-      parameters->margin_for_ambiguity = 0.50f;
-    }
-    if (argparser.GetArgumentByLongName("secondary")->is_set == false) {
-      parameters->output_multiple_alignments = 1;
-    }
-  }
+//  /// For the 'overlapper' mode use anchored alignment by default, no other alignments should be possible. Except perhaps anchorgotoh...
+//  if (parameters->alignment_approach == "overlapper") {
+//    if (parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh") {
+//      parameters->alignment_algorithm = "anchor";
+//    }
+//    if (argparser.GetArgumentByLongName("evalue")->is_set == false) {
+//      parameters->evalue_threshold = 1e0;
+//    }
+//    if (argparser.GetArgumentByLongName("ambiguity")->is_set == false) {
+//      parameters->margin_for_ambiguity = 0.50f;
+//    }
+//    if (argparser.GetArgumentByLongName("secondary")->is_set == false) {
+//      parameters->output_multiple_alignments = 1;
+//    }
+//  }
 
   // Sanity check for the reference path.
   if (argparser.GetArgumentByLongName("ref")->is_set == false) {
@@ -289,7 +297,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   if (!fileExists(parameters->reference_path.c_str())) {
       fprintf (stderr, "Reference does not exist: '%s'\n\n", parameters->reference_path.c_str());
       VerboseShortHelpAndExit(argc, argv);
-   }
+  }
 
   // Sanity check for the reads path.
   if (argparser.GetArgumentByLongName("reads")->is_set == false && parameters->calc_only_index == false) {
@@ -303,8 +311,28 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   }
 
   // Check if the index path was specified, if not, generate it.
-  if (argparser.GetArgumentByLongName("indexdir")->is_set == false) {
+  if (argparser.GetArgumentByLongName("index")->is_set == false) {
     parameters->index_file = parameters->reference_path + std::string(".gmidx");
+  }
+
+  // Check if the input format is valid.
+  if (parameters->infmt != "auto" && parameters->infmt != "fastq" &&
+      parameters->infmt != "fasta" && parameters->infmt != "gfa" && parameters->infmt != "sam") {
+    fprintf (stderr, "Unknown input format '%s'!\n\n", parameters->infmt.c_str());
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
+  // Check if the output format is valid.
+  if (parameters->outfmt != "sam" && parameters->outfmt != "m5" &&
+      parameters->outfmt != "mhap" && parameters->outfmt != "paf") {
+    fprintf (stderr, "Unknown output format '%s'!\n\n", parameters->outfmt.c_str());
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
+  if (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh" &&
+      parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex") {
+    fprintf (stderr, "Unknown alignment algorithm '%s'!\n\n", parameters->alignment_algorithm.c_str());
+    VerboseShortHelpAndExit(argc, argv);
   }
 
 #ifndef RELEASE_VERSION
@@ -319,7 +347,6 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   if (parameters->verbose_level > 5) {
     fprintf (stderr, "%s\n", argparser.VerboseArguments().c_str());
   }
-
 //  VerboseProgramParameters(parameters);
 
   return 0;
