@@ -1,11 +1,12 @@
-## GraphMap - Changelog
+## GraphMap - ChangeLog
 
-**__Version 0.3.0 - minor version change due to an important change in command line parameters__**
+**__Version 0.3.0__**
+**Important change in command line parameters.** The new version is not completely compatible to the previous one. For this reason, the minor version number has changed.  
 - Changed the version numbering from: ```x.yz``` to ```x.y.z```
 - Implemented a new argument parser.
 - Fixed a bug with overhanging base (Issue #14), commit: 41ae30b0d8603469c62794cba1960dc42f739d4e
 - Fixed the extensions of alignment to read ends when near an overhang (Issue #18).
-- Fixed Issue #19 - inconsistent behaviour for parameter -F.
+- Fixed Issue #19 - inconsistent behaviour for parameter ```-F```.
 - Cleaned up the code a bit.
 - Restructured the code. Majority of the code was extracted from the repository to be used as the codebase for this and other projects. GraphMap's main code is left in this repo, while the rest is linked via git submodules.
 - Added support for reading SAM and GFA files as the input sequences. Gzipped versions of all formats are supported as well. By default the format is chosen by the extension of the fila (--infmt auto), but can be specified manually.

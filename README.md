@@ -2,11 +2,12 @@
 **__Current Version: 0.3.0__**  
 Release date: 15 April 2016  
 
-**Important**
+**Important**  
 GraphMap's command line has changed significantly - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
 The first parameter is now mandatory, and specifies whether the **mapping/alignment** (```./graphmap align```) or **overlapping** (```./graphmap owler```) should be used.  
 
 For a detailed change log from the previous release, take a look at [doc/changelog.md](doc/changelog.md).  
+
 For more information on overlapping, take a look at [overlap.md](overlap.md).  
 For detailed installation instructions, take a look at [INSTALL.md](INSTALL.md) file.  
 Description of custom parameters in GraphMap's SAM output can be found at [doc/sam_output.md](doc/sam_output.md).  
@@ -18,7 +19,8 @@ Description of custom parameters in GraphMap's SAM output can be found at [doc/s
 - E-value.  
 - Meaningful mapping quality.
 - Various alignment strategies (semiglobal bit-vector and Gotoh, anchored).  
-- ...and much more.
+- **Overlapping** of reads for *de novo* assembly.  
+- ...and much more.  
 
 GraphMap is also used as an overlapper in a new *de novo* genome assembly project called [Ra](https://github.com/mariokostelac/ra-integrate) ([https://github.com/mariokostelac/ra-integrate](https://github.com/mariokostelac/ra-integrate)).  
 Ra attempts to create *de novo* assemblies from raw nanopore and PacBio reads without requiring error correction, for which a highly sensitive overlapper is required.  
