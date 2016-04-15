@@ -190,7 +190,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
-    if (parameters->alignment_algorithm == "myers" || parameters->alignment_algorithm == "gotoh") {
+    if (parameters->alignment_algorithm == "sg" || parameters->alignment_algorithm == "sggotoh") {
       int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
     } else {
       int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);

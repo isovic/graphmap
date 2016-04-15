@@ -68,8 +68,8 @@ struct ProgramParameters {
   std::string output_folder = "";           // 'O', The path to the output folder for batch processing.
   bool process_reads_from_folder = false;
   int64_t batch_size_in_mb = -1;             // 'B', specifies the size of a batch for sequence loading. If <= 0, all sequences will be loaded at once, otherwise the specified number of megabytes will be loaded consequentially.
-  std::string alignment_algorithm = "myers";  // 'a', specifies whether EDlib or SSW or hybrid should be used for realignment in the last step.
-  std::string alignment_approach = "sg";      // 'w'
+  std::string alignment_algorithm = "sg";  // 'a', specifies whether EDlib or SSW or hybrid should be used for realignment in the last step.
+  std::string alignment_approach = "normal";      // 'w'
   bool calc_only_index = false;
   int64_t match_score = 5;
   int64_t mex_score = 1;

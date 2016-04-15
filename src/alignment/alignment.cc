@@ -18,12 +18,12 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
   bool align_end_to_end = !parameters->use_spliced && !parameters->use_split && (!parameters->disable_end_to_end);
   bool spliced_alignment = parameters->use_spliced || parameters->use_split;
 
-    if (parameters->alignment_algorithm == "gotoh") {
+    if (parameters->alignment_algorithm == "sggotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach.\n", "Alignment");
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Gotoh for alignment!\n", "Alignment");
       return SemiglobalAlignment(SeqAnSemiglobalWrapperWithMyersLocalization, read, index, parameters, evalue_params, region_results);
 
-    } else if (parameters->alignment_algorithm == "myers") {
+    } else if (parameters->alignment_algorithm == "sg") {
 
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using semiglobal alignment approach.\n", "Alignment");
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
