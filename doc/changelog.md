@@ -1,6 +1,6 @@
 ## GraphMap - ChangeLog
 
-**__Version 0.3.0__**
+**__Version 0.22 -> 0.3.0__**  
 **Important change in command line parameters.** The new version is not completely compatible to the previous one. For this reason, the minor version number has changed.  
 - Changed the version numbering from: ```x.yz``` to ```x.y.z```
 - Implemented a new argument parser.
@@ -14,7 +14,8 @@
 - Added the MD field to the SAM output.
 - New and better anchor filtering (anchored modes only) using chaining of anchors that passed the LCSk.
 - New and better clustering of anchor stretches. This will be used for implementing RNA-seq alignment.
-- No need to precompile libraries for your system anymore. Libraries are now included in the source, or in the submodules. To initialize submodules, either clone recursivelly, or call ```make modules``` once GraphMap repo has been cloned.
+- No need to precompile libraries for your system anymore. Libraries are now included in the source, or in the submodules. To initialize submodules, either clone recursively, or call ```make modules``` once GraphMap repo has been cloned.
+- Anchored alignment is now the default one.  
 
 Important command line changes:
 - Long argument names are now provided.

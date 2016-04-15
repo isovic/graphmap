@@ -1,7 +1,7 @@
 ## GraphMap Owler - Overlap With Long Erroneous Reads
 GraphMap implements two overlap modes:  
-- ```-w owler``` - fast, uses a trimmed GraphMap pipeline, reports output in the MHAP format, and  
-- ```-w overlapper``` - full GraphMap pipeline including alignment, output in SAM format.  
+- ```./graphmap owler``` - fast, uses a trimmed GraphMap pipeline, reports output in MHAP or PAF formats, and  
+- ```./graphmap align -x overlap``` - full GraphMap pipeline including alignment, output in SAM format.  
   
 Owler mode (Overlap With Long Erroneous Reads) skips the graph-mapping and alignment steps. The full pipeline consists of the following steps:  
 1. Construct a gapped spaced index of the reads for only one shape (6-mers, "1111110111111").  
@@ -29,11 +29,11 @@ An initial functioning version can be found here: [https://github.com/isovic/ove
 ### Examples   
 ```  
 # Overlap all reads from a given FASTA/FASTQ file and report overlaps in MHAP format (fast):  
-./graphmap -w owler -r reads.fa -d reads.fa -o overlaps.mhap  
+./graphmap owler -r reads.fa -d reads.fa -o overlaps.mhap  
 
 # Overlap all reads from a given FASTA/FASTQ file and report overlaps in PAF format:  
-./graphmap -w owler -r reads.fa -d reads.fa -o overlaps.paf -L paf  
+./graphmap owler -r reads.fa -d reads.fa -o overlaps.paf -L paf  
 
 # Overlap all reads from a given FASTA/FASTQ in a full GraphMap mode with generating alignments (slow):  
-./graphmap -w overlapper -r reads.fa -d reads.fa -o overlaps.sam  
+./graphmap align -x overlap -r reads.fa -d reads.fa -o overlaps.sam  
 ```  
