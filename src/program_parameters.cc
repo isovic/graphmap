@@ -65,7 +65,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->num_links, VALUE_TYPE_INT64, "l", "", "9", "Number of edges per vertex.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_num_anchor_bases, VALUE_TYPE_INT64, "A", "minbases", "12", "Minimum number of match bases in an anchor.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->error_rate, VALUE_TYPE_FLOAT, "e", "error-rate", "0.45", "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "-1", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "0", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->max_num_regions, VALUE_TYPE_INT64, "g", "max-regions", "0", "If the final number of regions exceeds this amount, the read will be called unmapped. If 0, value will be dynamically determined. If < 0, no limit is set.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->max_num_regions_cutoff, VALUE_TYPE_INT64, "q", "reg-reduce", "0", "Attempt to heuristically reduce the number of regions if it exceeds this amount. Value <= 0 disables reduction but only if param -g is not 0. If -g is 0, the value of this parameter is set to 1/5 of maximum number of regions.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->is_reference_circular, VALUE_TYPE_BOOL, "C", "circular", "0", "Reference sequence is a circular genome.", 0, "Algorithmic options");
@@ -223,7 +223,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "1024", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
 
   argparser.AddArgument(&parameters->error_rate, VALUE_TYPE_FLOAT, "e", "error-rate", "0.45", "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "-1", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "0", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "", "min-read-len", "80", "If a read is shorter than this, it will be skipped. This value can be lowered if the reads are known to be accurate.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
