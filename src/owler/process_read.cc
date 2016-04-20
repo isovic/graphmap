@@ -27,6 +27,7 @@ int Owler::ProcessRead(OwlerData *owler_data, std::vector<Index *> indexes, cons
     std::stringstream ss;
     ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << 80;
     owler_data->unmapped_reason += ss.str();
+//    LOG_DEBUG_SPEC("Unmapped reason: %s", owler_data->unmapped_reason.c_str());
     return 0;
   }
 
@@ -1128,6 +1129,7 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
   int64_t num_output_overlaps = 0;
 
   if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
+//    LOG_DEBUG_SPEC("Entered function.\n");
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read, "\n", "[]");
   }
 
@@ -1367,6 +1369,8 @@ int Owler::ApplyLCS2(OwlerData* owler_data, std::vector<Index*> &indexes, const 
       owler_data->overlap_lines += found_overlaps[i].GenerateMHAPLine();
     }
   }
+
+//  LOG_DEBUG_SPEC("Exiting function.\n");
 
   return 0;
 }

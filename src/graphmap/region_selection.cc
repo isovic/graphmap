@@ -182,6 +182,8 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
         new_bin.reference_id = i;
         new_bin.bin_id = j;
         new_bin.bin_value = bins_chromosome[i][j];
+        if (j > 0) { new_bin.bin_value += bins_chromosome[i][j-1] / 2.0f; }
+        if ((j + 1) < bins_chromosome[i].size()) { new_bin.bin_value += bins_chromosome[i][j+1] / 2.0f; }
         mapping_data->bins.push_back(new_bin);
       }
     }
