@@ -60,6 +60,8 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //#endif
   argparser.AddArgument(&parameters->disable_end_to_end, VALUE_TYPE_BOOL, "", "no-end2end", "0", "Disables extending of the alignments to the ends of the read. Works only for anchored modes.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->extend_aln_to_end, VALUE_TYPE_BOOL, "", "extend-to-end", "1", "Switches extension of anchored alignment to read/reference ends. If false, alignments will be bound by the first and last anchor. Otherwise, alignment will proceed until an end of one of the sequences is hit.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->max_error_rate, VALUE_TYPE_DOUBLE, "", "max-error", "1.0", "If an alignment has error rate (X+I+D) larger than this, it won't be taken into account. If >= 1.0, this filter is disabled.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->max_indel_error_rate, VALUE_TYPE_DOUBLE, "", "max-indel-error", "1.0", "If an alignment has indel error rate (I+D) larger than this, it won't be taken into account. If >= 1.0, this filter is disabled.", 0, "Alignment options");
 
   argparser.AddArgument(&parameters->k_graph, VALUE_TYPE_INT64, "k", "", "6", "Graph construction kmer size.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->num_links, VALUE_TYPE_INT64, "l", "", "9", "Number of edges per vertex.", 0, "Algorithmic options");

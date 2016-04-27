@@ -82,6 +82,10 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
                                                      (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
                                                      (0), EDLIB_MODE_SHW);
         LOG_DEBUG_SPEC("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str());
+        for (int64_t i=0; i<leftover_left_alignment.size(); i++) {
+          LOG_DEBUG_SPEC_NO_HEADER("%ld", leftover_left_alignment[i]);
+        }
+        LOG_DEBUG_SPEC_NO_HEADER("\n\n\n");
       }
     }
 
@@ -158,11 +162,13 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
 
 //  if (query_alignment_length == 0 || ref_alignment_length == 0) { return 1; }
 
+  int64_t bandwidth = -1;
+
   int64_t anchor_alignment_position_start = 0, anchor_alignment_position_end = 0, anchor_edit_distance = 0;
   std::vector<unsigned char> anchor_alignment;
   int ret_code1 = AlignmentFunctionNW(read->get_data() + cluster_query_start, (query_alignment_length),
                                       (int8_t *) (ref_data + cluster_ref_start), (ref_alignment_length),
-                                   -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
+                                   bandwidth, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                    &anchor_alignment_position_start, &anchor_alignment_position_end,
                                    &anchor_edit_distance, anchor_alignment);
   if (ret_code1 != 0 || anchor_alignment.size() == 0) {
@@ -247,6 +253,9 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
 
     } else if (inbetween_query_length > 0 && inbetween_ref_length > 0) {
       LOG_DEBUG_SPEC("Performing the alignment.\n");
+      LOG_DEBUG_SPEC("Coordinates: [%ld, %ld]-[%ld, %ld]\n",
+                     (cluster_query_end + 1), (cluster_ref_end + 1),
+                     (cluster_query_end + 1 + inbetween_query_length - 1), (cluster_ref_end + 1 + inbetween_ref_length - 1));
 
 //      if (inbetween_query_length == 0 || inbetween_ref_length == 0) { return 1; }
 
@@ -275,6 +284,10 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
                                                      (unsigned char *) &(between_anchor_alignment[0]), between_anchor_alignment.size(),
                                                      (0), EDLIB_MODE_NW);
         LOG_DEBUG_SPEC("Aligning in between anchors %d and %d:\n%s\n", cluster_id, (cluster_id+1), alignment_as_string.c_str());
+        for (int64_t i=0; i<between_anchor_alignment.size(); i++) {
+          LOG_DEBUG_SPEC_NO_HEADER("%ld", between_anchor_alignment[i]);
+        }
+        LOG_DEBUG_SPEC_NO_HEADER("\n\n\n");
       }
 
     }
@@ -818,6 +831,17 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
       LOG_DEBUG_SPEC("Alignment is insane!\n");
     } else {
       LOG_DEBUG_SPEC("Alignment is ok!\n");
+    }
+
+    double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+    double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+    if (error_rate > parameters->max_error_rate) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+    }
+    if (indel_error_rate > parameters->max_indel_error_rate) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Indel error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
     }
 
     VerboseAlignment(read, index, parameters, curr_aln);

@@ -165,6 +165,17 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
       LOG_DEBUG_SPEC("Alignment is ok!\n");
     }
 
+    double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+    double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+    if (error_rate > parameters->max_error_rate) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+    }
+    if (indel_error_rate > parameters->max_indel_error_rate) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Indel error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+    }
+
     VerboseAlignment(read, index, parameters, curr_aln);
   }
 

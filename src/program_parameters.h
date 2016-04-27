@@ -105,6 +105,9 @@ struct ProgramParameters {
   bool disable_end_to_end = true;
   bool overlapper = false;
   bool rebuild_index = false;
+
+  double max_error_rate = 1.0f;
+  double max_indel_error_rate = 1.0f;
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);

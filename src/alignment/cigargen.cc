@@ -298,11 +298,31 @@ int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength,
 
 int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char** cigar_) {
   std::vector<char>* cigar = new std::vector<char>();
+
+  unsigned char *alignment_with_clipping = alignment;
+
+  if (alignment[0] == EDLIB_I || alignment[alignmentLength-1] == EDLIB_I) {
+    alignment_with_clipping = (unsigned char *) malloc(sizeof(unsigned char) * (alignmentLength + 1));
+    memcpy(alignment_with_clipping, alignment, alignmentLength);
+    alignment_with_clipping[alignmentLength] = '\0';
+
+    for (int64_t i=0; i<alignmentLength; i++) {
+      if (alignment_with_clipping[i] == EDLIB_I)
+        alignment_with_clipping[i] = EDLIB_S;
+      else break;
+    }
+    for (int64_t i=(((int64_t) alignmentLength) - 1); i>=0; i--) {
+      if (alignment_with_clipping[i] == EDLIB_I)
+        alignment_with_clipping[i] = EDLIB_S;
+      else break;
+    }
+  }
+
     unsigned char lastMove = -1;  // Code of last move.
     int numOfSameMoves = 0;
     for (int i = 0; i <= alignmentLength; i++) {
         // if new sequence of same moves started
-        if (i == alignmentLength || alignment[i] != lastMove) {
+        if (i == alignmentLength || alignment_with_clipping[i] != lastMove) {
             if (i > 0) {  // if previous sequence of same moves ended
                 // Write number of moves to cigar string.
                 int numDigits = 0;
@@ -331,7 +351,7 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
             }
             if (i < alignmentLength) {
                 numOfSameMoves = 0;
-                lastMove = alignment[i];
+                lastMove = alignment_with_clipping[i];
             }
         }
         numOfSameMoves++;
@@ -342,6 +362,9 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
     // thus binaries won't run on older versions of systems.
     memmove(*cigar_, &(*cigar)[0], cigar->size() * sizeof(char));
     delete cigar;
+
+    if (alignment_with_clipping != alignment)
+      free(alignment_with_clipping);
 
     return EDLIB_STATUS_OK;
 }
