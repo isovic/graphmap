@@ -118,108 +118,6 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
 }
 
 int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align, int alignment_type, int64_t *ret_start_offset, int64_t *ret_end_offset, int64_t *edit_distance, std::vector<unsigned char> &ret_alignment) {
-//  typedef seqan::Dna5String TSequence;
-//  typedef seqan::StringSet<TSequence> TStringSet;
-//  typedef seqan::Gaps<TSequence, seqan::ArrayGaps> TGaps;
-//  typedef seqan::Iterator<TGaps>::Type TGapsIterator;
-//  TGaps gapsPattern(row(align, 0));
-//  TGaps gapsText(row(align, 1));
-//  TGapsIterator itGapsPattern = seqan::begin(row(align, 1));
-//  TGapsIterator itGapsEnd = seqan::end(row(align, 1));
-//
-//  // Remove trailing gaps in pattern.
-//  int count = 0;
-//  while(isGap(--itGapsEnd))
-//      ++count;
-//  setClippedEndPosition(gapsPattern, length(gapsPattern) - count);
-//  // Remove leading gaps in pattern.
-//  if(isGap(itGapsPattern)) {
-//      setClippedBeginPosition(gapsPattern, countGaps(itGapsPattern));
-//      setClippedBeginPosition(gapsText, countGaps(itGapsPattern));
-//  }
-//
-//  std::vector<unsigned char> alignment;
-////  alignment.reserve(align.data_rows[0].
-//  int64_t aln_edit_distance = 0;
-//
-//  // Reinitilaize the iterators.
-//  TGapsIterator itGapsText = seqan::begin(gapsText);
-//  itGapsPattern = begin(gapsPattern);
-//  itGapsEnd = seqan::end(gapsPattern);
-//
-//  *ret_start_offset = gapsPattern._clippingBeginPos;
-//  *ret_end_offset = count;
-//
-//  if (alignment_type == ALIGNMENT_TYPE_NW || alignment_type == ALIGNMENT_TYPE_SHW) {
-//    alignment.insert(alignment.begin(), (*ret_start_offset), (char) EDLIB_D);
-//    aln_edit_distance += (*ret_start_offset);
-//    *ret_start_offset = 0;
-//  }
-//
-////  // Use a stringstream to construct the cigar string.
-////  std::string cigar = "";
-//
-//  int numChar = 0;
-//  while (itGapsPattern != itGapsEnd) {
-//      // Count insertions.
-//      if (isGap(itGapsText)) {
-//          int num_gaps = countGaps(itGapsText);
-//          alignment.insert(alignment.end(), num_gaps, (char) EDLIB_D);
-//          itGapsText += num_gaps;
-//          itGapsPattern += num_gaps;
-//          aln_edit_distance += num_gaps;
-//          continue;
-//      }
-//      // Count deletions.
-//      if (isGap(itGapsPattern)) {
-//          int num_gaps = countGaps(itGapsPattern);
-//          alignment.insert(alignment.end(), num_gaps, (char) EDLIB_I);
-//          itGapsText += num_gaps;
-//          itGapsPattern += num_gaps;
-//          aln_edit_distance += num_gaps;
-//          continue;
-//      }
-//
-//      // Count matches.
-//      while (*itGapsText == *itGapsPattern && itGapsPattern != itGapsEnd) {
-//          ++numChar;
-//          alignment.insert(alignment.end(), 1, (char) EDLIB_EQUAL);
-//          ++itGapsText;
-//          ++itGapsPattern;
-//      }
-//      if (numChar != 0) {
-////          cigar << numChar << "M";
-//          numChar = 0;
-//          continue;
-//      }
-//
-//      // Count mismatches.
-//      while (*itGapsText != *itGapsPattern && itGapsPattern != itGapsEnd)
-//      {
-//          ++numChar;
-//          alignment.insert(alignment.end(), 1, (char) EDLIB_X);
-//          aln_edit_distance += 1;
-//          ++itGapsText;
-//          ++itGapsPattern;
-//      }
-//      if (numChar != 0) {
-////          cigar << numChar << "X";
-//          numChar = 0;
-//          continue;
-//      }
-//  }
-//
-//  if (alignment_type == ALIGNMENT_TYPE_NW) {
-//    alignment.insert(alignment.end(), (*ret_end_offset), (char) EDLIB_D);
-//    aln_edit_distance += (*ret_end_offset);
-//    *ret_end_offset = 0;
-//  }
-//
-//  ret_alignment = alignment;
-//  *edit_distance = aln_edit_distance;
-
-
-
   auto it_seq0 = seqan::begin(row(align, 0));
   auto it_seq0_end = seqan::end(row(align, 0));
   auto it_seq1 = seqan::begin(row(align, 1));
@@ -232,7 +130,6 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
     return ALIGNMENT_CONVERSION_PROBLEM;
   }
 
-//  std::vector<unsigned char> alignment_new;
   ret_alignment.clear();
   ret_alignment.reserve(aln_seq0_len);
 
@@ -240,14 +137,11 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
   while (it_seq0 != it_seq0_end && it_seq1 != it_seq1_end) {
     if (isGap(it_seq0) && (*it_seq0) != (*it_seq1)) {
       ret_alignment.push_back(EDLIB_I);
-//      aln_edit_distance += 1;
     } else if (isGap(it_seq1) && (*it_seq0) != (*it_seq1)) {
       ret_alignment.push_back(EDLIB_D);
-//      aln_edit_distance += 1;
     } else if (isGap(it_seq0) && isGap(it_seq1)) {
     } else {
       ret_alignment.push_back(((*it_seq0) == (*it_seq1)) ? EDLIB_EQUAL : EDLIB_X);
-//      aln_edit_distance += (((*it_seq0) == (*it_seq1)) ? 0 : 1);
     }
 
     it_seq0++;
@@ -291,37 +185,6 @@ int SeqAnAlignmentToEdlibAlignmentNoCigar(seqan::Align<seqan::Dna5String> &align
   }
 
   *edit_distance = aln_edit_distance;
-
-  //  for (auto& it: alignment_new) {
-  //    std::cout << (int64_t) it;
-  //  }
-  //  std::cout << std::endl;
-
-//    std::stringstream ss_seq0;
-//    for (auto it = seqan::begin(row(align, 0)); it != it_seq0_end; it++) { ss_seq0 << *it; }
-//    std::cout << ss_seq0.str() << std::endl;
-//
-//    std::stringstream ss_seq1;
-//    for (auto it = seqan::begin(row(align, 1)); it != it_seq1_end; it++) { ss_seq1 << *it; }
-//    std::cout << ss_seq1.str() << std::endl;
-
-  //
-  //  auto it_seq1_end = seqan::end(row(align, 1));
-  //  std::stringstream ss_seq1;
-  //  for (auto it = seqan::begin(row(align, 1)); it != it_seq1_end; it++) { ss_seq1 << *it; }
-  //
-  //  std::string seq0_aln = ss_seq0.str();
-  //  std::string seq1_aln = ss_seq1.str();
-  //
-  //  if (seq0_aln.size() != seq1_aln.size()) {
-  //    return ALIGNMENT_CONVERSION_PROBLEM;
-  //  }
-  //
-  //  std::vector<unsigned char> alignment;
-  //  alignment.resize(seq0_aln.size());
-  //  for (int64_t i=0; i<seq0_aln.size(); i++) {
-  //    if (seq0_aln[i] ==
-  //  }
 
   return ALIGNMENT_GOOD;
 }
