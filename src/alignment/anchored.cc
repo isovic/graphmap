@@ -64,11 +64,14 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
 
 //    if (clip_count_front == 0 || reversed_ref_len == 0) { return 1; }
 
+    int64_t bandwidth = -1;
+//    bandwidth = 0.30f*read->get_sequence_length();
+
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
     std::vector<unsigned char> leftover_left_alignment;
     int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
                                               (int8_t *) (reversed_ref_front), reversed_ref_len,
-                                              -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
+                                              bandwidth, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                               &leftover_left_start, &leftover_left_end,
                                               &leftover_left_edit_distance, leftover_left_alignment);
 
@@ -163,6 +166,7 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
 //  if (query_alignment_length == 0 || ref_alignment_length == 0) { return 1; }
 
   int64_t bandwidth = -1;
+//  bandwidth = 0.30f*read->get_sequence_length();
 
   int64_t anchor_alignment_position_start = 0, anchor_alignment_position_end = 0, anchor_edit_distance = 0;
   std::vector<unsigned char> anchor_alignment;
@@ -258,12 +262,14 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
                      (cluster_query_end + 1 + inbetween_query_length - 1), (cluster_ref_end + 1 + inbetween_ref_length - 1));
 
 //      if (inbetween_query_length == 0 || inbetween_ref_length == 0) { return 1; }
+      int64_t bandwidth = -1;
+//      bandwidth = 0.30f*read->get_sequence_length();
 
       int64_t between_alignment_position_start = 0, between_alignment_position_end = 0, between_anchor_edit_distance = 0;
       std::vector<unsigned char> between_anchor_alignment;
       int ret_code2 = AlignmentFunctionNW(read->get_data() + (cluster_query_end) + 1, inbetween_query_length,
                                           (int8_t *) (ref_data + cluster_ref_end) + 1, inbetween_ref_length,
-                                       -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
+                                       bandwidth, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                        &between_alignment_position_start, &between_alignment_position_end,
                                        &between_anchor_edit_distance, between_anchor_alignment);
 
@@ -343,10 +349,13 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
 
     LOG_DEBUG_SPEC("clip_count_back = %ld, ref_len_for_aln = %ld\n", clip_count_back, ref_len_for_aln);
 
+    int64_t bandwidth = -1;
+//    bandwidth = 0.30f*read->get_sequence_length();
+
     std::vector<unsigned char> leftover_right_alignment;
     int ret_code_right = AlignmentFunctionSHW(read->get_data() + query_end + 1, (clip_count_back),
                                      (int8_t *) (ref_data + alignment_position_end + 1), ref_len_for_aln,
-                                     -1, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
+                                     bandwidth, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                      &leftover_right_start, &leftover_right_end,
                                      &leftover_right_edit_distance, leftover_right_alignment);
 
