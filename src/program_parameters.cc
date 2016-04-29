@@ -43,6 +43,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 #endif
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.", 0, "Alignment options");
   argparser.AddArgument(&parameters->overlapper, VALUE_TYPE_BOOL, "", "overlapper", "0", "Perform overlapping instead of mapping. Skips self-hits if reads and reference files contain same sequences, and outputs lenient secondary alignments.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->no_self_hits, VALUE_TYPE_BOOL, "", "no-self-hits", "0", "Similar to overlapper, but skips mapping of sequences with same headers. Same sequences can be located on different paths, and their overlap still skipped.", 0, "Alignment options");
 
   argparser.AddArgument(&parameters->match_score, VALUE_TYPE_INT64, "M", "match", "5", "Match score for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
 #ifndef RELEASE_VERSION
