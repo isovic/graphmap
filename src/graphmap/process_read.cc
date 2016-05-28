@@ -217,7 +217,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     LOG_DEBUG_SPEC("Processing local scores for RNA-seq.\n");
 
     int ret_value_rna_filt = RNAFilterClusters_(mapping_data, indexes, read, parameters);
-//    int ret_value_rna_fin = CleanupIntermediateMappings(mapping_data, indexes, read, parameters);
+    int ret_value_rna_fin = CleanupIntermediateMappings_(mapping_data, indexes, read, parameters);
 
 //    for (int32_t i=0; i<all_local_scores.size(); i++) {
 //      if (all_local_scores[i]) { delete all_local_scores[i]; }
@@ -686,4 +686,52 @@ std::string GraphMap::GenerateUnmappedSamLine_(MappingData *mapping_data, int64_
   }
 
   return ss.str();
+}
+
+int GraphMap::CleanupIntermediateMappings_(MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+
+  std::vector<PathGraphEntry *> new_intermediate_mappings;
+
+  // Clusters are stored in the intermediate mappings. Intermediate mapping corresponds to one processed region on the reference.
+  for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
+    // All info about the region is given here (such as: reference_id, start and end coordinates of the region, etc.).
+    Region& region = mapping_data->intermediate_mappings[i]->region_data();
+    int64_t ref_id = region.reference_id % indexes[0]->get_num_sequences_forward();     // If there are N indexed sequences, then the index contains 2*N sequences: first N are the forward strand, followed by the same N sequences reverse-complemented. The reference_id is then the absolute reference ID in the index, which means that if it refers to the reverse complement of the sequence, reference_id will be > N. Modulo needs to be taken.
+    int64_t ref_len = indexes[0]->get_reference_lengths()[region.reference_id];
+
+    int32_t num_invalid_clusters = 0;
+
+    // Each intermediate mapping contains a vector of clusters.
+    MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->mapping_data();
+    auto& cluster_vector = mapping_results.clusters;
+
+    // Filtered clusters will hold all non-invalid clusters.
+    std::vector<Cluster> filtered_clusters;
+    filtered_clusters.reserve(cluster_vector.size());
+
+    // Count the number of faulty clusters. Compile a list of good ones.
+    for (int32_t j=0; j<cluster_vector.size(); j++) {
+      Cluster& cluster = cluster_vector[j];
+      if (cluster.valid == false) { num_invalid_clusters += 1; }
+      else { filtered_clusters.push_back(cluster); }
+    }
+
+    // Filter out all the bad clusters. If all clusters are bad, just mark the intermediate mapping as unmapped.
+    // Otherwise update the clusters, but only if there is at least one that needs to be changed.
+    if (num_invalid_clusters == cluster_vector.size()) {
+      mapping_data->intermediate_mappings[i]->mapping_data().is_mapped = false;
+    } else if (num_invalid_clusters != 0) {
+      mapping_results.clusters = filtered_clusters;
+    }
+
+//      if (mapping_data->intermediate_mappings[i]) {
+//        delete mapping_data->intermediate_mappings[i];
+//      }
+//      mapping_data->intermediate_mappings[i] = NULL;
+//    } else {
+//      new_intermediate_mappings.push_back(mapping_data->intermediate_mappings[i]);
+//    }
+  }
+
+  return 0;
 }
