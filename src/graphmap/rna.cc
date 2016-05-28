@@ -29,12 +29,12 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   // Clusters are stored in the intermediate mappings. Intermediate mapping corresponds to one processed region on the reference.
   for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
     // All info about the region is given here (such as: reference_id, start and end coordinates of the region, etc.).
-    const Region& region = mapping_data->intermediate_mappings[i]->get_region_data();
+    Region& region = mapping_data->intermediate_mappings[i]->region_data();
     int64_t ref_id = region.reference_id % indexes[0]->get_num_sequences_forward();     // If there are N indexed sequences, then the index contains 2*N sequences: first N are the forward strand, followed by the same N sequences reverse-complemented. The reference_id is then the absolute reference ID in the index, which means that if it refers to the reverse complement of the sequence, reference_id will be > N. Modulo needs to be taken.
     int64_t ref_len = indexes[0]->get_reference_lengths()[region.reference_id];
 
     // Each intermediate mapping contains a vector of clusters.
-    const MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->get_mapping_data();
+    MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->mapping_data();
     auto& cluster_vector = mapping_results.clusters;
 
     // Commented out debug info. This is used to create the datasets containing clusters, meant for RNA-seq support development (knapsack).
@@ -47,7 +47,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 
     // Clusters can be accessed like so.
     for (int32_t j=0; j<cluster_vector.size(); j++) {
-      const Cluster& cluster = cluster_vector[j];
+      Cluster& cluster = cluster_vector[j];
       // Members of Cluster contain these values:
       // cluster.query.start
       // cluster.query.end
