@@ -133,18 +133,20 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
     }
   }
 
-#ifndef RELEASE_VERSION
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-
-    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
-    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
-    if (fp_cluster_path) {
-      fclose(fp_cluster_path);
-    }
-  }
-#endif
+//#ifndef RELEASE_VERSION
+//  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//
+//    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
+//    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
+//    if (fp_cluster_path) {
+//      fclose(fp_cluster_path);
+//    }
+//  }
+//#endif
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
+
+//  std::vector<ScoreRegistry *> all_local_scores;
 
   int64_t num_regions_processed = 0;
   // Process regions one by one.
@@ -176,6 +178,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
+//    all_local_scores.push_back(local_score);
 
     bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
@@ -190,13 +193,18 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
-    if (parameters->alignment_algorithm == "sg" || parameters->alignment_algorithm == "sggotoh") {
-      int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
-    } else {
+    if (parameters->composite_parameters == "rnaseq" || (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh")) {
       int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+    } else {
+      int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
     }
 
-    local_score.Clear();
+//    // Unless we are mapping RNA-seq data, we've taken all we need from the local scores.
+//    if (parameters->composite_parameters != "rnaseq") {
+//    local_score->Clear();
+//    if (local_score) { delete local_score; }
+//    all_local_scores.clear();
+//    }
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("-----\n\n"), "ProcessRead");
@@ -204,6 +212,20 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   }
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: num_regions_processed = %ld.\n", num_regions_processed), "ProcessRead");
+
+  if (parameters->composite_parameters == "rnaseq") {
+    LOG_DEBUG_SPEC("Processing local scores for RNA-seq.\n");
+
+    int ret_value_rna_filt = RNAFilterClusters_(mapping_data, indexes, read, parameters);
+//    int ret_value_rna_fin = CleanupIntermediateMappings(mapping_data, indexes, read, parameters);
+
+//    for (int32_t i=0; i<all_local_scores.size(); i++) {
+//      if (all_local_scores[i]) { delete all_local_scores[i]; }
+//    }
+//    all_local_scores.clear();
+  }
+
+
 
   if (index_read)
     delete index_read;

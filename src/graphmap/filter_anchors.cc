@@ -509,8 +509,10 @@ int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_scor
   }
 
   // 1. Number of clusters, 2. Read ID, 3. Read len, 4. Target ID, 4. Target len, 5. Target reversed
+  fprintf (fp, "#region\tID\tnum_clusters\tread_id\tread_len\tref_id\tref_len\tis_rev\n");
   fprintf (fp, "region\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\n", local_score->get_scores_id(), num_nonempty_clusters, read->get_sequence_id(), read->get_sequence_length(),
            (local_score->get_region().reference_id % indexes[0]->get_num_sequences_forward()), indexes[0]->get_reference_lengths()[local_score->get_region().reference_id], (int32_t) local_score->get_region().reference_id >= indexes[0]->get_num_sequences_forward());
+  fprintf (fp, "#cluster\tID\tread_start\tread_end\tref_start\tref_end\tnum_anchors\tcoverage\n");
   int64_t current_cluster = 0;
   for (int64_t i=0; i<clusters.size(); i++) {
     if (clusters[i] && clusters[i]->lcskpp_indices.size() > 0) {
