@@ -63,8 +63,10 @@ class PathGraphEntry {
   void set_fpfilter(float fpfilter);
   const L1Results& get_l1_data() const;
   void set_l1_data(L1Results& l1Data);
-  const MappingResults& get_mapping_data() const;
+  MappingResults& mapping_data();
+   const MappingResults& get_mapping_data() const;
   void set_mapping_data(MappingResults& mappingData);
+  Region& region_data();
   const Region& get_region_data() const;
   void set_region_data(Region& regionData);
   float get_fpfilter_cov_bases();

@@ -104,6 +104,7 @@ struct ProgramParameters {
   bool use_split = false;
   bool disable_end_to_end = true;
   bool overlapper = false;
+  bool no_self_hits = false;
   bool rebuild_index = false;
 
   double max_error_rate = 1.0f;

@@ -55,6 +55,13 @@ class GraphMap {
   // Collects alignments from the given mapping_data and converts them into an appropriate output format (string).
   int CollectAlignments(const SingleSequence *read, const ProgramParameters *parameters, MappingData *mapping_data, std::string &ret_aln_lines);
 
+  // Allows the usage of GraphMap as an API.
+  int Align(const SequenceFile *ref, const SequenceFile *reads, const ProgramParameters &parameters);
+
+  // Allows the usage of GraphMap as an API. Converts the std::string objects to SingleSequence and initializes SequenceFiles,
+  // after which the above function is called. Headers for sequences are automatically generated: ref_%d and query_%d for ref_seqs and read_seqs, respectivelly.
+  int Align(std::vector<std::string> ref_seqs, std::vector<std::string> read_seqs, const ProgramParameters &parameters);
+
 
 
  private:
@@ -82,6 +89,10 @@ class GraphMap {
   // Perform the LCSk calculation and simple filtering of the anchores that survived the LCSk.
   int SemiglobalPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters);
   int AnchoredPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, const std::vector<Index *> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
+
+  // Performs a knapsack algorithm implementation on the set of clusters, to determine the most likely RNA-seq alignment. Clusters will be marked as valid or invalid. Valid should stay in play, but invalid filtered out.
+  int RNAFilterClusters_(MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
+  int CleanupIntermediateMappings_(MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
 
   //
   int EvaluateMappings_(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);

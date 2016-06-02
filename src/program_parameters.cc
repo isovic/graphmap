@@ -16,8 +16,12 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   ArgumentParser argparser;
 
   argparser.AddCompositeArgument("illumina", "-a gotoh -w normal -M 5 -X 4 -G 8 -E 6");
-//  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
   argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
+#ifndef RELEASE_VERSION
+  argparser.AddCompositeArgument("rnaseq", "--ambiguity 0.5 --secondary --min-bin-perc 0.01 --bin-step 0.99 --max-regions 20 --mapq -1 --spliced");
+#endif
+
+//  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 //  argparser.AddCompositeArgument("sensitive", "-a gotoh -w sg -M 5 -X 4 -G 8 -E 6");
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
@@ -34,15 +38,20 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   //    argparser.AddArgument(&parameters->reads_folder, VALUE_TYPE_STRING, "D", "readsfolder", "", "Path to a folder containing read files (in fastq or fasta format) to process. Cannot be used in combination with '-d' or '-o'.", 0, "Input/Output options");
   //    argparser.AddArgument(&parameters->output_folder, VALUE_TYPE_STRING, "O", "outfolder", "", "Path to a folder for placing SAM alignments. Use in combination with '-D'.", 0, "Input/Output options");
 
+#ifndef RELEASE_VERSION
+  argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "", "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n illumina - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n overlap  - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --secondary'\n rnaseq   - Equivalent to: '--ambiguity 0.5 --secondary --min-bin-perc 0.01 --bin-step 0.99 --max-regions 20 --spliced'", 0, "General-purpose pre-set options");
+#else
   argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "", "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n illumina - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n overlap  - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --secondary'", 0, "General-purpose pre-set options");
+#endif
 
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n sg       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n sggotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with Gotoh.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
 #ifndef RELEASE_VERSION
-  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "approach", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n (Currently no other options are provided. This is a placeholder for future features, such as cDNA mapping)", 0, "Alignment options");
+  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "approach", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n spliced            - Spliced alignment. Every cluster of anchors is aligned independently.\n (Currently no other options are provided. This is a placeholder for future features, such as cDNA mapping)", 0, "Alignment options");
 #endif
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.", 0, "Alignment options");
   argparser.AddArgument(&parameters->overlapper, VALUE_TYPE_BOOL, "", "overlapper", "0", "Perform overlapping instead of mapping. Skips self-hits if reads and reference files contain same sequences, and outputs lenient secondary alignments.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->no_self_hits, VALUE_TYPE_BOOL, "", "no-self-hits", "0", "Similar to overlapper, but skips mapping of sequences with same headers. Same sequences can be located on different paths, and their overlap still skipped.", 0, "Alignment options");
 
   argparser.AddArgument(&parameters->match_score, VALUE_TYPE_INT64, "M", "match", "5", "Match score for the DP alignment. Ignored for Myers alignment.", 0, "Alignment options");
 #ifndef RELEASE_VERSION
@@ -54,10 +63,10 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->evalue_threshold, VALUE_TYPE_DOUBLE, "z", "evalue", "1e0", "Threshold for E-value. If E-value > FLT, read will be called unmapped. If FLT < 0.0, thredhold not applied.", 0, "Alignment options");
   argparser.AddArgument(&parameters->mapq_threshold, VALUE_TYPE_INT64, "c", "mapq", "1", "Threshold for mapping quality. If mapq < INT, read will be called unmapped.", 0, "Alignment options");
   argparser.AddArgument(&parameters->use_extended_cigar, VALUE_TYPE_BOOL, "", "extcigar", "0", "Use the extended CIGAR format for output alignments.", 0, "Alignment options");
-//#ifndef RELEASE_VERSION
-//  argparser.AddArgument(&parameters->use_spliced, VALUE_TYPE_BOOL, "", "spliced", "0", "Align clusters of anchors independently and report them as separate alignments. Does not align in-between clusters. Works only for anchored alignment modes.", 0, "Alignment options");
-//  argparser.AddArgument(&parameters->use_split, VALUE_TYPE_BOOL, "", "split", "0", "Align clusters of anchors independently and report them as separate alignments. Does not align in-between clusters. Works only for anchored alignment modes.", 0, "Alignment options");
-//#endif
+#ifndef RELEASE_VERSION
+  argparser.AddArgument(&parameters->use_spliced, VALUE_TYPE_BOOL, "", "spliced", "0", "Align clusters of anchors independently and report them as separate alignments. Does not align in-between clusters. Works only for anchored alignment modes.", 0, "Alignment options");
+  argparser.AddArgument(&parameters->use_split, VALUE_TYPE_BOOL, "", "split", "0", "Align clusters of anchors independently and report them as separate alignments. Does not align in-between clusters. Works only for anchored alignment modes.", 0, "Alignment options");
+#endif
   argparser.AddArgument(&parameters->disable_end_to_end, VALUE_TYPE_BOOL, "", "no-end2end", "0", "Disables extending of the alignments to the ends of the read. Works only for anchored modes.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->extend_aln_to_end, VALUE_TYPE_BOOL, "", "extend-to-end", "1", "Switches extension of anchored alignment to read/reference ends. If false, alignments will be bound by the first and last anchor. Otherwise, alignment will proceed until an end of one of the sequences is hit.", 0, "Alignment options");
   argparser.AddArgument(&parameters->max_error_rate, VALUE_TYPE_DOUBLE, "", "max-error", "1.0", "If an alignment has error rate (X+I+D) larger than this, it won't be taken into account. If >= 1.0, this filter is disabled.", 0, "Alignment options");

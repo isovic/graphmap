@@ -30,7 +30,8 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
 
   int64_t readlength = read->get_sequence_length();
   int64_t num_fwd_seqs = indexes[0]->get_num_sequences_forward();
-  bool self_overlap = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool is_overlapper = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool no_self_overlap = (parameters->no_self_hits == true);
 
   mapping_data->bin_size = bin_size;
 
@@ -111,8 +112,8 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
             int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
             int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
 
-            if (self_overlap == true &&
-                (reference_index % num_fwd_seqs) == read->get_sequence_id()) {
+            if ((is_overlapper == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) ||
+                (no_self_overlap == true && index->get_headers()[reference_index % num_fwd_seqs] == std::string(read->get_header()))) {
               continue;
             }
 
@@ -224,7 +225,8 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
 
   int64_t readlength = read->get_sequence_length();
   int64_t num_fwd_seqs = indexes[0]->get_num_sequences_forward();
-  bool self_overlap = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool is_overlapper = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool no_self_overlap = (parameters->no_self_hits == true);
 
   float bin_size_inverse = (bin_size > 0) ? (1.0f / ((float) bin_size)) : (0.0f);
   int64_t k = (int64_t) ((IndexSpacedHash *) indexes[0])->get_shape_index_length();
@@ -274,7 +276,8 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
         // Calculate the index of the bin the position belongs to.
         int64_t position_bin = floor(((float) l) * bin_size_inverse);
 
-        if (self_overlap == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) {
+        if ((is_overlapper == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) ||
+            (no_self_overlap == true && index->get_headers()[reference_index % num_fwd_seqs] == std::string(read->get_header()))) {
           continue;
         }
 
@@ -372,7 +375,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
 
   int64_t readlength = read->get_sequence_length();
   int64_t num_fwd_seqs = indexes[0]->get_num_sequences_forward();
-  bool self_overlap = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool is_overlapper = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool no_self_overlap = (parameters->no_self_hits == true);
 
   mapping_data->bin_size = bin_size;
 
@@ -469,7 +473,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
             int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
             int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
 
-            if (self_overlap == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) {
+            if ((is_overlapper == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) ||
+                (no_self_overlap == true && index->get_headers()[reference_index % num_fwd_seqs] == std::string(read->get_header()))) {
               continue;
             }
 
