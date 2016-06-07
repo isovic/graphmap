@@ -15,18 +15,20 @@ int VerbosePathGraphEntryCluster(std::string &out_file, const Region &region, co
                                   const SingleSequence* read, const ProgramParameters* parameters);
 
 struct MyCluster {
-	int readStart;
-	int readEnd;
-	int refStart;
-	int refEnd;
+	int64_t readStart;
+	int64_t readEnd;
+	int64_t refStart;
+	int64_t refEnd;
 	int coveredBases;
 	int regionI;
 	int clusterJ;
+	int x1, y1;
+	int x2, y2;
 
-	MyCluster(int _readStart, int _readEnd, int _refStart, int _refEnd, int _coveredBases,
+	MyCluster(int64_t _readStart, int64_t _readEnd, int64_t _refStart, int64_t _refEnd, int _coveredBases,
 			int _regionI, int _clusterJ) :
 		readStart(_readStart), readEnd(_readEnd), refStart(_refStart), refEnd(_refEnd),
-		coveredBases(_coveredBases), regionI(_regionI), clusterJ(clusterJ) {}
+		coveredBases(_coveredBases), regionI(_regionI), clusterJ(_clusterJ) {}
 
 	friend bool operator <(const MyCluster& a, const MyCluster& b) {
 		if (a.readStart != b.readStart) {
@@ -45,22 +47,18 @@ struct MyCluster {
 	}
 };
 
-inline int max(const int& a, const int& b) {
-	return (a > b) ? a : b;
-}
-
 #define MAXN 2001
 #define STRANDS 2
 
 std::vector<MyCluster> clusters[STRANDS];
-int dp[STRANDS][MAXN];
 int backtrack[STRANDS][MAXN];
+int dp[STRANDS][MAXN];
 
 void calculateDP(void) {
 	for (int strand = 0; strand < STRANDS; strand++) {
 		for (int n = clusters[strand].size(), x = n; x >= 0; x--) {
 			int index = x - 1;
-			int xLeft = (index == -1) ? 0 : clusters[strand][index].readEnd, yLeft = (index == -1) ? 0 : clusters[strand][index].refEnd;
+			int64_t xLeft = (index == -1) ? 0 : clusters[strand][index].readEnd, yLeft = (index == -1) ? 0 : clusters[strand][index].refEnd;
 			int &ref = dp[strand][x];
 			for (int i = x; i < n; i++) {
 				if (clusters[strand][i].readStart < xLeft || clusters[strand][i].refStart < yLeft) {
@@ -75,6 +73,7 @@ void calculateDP(void) {
 		}
 	}
 }
+
 // This function filters clusters in different mapping regions, to preserve only the ones which might be construed as valid RNA-seq mappings.
 int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
 
@@ -88,9 +87,10 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 
   int64_t read_len = read->get_sequence_length();
 
-  std::set<MyCluster> clusterSet[2];
+  std::set<MyCluster> clusterSet[STRANDS];
 
   std::vector<Cluster*> cluster_data[mapping_data->intermediate_mappings.size()];
+  //printf ("\npopis clustera po regijama: \n");
   // Clusters are stored in the intermediate mappings. Intermediate mapping corresponds to one processed region on the reference.
   for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
     // All info about the region is given here (such as: reference_id, start and end coordinates of the region, etc.).
@@ -111,14 +111,19 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 //    #endif
 
     int reverseStrand = (int32_t) region.reference_id >= indexes[0]->get_num_sequences_forward();
+    //printf ("\ni: %d, cluster_vector.size(): %d\n", i, cluster_vector.size());
 
     // Clusters can be accessed like so.
     for (int32_t j=0; j<cluster_vector.size(); j++) {
+    	//printf ("\tj: %d\n", j);
       Cluster& cluster = cluster_vector[j];
 			clusterSet[reverseStrand].insert(MyCluster(cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
 					cluster.coverage, i, j));
 			cluster.valid = false;
 			cluster_data[i].push_back(&cluster);
+			
+			/*printf ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n", cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
+					cluster.coverage, i, j);*/
 
       // Members of Cluster contain these values:
       // cluster.query.start
@@ -130,27 +135,74 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
       // If the cluster is supposed to be used, set cluster.valid to true, otherwise set it to false (mandatory; it will be true by default).
     }
   }
-
+	
+	int emptySets = 0;
   for (int strand = 0; strand < STRANDS; strand++) {
+  	printf ("\nclusterSet[%d].size(): %d\n", strand, clusterSet[strand].size());
+  	if (clusterSet[strand].size() == 0) {
+  		emptySets++;
+  		continue;
+  	}
 		for (const MyCluster &cluster : clusterSet[strand]) {
 			clusters[strand].push_back(cluster);
 		}
-		sort(clusters[strand].begin(), clusters[strand].end());
+	}
+	
+	if (emptySets == STRANDS) {
+		return 0;
 	}
 
   memset(backtrack, -1, sizeof(backtrack));
+  memset(dp, 0, sizeof(dp));
+  calculateDP();
 	int strand = (dp[0][0] > dp[1][0]) ? 0 : 1;
+	
+	//printf ("\ncluster_data array size: %d\n", mapping_data->intermediate_mappings.size());
+	//printf ("first region cluster size: %d\n", cluster_data[0].size());
 
+	std::set<int>	done;
   int curr = backtrack[strand][0];
+  return 0;
+  //printf ("ispis rjesenja:\n");
   while (true) {
-  	int currClusterIndex = curr - 1;
+  	if (curr == -1) {
+  		break;
+  	}
+  	if (done.count(curr) > 0) {
+  		printf ("vec obisao!!!!\n");
+  		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
+  		return 0;  	
+  	}
+  	done.insert(curr);
+  	int currClusterIndex = curr;
+  	if (curr == backtrack[strand][curr]) {
+  		printf ("sljedeci je bas isti!!!\n");
+  		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
+  		return 0;
+  	}
   	int i = clusters[strand][currClusterIndex].regionI;
   	int j = clusters[strand][currClusterIndex].clusterJ;
+  	//printf ("i: %d, j: %d\n", i, j);
+  	printf ("curr: %d\n", curr);
+  	printf ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n",
+  		clusters[strand][currClusterIndex].readStart,
+  		clusters[strand][currClusterIndex].readEnd,
+  		clusters[strand][currClusterIndex].refStart,
+  		clusters[strand][currClusterIndex].refEnd,
+  		clusters[strand][currClusterIndex].coveredBases,
+  		clusters[strand][currClusterIndex].regionI,
+  		clusters[strand][currClusterIndex].clusterJ);
+  	printf ("backtrack[strand][curr]: %d\n", backtrack[strand][curr]);
+  	
   	cluster_data[i][j]->valid = true;
   	if (backtrack[strand][curr] == -1) {
   		break;
   	}
   	curr = backtrack[strand][curr];
+  }
+  
+  for (int strand = 0; strand < STRANDS; strand++) {
+  	clusters[strand].clear();
   }
 
   return 0;
@@ -194,3 +246,4 @@ int VerbosePathGraphEntryCluster(std::string &out_file, const Region &region, co
   fclose(fp);
   return 0;
 }
+
