@@ -112,10 +112,15 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
             int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
             int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
 
-            if ((is_overlapper == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) ||
+//            if ((is_overlapper == true && (reference_index % num_fwd_seqs) == read->get_sequence_id()) ||
+//                (no_self_overlap == true && index->get_headers()[reference_index % num_fwd_seqs] == std::string(read->get_header()))) {
+//              continue;
+//            }
+            if ((is_overlapper == true && (reference_index % num_fwd_seqs) <= read->get_sequence_id()) ||
                 (no_self_overlap == true && index->get_headers()[reference_index % num_fwd_seqs] == std::string(read->get_header()))) {
               continue;
             }
+
 
             if (reference_index < 0) {
               LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Offending variable: reference_index. reference_index = %ld, y = %ld, j = %ld / (%ld, %ld)\n", reference_index, local_position, j, 0, hit_counts[hits_id]), "SelectRegionsWithHoughAndCircular");

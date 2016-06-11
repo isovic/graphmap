@@ -524,6 +524,8 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
 
     if (parameters->outfmt == "sam") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);  // TODO: Don't make the first alignment primary by default, but the best one.
+    } else if (parameters->outfmt == "mhap") {
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateMHAP((num_mapped_alignments == 0), parameters->verbose_sam_output);
     } else if (parameters->outfmt == "afg") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAFG();
     } else if (parameters->outfmt == "m5") {
@@ -551,6 +553,8 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
   if (mapping_data->unmapped_reason.size() > 0) {
     if (parameters->outfmt == "sam") {
       ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
+    } else if (parameters->outfmt == "mhap") {
+
     } else if (parameters->outfmt == "afg") {
       // In AFG format there is no need to report 'unmapped' (or non-overlapping) reads).
     } else if (parameters->outfmt == "m5") {

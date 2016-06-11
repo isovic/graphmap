@@ -17,7 +17,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddCompositeArgument("illumina", "-a gotoh -w normal -M 5 -X 4 -G 8 -E 6");
 //  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
-  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
+  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue -1 --max-indel-error 0.40 --mapq -1 --ambiguity 0.75 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 //  argparser.AddCompositeArgument("sensitive", "-a gotoh -w sg -M 5 -X 4 -G 8 -E 6");
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");

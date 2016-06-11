@@ -343,6 +343,9 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << ss_optional1.str();
 
   if (verbose_sam_output >= 3) {
+    std::stringstream X1_ss;
+    ss << "\tX1:Z:" << "qstart=" << alignment_info.query_start << "_qend=" << alignment_info.query_end << "_rstart=" << alignment_info.ref_start << "_rend=" << alignment_info.ref_end;
+
     float mismatch_rate = (((float) (alignment_info.num_x_ops + alignment_info.num_i_ops + alignment_info.num_d_ops)) / ((float) (alignment_info.num_eq_ops + alignment_info.num_x_ops + alignment_info.num_d_ops + alignment_info.num_i_ops)));
     float match_rate = (((float) alignment_info.num_eq_ops) / ((float) alignment_info.nonclipped_length)); // ((float) read_->get_sequence_length()));
 
@@ -378,6 +381,45 @@ std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_out
       ss << GenerateSAMFromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
     }
   }
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateMHAP(bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  for (int64_t i=0; i<alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) {
+      if (i > 0) { ss << "\n"; }
+      ss << GenerateMHAPFromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
+    }
+  }
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateMHAPFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  int64_t qlen = read_->get_sequence_length();
+  int64_t rlen = index_->get_reference_lengths()[region_info_.reference_id];
+
+  double jaccard = ((double) alignment_info.num_eq_ops) / ((double) (alignment_info.query_end + 1 - alignment_info.query_start));
+  int64_t num_anchors = alignment_info.query_end + 1 - alignment_info.query_start;
+
+  ss << (read_->get_sequence_absolute_id() + 1) << " ";
+  ss << ((region_info_.reference_id) % (this->index_->get_num_sequences_forward()))  + 1 << " ";
+  ss << jaccard << " ";
+  ss << num_anchors << " ";
+  ss << ((alignment_info.orientation == kForward) ? "0" : "1") << " ";
+  ss << alignment_info.query_start << " ";
+  ss << alignment_info.query_end + 1 << " ";
+  ss << qlen << " ";
+
+  ss << "0" << " ";
+  ss << alignment_info.ref_start << " ";
+  ss << (alignment_info.ref_end + 1) << " ";
+  ss << rlen << " ";
 
   return ss.str();
 }

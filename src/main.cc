@@ -22,6 +22,7 @@
 #include "utility/utility_general.h"
 
 #include "owler/owler.h"
+#include "owler2/owler2.h"
 #include "argparser.h"
 
 int main(int argc, char *argv[]) {
@@ -81,6 +82,20 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     Owler owler;
+    owler.Run(program_parameters);
+
+  } else if (subprogram == "owler2") {
+    if (ProcessArgsOwler(argc2, &argv2[0], &program_parameters))
+      return 1;
+
+    if (program_parameters.verbose_level == 1) {
+      LogSystem::GetInstance().LOG_VERBOSE_TYPE = LOG_VERBOSE_STD;
+    } else if (program_parameters.verbose_level > 1) {
+      LogSystem::GetInstance().LOG_VERBOSE_TYPE = LOG_VERBOSE_FULL | LOG_VERBOSE_STD;
+    }
+    fflush(stdout);
+
+    Owler2 owler;
     owler.Run(program_parameters);
 
   } else {
