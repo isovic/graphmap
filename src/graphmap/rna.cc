@@ -47,7 +47,7 @@ struct MyCluster {
 	}
 };
 
-#define MAXN 2001
+#define MAXN 3001
 #define STRANDS 2
 
 std::vector<MyCluster> clusters[STRANDS];
@@ -56,6 +56,9 @@ int dp[STRANDS][MAXN];
 
 void calculateDP(void) {
 	for (int strand = 0; strand < STRANDS; strand++) {
+		if (clusters[strand].size() == 0) {
+			continue;
+		}
 		for (int n = clusters[strand].size(), x = n; x >= 0; x--) {
 			int index = x - 1;
 			int64_t xLeft = (index == -1) ? 0 : clusters[strand][index].readEnd, yLeft = (index == -1) ? 0 : clusters[strand][index].refEnd;
@@ -74,6 +77,12 @@ void calculateDP(void) {
 	}
 }
 
+void empty_clusters(void) {
+  for (int strand = 0; strand < STRANDS; strand++) {
+  	clusters[strand].clear();
+  }
+}
+
 // This function filters clusters in different mapping regions, to preserve only the ones which might be construed as valid RNA-seq mappings.
 int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
 
@@ -88,7 +97,12 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   int64_t read_len = read->get_sequence_length();
 
   std::set<MyCluster> clusterSet[STRANDS];
-
+	
+	if (mapping_data->intermediate_mappings.size() == 0) {
+		printf ("aloooo!!! polje vectora je 0!\n");
+		empty_clusters();
+		return 0;
+	}
   std::vector<Cluster*> cluster_data[mapping_data->intermediate_mappings.size()];
   //printf ("\npopis clustera po regijama: \n");
   // Clusters are stored in the intermediate mappings. Intermediate mapping corresponds to one processed region on the reference.
@@ -135,10 +149,12 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
       // If the cluster is supposed to be used, set cluster.valid to true, otherwise set it to false (mandatory; it will be true by default).
     }
   }
+  
+  printf ("\nprosli sve clustere - krece racunanje\n");
 	
 	int emptySets = 0;
   for (int strand = 0; strand < STRANDS; strand++) {
-  	printf ("\nclusterSet[%d].size(): %d\n", strand, clusterSet[strand].size());
+  	//printf ("\nclusterSet[%d].size(): %d\n", strand, clusterSet[strand].size());
   	if (clusterSet[strand].size() == 0) {
   		emptySets++;
   		continue;
@@ -148,13 +164,22 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 		}
 	}
 	
+	////#XY 	printf ("prebacio iz seta u vector\n");
+	
 	if (emptySets == STRANDS) {
+		printf ("izlazim jer nema nista ...\n");
+		empty_clusters();
 		return 0;
 	}
 
   memset(backtrack, -1, sizeof(backtrack));
   memset(dp, 0, sizeof(dp));
+  
+  printf ("sve je memsetano\n");
+  printf ("forward: %d, reverse: %d\n", clusters[0].size(), clusters[1].size());
   calculateDP();
+  
+  printf ("DP je izracunat\n");
 	int strand = (dp[0][0] > dp[1][0]) ? 0 : 1;
 	
 	//printf ("\ncluster_data array size: %d\n", mapping_data->intermediate_mappings.size());
@@ -162,7 +187,11 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 
 	std::set<int>	done;
   int curr = backtrack[strand][0];
-  return 0;
+  printf ("dobar!\n");
+  
+  //empty_clusters();
+  //return 0;
+  
   //printf ("ispis rjesenja:\n");
   while (true) {
   	if (curr == -1) {
@@ -171,13 +200,15 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   	if (done.count(curr) > 0) {
   		printf ("vec obisao!!!!\n");
   		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
+  		empty_clusters();
   		return 0;  	
   	}
   	done.insert(curr);
-  	int currClusterIndex = curr;
+  	int currClusterIndex = curr - 1;
   	if (curr == backtrack[strand][curr]) {
   		printf ("sljedeci je bas isti!!!\n");
   		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
+  		empty_clusters();
   		return 0;
   	}
   	int i = clusters[strand][currClusterIndex].regionI;
@@ -201,9 +232,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   	curr = backtrack[strand][curr];
   }
   
-  for (int strand = 0; strand < STRANDS; strand++) {
-  	clusters[strand].clear();
-  }
+  empty_clusters();
 
   return 0;
 }
