@@ -50,11 +50,10 @@ struct MyCluster {
 #define MAXN 3001
 #define STRANDS 2
 
-std::vector<MyCluster> clusters[STRANDS];
-int backtrack[STRANDS][MAXN];
-int dp[STRANDS][MAXN];
+//int backtrack[STRANDS][MAXN];
+//int dp[STRANDS][MAXN];
 
-void calculateDP(void) {
+void calculateDP(int **dp, int **backtrack, std::vector<MyCluster> *clusters) {
 	for (int strand = 0; strand < STRANDS; strand++) {
 		if (clusters[strand].size() == 0) {
 			continue;
@@ -77,7 +76,7 @@ void calculateDP(void) {
 	}
 }
 
-void empty_clusters(void) {
+void empty_clusters(std::vector<MyCluster> *clusters) {
   for (int strand = 0; strand < STRANDS; strand++) {
   	clusters[strand].clear();
   }
@@ -97,10 +96,11 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   int64_t read_len = read->get_sequence_length();
 
   std::set<MyCluster> clusterSet[STRANDS];
+	std::vector<MyCluster> clusters[STRANDS];
 	
 	if (mapping_data->intermediate_mappings.size() == 0) {
-		printf ("aloooo!!! polje vectora je 0!\n");
-		empty_clusters();
+		//printf ("aloooo!!! polje vectora je 0!\n");
+		//empty_clusters();
 		return 0;
 	}
   std::vector<Cluster*> cluster_data[mapping_data->intermediate_mappings.size()];
@@ -150,7 +150,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
     }
   }
   
-  printf ("\nprosli sve clustere - krece racunanje\n");
+  ////#XY printf ("\nprosli sve clustere - krece racunanje\n");
 	
 	int emptySets = 0;
   for (int strand = 0; strand < STRANDS; strand++) {
@@ -168,18 +168,30 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 	
 	if (emptySets == STRANDS) {
 		printf ("izlazim jer nema nista ...\n");
-		empty_clusters();
+		//empty_clusters();
 		return 0;
 	}
 
-  memset(backtrack, -1, sizeof(backtrack));
-  memset(dp, 0, sizeof(dp));
+  //memset(backtrack, -1, sizeof(backtrack));
+  //memset(dp, 0, sizeof(dp));
   
-  printf ("sve je memsetano\n");
-  printf ("forward: %d, reverse: %d\n", clusters[0].size(), clusters[1].size());
-  calculateDP();
+  int **dp = (int **) calloc(STRANDS, sizeof(int));
+  int **backtrack = (int **) calloc(STRANDS, sizeof(int));
+  for (int strand = 0; strand < STRANDS; strand++) {
+  	dp[strand] = (int *) calloc(MAXN, sizeof(int));
+  	backtrack[strand] = (int *) calloc(MAXN, sizeof(int));
+  	//memset(backtrack[strand], -1, sizeof(backtrack[strand]));
+  	for (int i = 0; i < MAXN; i++) {
+  		backtrack[strand][i] = -1;
+  	}
+  }
+  //memset(backtrack, -1, sizeof(backtrack));
   
-  printf ("DP je izracunat\n");
+  ////#XY printf ("sve je memsetano\n");
+	////#XY printf ("forward: %d, reverse: %d\n", clusters[0].size(), clusters[1].size());
+  calculateDP(dp, backtrack, clusters);
+  
+  ////#XY printf ("DP je izracunat\n");
 	int strand = (dp[0][0] > dp[1][0]) ? 0 : 1;
 	
 	//printf ("\ncluster_data array size: %d\n", mapping_data->intermediate_mappings.size());
@@ -187,7 +199,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
 
 	std::set<int>	done;
   int curr = backtrack[strand][0];
-  printf ("dobar!\n");
+  ////#XY printf ("dobar!\n");
   
   //empty_clusters();
   //return 0;
@@ -200,7 +212,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   	if (done.count(curr) > 0) {
   		printf ("vec obisao!!!!\n");
   		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
-  		empty_clusters();
+  		//empty_clusters();
   		return 0;  	
   	}
   	done.insert(curr);
@@ -208,22 +220,22 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   	if (curr == backtrack[strand][curr]) {
   		printf ("sljedeci je bas isti!!!\n");
   		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
-  		empty_clusters();
+  		//empty_clusters();
   		return 0;
   	}
   	int i = clusters[strand][currClusterIndex].regionI;
   	int j = clusters[strand][currClusterIndex].clusterJ;
   	//printf ("i: %d, j: %d\n", i, j);
-  	printf ("curr: %d\n", curr);
-  	printf ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n",
+  	////#XY printf ("curr: %d\n", curr);
+  	/* printf ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n",
   		clusters[strand][currClusterIndex].readStart,
   		clusters[strand][currClusterIndex].readEnd,
   		clusters[strand][currClusterIndex].refStart,
   		clusters[strand][currClusterIndex].refEnd,
   		clusters[strand][currClusterIndex].coveredBases,
   		clusters[strand][currClusterIndex].regionI,
-  		clusters[strand][currClusterIndex].clusterJ);
-  	printf ("backtrack[strand][curr]: %d\n", backtrack[strand][curr]);
+  		clusters[strand][currClusterIndex].clusterJ);*/
+  	////#XY printf ("backtrack[strand][curr]: %d\n", backtrack[strand][curr]);
   	
   	cluster_data[i][j]->valid = true;
   	if (backtrack[strand][curr] == -1) {
@@ -232,7 +244,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, const std::vector<In
   	curr = backtrack[strand][curr];
   }
   
-  empty_clusters();
+  //empty_clusters();
 
   return 0;
 }
