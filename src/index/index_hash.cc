@@ -133,17 +133,23 @@ void IndexHash::CountKmers(const SingleSequence &sequence, int k, int64_t **ret_
   int64_t num_kmers = std::pow(2, (2*k));
   int64_t *kmer_counts = (int64_t *) calloc(sizeof(int64_t), num_kmers);
 
+
+  bool last_skipped = true;
+
   for (uint64_t i=0; i<(sequence.get_sequence_length() - k + 1); i++) {
     const int8_t *seed_start = &(sequence.get_data()[i]);
 
-    if (i == 0) {
+    if (i == 0 || last_skipped == true) {
       hash_key = GenerateHashKey(seed_start, k);
+      last_skipped = false;
     } else {
       hash_key = UpdateHashKey(seed_start, k, hash_key);
     }
 
-    if (hash_key < 0)
+    if (hash_key < 0) {
+      last_skipped = true;
       continue;
+    }
     kmer_counts[hash_key] += 1;
   }
 
