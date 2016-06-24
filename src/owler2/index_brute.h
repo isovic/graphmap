@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include "sequences/sequence_file.h"
 #include "utility/utility_general.h"
+#include "compiled_shape.h"
 
 int compare_int128(const void *a, const void *b);
 #define MASK_LOWER_64 ((((unsigned __int128) 1) << 64) - 1)
@@ -43,65 +44,6 @@ struct HashLocation {
 struct HashLocationBrute {
   int32_t seq_id = 0;
   float weight = 0.0f;
-};
-
-struct Mask {
-  int32_t start = 0;
-  int32_t len = 0;
-  uint64_t bits = 0;
-  int32_t shift = 0;
-};
-
-class CompiledShape {
- public:
-  std::vector<Mask> masks;
-  std::string shape = "";
-  int32_t num_incl_bits = 0;
-
-  CompiledShape() { };
-  CompiledShape(const std::string &new_shape) { Compile(new_shape); };
-  void Compile(const std::string &new_shape) {
-    shape = new_shape;
-    masks.clear();
-    num_incl_bits = 0;
-
-    Mask mask;
-    for (int32_t i=0; i<new_shape.size(); i++) {
-//      mask.start = (new_shape[i] == "1" && (i == 0 || (i > 0 && new_shape[i-1] == "0"))) ? i : mask.start;
-
-      if (shape[i] == '1' && (i == 0 || (i > 0 && shape[i-1] == '0'))) {  /// This detects the start of a new chain of inclusive bases.
-        mask.start = i*2;
-        mask.len = 2; /// Counts two bits per base.
-      } else if (shape[i] == '0' && (i > 0 && shape[i-1] == '1')) {       /// This detects the end of the chain of inclusive bases.
-        masks.push_back(mask);
-        mask.start = 0;
-        mask.len = 0;
-      } else if (shape[i] == '1') { /// Count the number of inclusive bases.
-        mask.len += 2; /// Counts two bits per base.
-      }
-    }
-
-    /// Leftover mask part.
-    if (mask.len > 0) {
-      masks.push_back(mask);
-      mask.start = 0;
-      mask.len = 0;
-    }
-
-//    shape = "11110111101111";
-//    Mask mask;
-//    mask.start = 0; mask.len = 4*2; masks.push_back(mask);
-//    mask.start = 5*2; mask.len = 4*2; masks.push_back(mask);
-//    mask.start = 10*2; mask.len = 4*2; masks.push_back(mask);
-
-    for (int32_t i=0; i<masks.size(); i++) {
-      int64_t shift_mask_raw = 64 - masks[i].start - masks[i].len;
-      masks[i].bits = ((uint64_t) (pow(2, masks[i].len) - 1)) << (shift_mask_raw);
-      masks[i].shift = (i > 0) ? (masks[i].start - (masks[i-1].start + masks[i-1].len) + masks[i-1].shift) : 0;
-      num_incl_bits += masks[i].len;
-//      printf ("%s\t\t[%d] start = %d, len = %d, shift = %d, shape_incl_bases = %d\n", ConvertToBinary(masks[i].bits).c_str(), i, masks[i].start, masks[i].len, masks[i].shift, num_incl_bases);
-    }
-  }
 };
 
 int compare_hash_pos(const void *a, const void *b);

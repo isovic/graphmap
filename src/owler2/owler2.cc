@@ -84,7 +84,9 @@ void Owler2::Run(ProgramParameters& parameters) {
   // Do the actual work.
   last_time = clock();
   FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output file is specified. If it is not, then output to STDOUT.
+
   ProcessReads(parameters, &index, query_seqs, fp_out);
+
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
   if (fp_out != stdout)
     fclose(fp_out);
