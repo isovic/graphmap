@@ -5,7 +5,7 @@
 #include <algorithm>
 
 static size_t K = 19;
-static size_t num_threads = std::max((size_t) std::thread::hardware_concurrency(), (size_t) 1U);
+//static size_t num_threads = std::max((size_t) std::thread::hardware_concurrency(), (size_t) 1U);
 
 template<typename T>
 void swap(T* a, T* b) {
@@ -67,8 +67,8 @@ void quickSort(T* a, size_t length) {
 }
 
 template<typename T>
-void pquickSort(T* a, size_t length) {
-    #pragma omp parallel num_threads(num_threads / 2)
+void pquickSort(T* a, size_t length, int32_t num_threads) {
+    #pragma omp parallel num_threads(num_threads)
     #pragma omp single nowait
     quickSort(a, length);
 }

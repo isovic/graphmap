@@ -573,7 +573,7 @@ int IndexBrute::CreateFromSequenceFile(const SequenceFile &seqs, float min_avg_s
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
   diff_time = clock();
 //  std::sort(seed_list_.begin(), seed_list_.end() );
-  pquickSort(&(seed_list_[0]), seed_list_.size());
+  pquickSort(&(seed_list_[0]), seed_list_.size(), num_threads);
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Making unique (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
   diff_time = clock();
   seed_list_.erase(std::unique(seed_list_.begin(), seed_list_.end()), seed_list_.end());

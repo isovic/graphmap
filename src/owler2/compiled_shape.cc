@@ -51,4 +51,13 @@ void CompiledShape::Compile(const std::string new_shape) {
   }
 }
 
-
+uint64_t CompiledShape::CreateSeedFromShape(uint64_t bases2bit) const {
+  uint64_t seed = 0;
+  for (int32_t i=0; i<masks.size(); i++) {
+    uint64_t buffer_part = bases2bit & masks[i].bits;
+    buffer_part = buffer_part << masks[i].shift;
+    seed |= buffer_part;
+  }
+  seed = seed >> (64 - num_incl_bits);
+  return seed;
+}
