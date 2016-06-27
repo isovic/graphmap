@@ -11,6 +11,7 @@
 #include <omp.h>
 #include <algorithm>
 #include <tuple>
+#include <deque>
 
 IndexGappedMinimizer::IndexGappedMinimizer() {
   hash_.set_empty_key(empty_hash_key);
@@ -32,7 +33,7 @@ void IndexGappedMinimizer::Clear() {
   headers_.clear();
 }
 
-int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const std::vector<CompiledShape>& compiled_shapes, float min_avg_seed_qv, bool index_reverse_strand, bool use_minimizers, int32_t num_threads) {
+int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const std::vector<CompiledShape>& compiled_shapes, float min_avg_seed_qv, bool index_reverse_strand, bool use_minimizers, int32_t minimizer_window_len, int32_t num_threads) {
   clock_t absolute_time = clock();
   clock_t diff_time = clock();
 
@@ -74,7 +75,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
     uint64_t seq_id = seqs.get_sequences()[i]->get_sequence_absolute_id() + 0; // The '+ 0' is actually short for this: + ((orientation == kReverse) ? num_sequences_forward_ : 0);
     int64_t num_seeds_processed = AddSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seeds_[seed_starts_for_seq[i]]));
     if (use_minimizers) {
-      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed);
+      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, minimizer_window_len);
     }
     FlagDuplicates_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed);
   }
@@ -302,8 +303,55 @@ inline uint64_t IndexGappedMinimizer::ReverseComplementSeed_(uint64_t seed, int3
   }
   return rev_seed;
 }
+// It's advisible that the window_len is an even number, because the seed_list contains fwd and rev complements of seeds, interleaved.
+int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seeds, int32_t window_len) {
+  if (window_len < num_seeds) { return 1; }
 
-int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seeds) {
+  std::deque<int>  q(window_len);
+
+  // Setup the initial deque.
+  for (int64_t i=0; i<window_len; i++) {
+    // Remove smaller elements if any.
+    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) >= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
+      q.pop_back();
+    }
+    q.push_back(i);
+  }
+
+  std::vector<int64_t> minimizer_indices;
+  minimizer_indices.reserve(num_seeds);
+
+  // Every other seed is the reverse complement of the previous one.
+  // Thus the sliding window will skip 2 instead of 1 seed.
+  for (int64_t i=window_len; i<num_seeds; i+=2) {
+    // Store the largest element of the previous window.
+    minimizer_indices.push_back(q.front());
+    // Remove the elements which are out of this window-
+    while ((!q.empty()) && q.front() <= (i - window_len)) {
+      q.pop_front();
+    }
+    // Remove smaller elements if any.
+    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) >= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
+      q.pop_back();
+    }
+
+    q.push_back(i);
+  }
+
+  minimizer_indices.push_back(q.front());
+
+  // Remove excess seeds.
+  std::vector<bool> keep;
+  keep.resize(num_seeds, false);
+  for (int64_t i=0; i<minimizer_indices.size(); i++) {
+    keep[minimizer_indices[i]] = true;
+  }
+  for (int64_t i=0; i<num_seeds; i++) {
+    if (keep[i] == false) {
+      seed_list[i] = 0;
+    }
+  }
+
   return 0;
 }
 

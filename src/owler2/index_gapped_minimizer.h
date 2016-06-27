@@ -44,6 +44,10 @@ const uint32_t kIndexMaskStrand = ~((uint32_t) kIndexIdReverse);
 const uint64_t kIndexMaskLowerBits = 0x00000000FFFFFFFF;
 const uint64_t kIndexMaskUpperBits = 0xFFFFFFFF00000000;
 
+#define GET_KEY_FROM_CODED_SEED(x)  ((uint64_t) (x >> 64))
+#define GET_SEQ_ID_FROM_CODED_SEED(x)  ((uint64_t) ((x >> 32) & kIndexMaskLowerBits))
+#define GET_POS_FROM_CODED_SEED(x)  ((uint64_t) (x & kIndexMaskLowerBits))
+
 class IndexPos {
  public:
   // This structure holds the info of a seed position in the form of (seq_id, pos, strand) 'tuple'.
@@ -69,7 +73,7 @@ class IndexGappedMinimizer {
   ~IndexGappedMinimizer();
 
   void Clear();
-  int CreateFromSequenceFile(const SequenceFile &seqs, const std::vector<CompiledShape> &compiled_shapes, float min_avg_seed_qv, bool index_reverse_strand, bool use_minimizers, int32_t num_threads);
+  int CreateFromSequenceFile(const SequenceFile &seqs, const std::vector<CompiledShape> &compiled_shapes, float min_avg_seed_qv, bool index_reverse_strand, bool use_minimizers, int32_t minimizer_window_len, int32_t num_threads);
   void DumpHash(std::string out_path, int32_t num_bases);
   void DumpSortedHash(std::string out_path, int32_t num_bases);
   void DumpSeeds(std::string out_path, int32_t num_bases);
@@ -93,7 +97,7 @@ class IndexGappedMinimizer {
   int AddSeedsForSeq_(int8_t *seqdata, int8_t *seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape> &compiled_shapes, uint128_t *seed_list);
   inline uint64_t SeedHashFunction_(uint64_t seed);
   inline uint64_t ReverseComplementSeed_(uint64_t seed, int32_t num_bases);
-  int MakeMinimizers_(uint128_t *seed_list, int64_t num_seeds);
+  int MakeMinimizers_(uint128_t *seed_list, int64_t num_seeds, int32_t window_len);
   int FlagDuplicates_(uint128_t *seed_list, int64_t num_seeds);
   int OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val);
 
