@@ -61,7 +61,7 @@ void Owler2::Run(ProgramParameters& parameters) {
   float min_qv = -1.0f;
 //  IndexBrute index;
   IndexGappedMinimizer index;
-  index.CreateFromSequenceFile(ref_seqs, compiled_shapes, min_qv, true, false, parameters.num_threads);
+  index.CreateFromSequenceFile(ref_seqs, compiled_shapes, min_qv, true, true, 10, parameters.num_threads);
   LOG_ALL("Finished building the index.\n");
 
   SequenceFile read_seqs;

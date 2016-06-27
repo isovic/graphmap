@@ -82,7 +82,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("\n"), std::string("[]"));
 
-//  DumpSeeds("temp/seeds.csv", max_incl_bits/2);
+//  DumpSeeds("temp/seeds.minimizers.csv", max_incl_bits/2);
 
   LOG_ALL("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();
@@ -137,7 +137,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 
 //  DumpSeeds("temp/seeds.csv", max_incl_bits/2);
 //  DumpHash("temp/hash.csv", max_incl_bits/2);
-  DumpSortedHash("temp/hash.sorted.csv", max_incl_bits/2);
+//  DumpSortedHash("temp/hash.minimizers.sorted.csv", max_incl_bits/2);
 
   return 0;
 }
@@ -305,14 +305,14 @@ inline uint64_t IndexGappedMinimizer::ReverseComplementSeed_(uint64_t seed, int3
 }
 // It's advisible that the window_len is an even number, because the seed_list contains fwd and rev complements of seeds, interleaved.
 int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seeds, int32_t window_len) {
-  if (window_len < num_seeds) { return 1; }
+  if (window_len > num_seeds) { return 1; }
 
   std::deque<int>  q(window_len);
 
   // Setup the initial deque.
   for (int64_t i=0; i<window_len; i++) {
     // Remove smaller elements if any.
-    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) >= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
+    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) <= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
       q.pop_back();
     }
     q.push_back(i);
@@ -331,7 +331,7 @@ int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seed
       q.pop_front();
     }
     // Remove smaller elements if any.
-    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) >= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
+    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) <= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
       q.pop_back();
     }
 
