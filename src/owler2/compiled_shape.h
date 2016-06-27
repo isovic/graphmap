@@ -36,4 +36,6 @@ class CompiledShape {
   uint64_t CreateSeedFromShape(uint64_t bases2bit) const;
 };
 
+std::vector<CompiledShape> CompileShapes(const std::vector<std::string> &shapes);
+
 #endif /* SRC_OWLER2_COMPILED_SHAPE_H_ */

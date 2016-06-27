@@ -61,3 +61,13 @@ uint64_t CompiledShape::CreateSeedFromShape(uint64_t bases2bit) const {
   seed = seed >> (64 - num_incl_bits);
   return seed;
 }
+
+std::vector<CompiledShape> CompileShapes(const std::vector<std::string> &shapes) {
+  std::vector<CompiledShape> compiled_shapes;
+  for (int32_t i=0; i<shapes.size(); i++) {
+    CompiledShape compiled_shape(shapes[i]);
+    compiled_shapes.push_back(compiled_shape);
+  }
+  return compiled_shapes;
+}
+

@@ -296,14 +296,14 @@ int IndexBrute::ProcessKmerSpectrumSeparateReads_(int8_t *seqdata, int8_t *seqqu
   return seed_id;
 }
 
-std::vector<CompiledShape> IndexBrute::CompileShapes(const std::vector<std::string> &shapes) {
-  std::vector<CompiledShape> compiled_shapes;
-  for (int32_t i=0; i<shapes.size(); i++) {
-    CompiledShape compiled_shape(shapes[i]);
-    compiled_shapes.push_back(compiled_shape);
-  }
-  return compiled_shapes;
-}
+//std::vector<CompiledShape> IndexBrute::CompileShapes(const std::vector<std::string> &shapes) {
+//  std::vector<CompiledShape> compiled_shapes;
+//  for (int32_t i=0; i<shapes.size(); i++) {
+//    CompiledShape compiled_shape(shapes[i]);
+//    compiled_shapes.push_back(compiled_shape);
+//  }
+//  return compiled_shapes;
+//}
 
 const std::vector<uint64_t *>& IndexBrute::get_hash() const {
   return hash_;

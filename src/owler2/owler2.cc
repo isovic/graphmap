@@ -13,6 +13,7 @@
 #include "index/index_hash.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
+#include "index_gapped_minimizer.h"
 
 
 
@@ -56,9 +57,11 @@ void Owler2::Run(ProgramParameters& parameters) {
   // Build the index on the fly.
   LOG_ALL("Building the index.\n");
   std::vector<std::string> index_shapes = {"1111110111111"};
+  std::vector<CompiledShape> compiled_shapes = CompileShapes(index_shapes);
   float min_qv = -1.0f;
-  IndexBrute index;
-  index.CreateFromSequenceFile(ref_seqs, min_qv, index_shapes, true, "R1", parameters.num_threads);
+//  IndexBrute index;
+  IndexGappedMinimizer index;
+  index.CreateFromSequenceFile(ref_seqs, compiled_shapes, min_qv, true, false, parameters.num_threads);
   LOG_ALL("Finished building the index.\n");
 
   SequenceFile read_seqs;
@@ -87,12 +90,12 @@ void Owler2::Run(ProgramParameters& parameters) {
 
   ProcessReads(parameters, &index, query_seqs, fp_out);
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
+  LOG_ALL("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f));
   if (fp_out != stdout)
     fclose(fp_out);
 }
 
-void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexBrute* index, const SequenceFile* reads, FILE* fp_out) {
+void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGappedMinimizer* index, const SequenceFile* reads, FILE* fp_out) {
   clock_t time_start = clock();
   clock_t last_time = time_start;
   int32_t num_threads = parameters.num_threads;

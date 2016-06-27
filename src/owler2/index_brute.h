@@ -66,7 +66,7 @@ class IndexBrute {
   int CreateFromSequenceFile(const SequenceFile &seqs, float min_avg_seed_qv, const std::vector<std::string> &shapes, bool index_reverse_strand, std::string index_desig, int32_t num_threads);
   int CreateFromSequence(SingleSequence &seq, std::vector<CompiledShape> &compiled_shapes, bool index_reverse_strand, std::string index_desig, int64_t batch_size, int32_t num_threads);
 
-  static std::vector<CompiledShape> CompileShapes(const std::vector<std::string> &shapes);
+//  static std::vector<CompiledShape> CompileShapes(const std::vector<std::string> &shapes);
 
   /// Takes a buffer of bases (max 32 bases in 64-bits), 2bit packed, and extracts those inclusive ones (defined by a shape).
   /// Parameters:

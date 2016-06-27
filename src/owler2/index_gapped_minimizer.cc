@@ -9,19 +9,27 @@
 #include "log_system/log_system.h"
 #include "omp_sort.hpp"
 #include <omp.h>
+#include <algorithm>
+#include <tuple>
 
 IndexGappedMinimizer::IndexGappedMinimizer() {
-  // TODO Auto-generated constructor stub
-
+  hash_.set_empty_key(empty_hash_key);
+  Clear();
 }
 
 IndexGappedMinimizer::~IndexGappedMinimizer() {
-  // TODO Auto-generated destructor stub
+  Clear();
 }
 
 void IndexGappedMinimizer::Clear() {
+  count_cutoff_ = 0.0;
+  num_sequences_ = 0;
+  num_sequences_forward_ = 0;
   seeds_.clear();
   hash_.clear();
+  data_.clear();
+  reference_lengths_.clear();
+  headers_.clear();
 }
 
 int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const std::vector<CompiledShape>& compiled_shapes, float min_avg_seed_qv, bool index_reverse_strand, bool use_minimizers, int32_t num_threads) {
@@ -43,9 +51,6 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
   int64_t total_num_seeds = 0;
   std::vector<int64_t> seed_starts_for_seq;
   AllocateSpaceForSeeds_(seqs, index_reverse_strand, compiled_shapes.size(), max_seed_len, num_sequences_forward_, seed_starts_for_seq, &total_num_seeds);
-
-  /// The seed_list_will contain all seeds that were obtained from the input sequences.
-  seeds_.resize(total_num_seeds);
 
   LOG_ALL("Allocated memory for a list of %ld seeds (128 bits each) (%.5f sec, diff: %.5f sec).\n", seeds_.size(), (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();
@@ -76,13 +81,15 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("\n"), std::string("[]"));
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
+//  DumpSeeds("temp/seeds.csv", max_incl_bits/2);
+
+  LOG_ALL("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();
   pquickSort(&(seeds_[0]), seeds_.size(), num_threads);
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Making unique (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
-  diff_time = clock();
+//  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Making unique (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
+//  diff_time = clock();
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating occurence counts (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
+  LOG_ALL("Generating the hash table (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();
 
 //  key_occ_.clear();
@@ -91,26 +98,10 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 //    key_occ_[seed_list_[i] >> 32] += 1.0f;
 //  }
 
-//  //   For debugging purposes, output the occurrence table to a file.
-//    auto temp = key_occ_;
-//    std::sort(temp.begin(), temp.end(), [](float a, float b) { return b < a; });
-//    FILE *fp = fopen("dist.csv", "w");
-//    for (int64_t i=0; i<temp.size(); i++) {
-//      fprintf (fp, "%ld\n", (int64_t) temp[i]);
-//    }
-//    fclose(fp);
-
-//  for (int64_t i=0;i <seed_list_.size(); i++) {
-//    int32_t key = (int32_t) (seed_list_[i] >> ((uint64_t) 32));
-//    int32_t ref = seed_list_[i] & 0x00000000FFFFFFFF;
-//    printf ("seed[%ld] = %6X %d\n", i, key, ref);
-//  }
-
   /// This part generates the lookup table for each seed key.
 //  hash_.resize(pow(2, max_incl_bits), NULL);
 //  hash_counts_.resize(pow(2, max_incl_bits), 0);
 //  for (int64_t i=0; i<hash_.size(); i++) { hash_[i] = NULL; hash_counts_[i] = 0; };
-  hash_.set_empty_key(0);
   uint64_t prev_key = 0;
   bool init = false;
   SeedHashValue new_hash_val;
@@ -123,7 +114,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
       init = true;
     } else if (key != prev_key && new_hash_val.num > 0) {
       hash_[prev_key] = new_hash_val;
-      new_hash_val.start = 0;
+      new_hash_val.start = i;
       new_hash_val.num = 0;
     } else {
       new_hash_val.num += 1;
@@ -137,36 +128,15 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
     new_hash_val.num = 0;
   }
 
-//  // Sort the counts so that we can get an occurance histogram.
-//  // We will select a 99.99 percentile of the data as the cutoff value.
-//  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Sorting the hash_couts_ to obtain the occurrence histogram (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
-//  diff_time = clock();
-//  std::vector<size_t> hash_counts_indices;
-//  ordered_sort_vector(hash_counts_, hash_counts_indices);
-//  int64_t num_nonzero = 0;
-//  for (int64_t i=0; i<hash_counts_.size(); i++) {
-//    if (hash_counts_[hash_counts_indices[i]] != 0) {
-//      num_nonzero = hash_counts_.size() - i;
-//      break;
-//    }
-//  }
-//
-//  // Determine the index of the 99.99 percentile.
-//  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Calculating the 99.99 percentile (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
-//  diff_time = clock();
-//  int64_t id99 = hash_counts_.size() - (int64_t) round(((double) 1.0 - 0.9999) * ((double) num_nonzero));
-//  int64_t val99 = hash_counts_[hash_counts_indices[id99]];
-//
-//  count_cutoff_ = val99;
-//  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("num_nonzero = %ld, id99 = %ld (%.5f sec, diff: %.5f sec).\n", num_nonzero, id99, (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
-//
-//  for (int64_t i=0; i<hash_counts_.size(); i++) {
-//    if (hash_counts_[i] >= count_cutoff_) {
-//      hash_counts_[i] = 0;
-//    }
-//  }
-//
-//  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("The 99.99 percentile is %ld (%.5f sec, diff: %.5f sec).\n", val99, (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
+  double avg = 0.0f, stddev = 0.0f, perc9999 = 0.0f;
+  LOG_ALL("Calculating the distribution statistics for key counts (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
+  OccurrenceStatistics_(0.9999, num_threads, &avg, &stddev, &perc9999);
+  count_cutoff_ = perc9999;
+  LOG_ALL("Index statistics: average key count = %f, std dev = %f, percentil(99.99%) = %f\n", avg, stddev, perc9999);
+
+//  DumpSeeds("temp/seeds.csv", max_incl_bits/2);
+//  DumpHash("temp/hash.csv", max_incl_bits/2);
+  DumpSortedHash("temp/hash.sorted.csv", max_incl_bits/2);
 
   return 0;
 }
@@ -210,6 +180,7 @@ void IndexGappedMinimizer::AssignData_(const SequenceFile& seqs, bool index_reve
 }
 
 void IndexGappedMinimizer::AllocateSpaceForSeeds_(const SequenceFile& seqs, bool index_reverse_strand, int64_t num_shapes, int64_t max_seed_len, int64_t num_fwd_seqs, std::vector<int64_t>& seed_starts_for_seq, int64_t* total_num_seeds) {
+  seeds_.clear();
   seed_starts_for_seq.clear();
   seed_starts_for_seq.resize(seqs.get_sequences().size() * 2);
 //  seed_ends_for_seq.clear();
@@ -223,6 +194,9 @@ void IndexGappedMinimizer::AllocateSpaceForSeeds_(const SequenceFile& seqs, bool
       *total_num_seeds += (seqs.get_sequences()[i]->get_sequence_length() - max_seed_len) * num_shapes;
     }
   }
+
+  /// The seed_list_will contain all seeds that were obtained from the input sequences.
+  seeds_.resize(*total_num_seeds);
 }
 
 int IndexGappedMinimizer::AddSeedsForSeq_(int8_t* seqdata, int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape>& compiled_shapes, uint128_t* seed_list) {
@@ -315,15 +289,16 @@ int IndexGappedMinimizer::AddSeedsForSeq_(int8_t* seqdata, int8_t* seqqual, int6
   return seed_id;
 }
 
-uint64_t IndexGappedMinimizer::SeedHashFunction_(uint64_t seed) {
+inline uint64_t IndexGappedMinimizer::SeedHashFunction_(uint64_t seed) {
   return seed;
 }
 
-uint64_t IndexGappedMinimizer::ReverseComplementSeed_(uint64_t seed, int32_t num_bases) {
+inline uint64_t IndexGappedMinimizer::ReverseComplementSeed_(uint64_t seed, int32_t num_bases) {
   uint64_t rev_seed = 0;
   uint64_t complement_seed = ((1 << (num_bases * 2)) - 1) - seed;      // Create a complement of the seed.
   for (int32_t i=0; i<num_bases; i++) {
     rev_seed |= (complement_seed & 0x03) << ((num_bases - i - 1) * 2);  // Reverse the bases.
+    complement_seed >>= 2;
   }
   return rev_seed;
 }
@@ -339,4 +314,105 @@ int IndexGappedMinimizer::FlagDuplicates_(uint128_t* seed_list, int64_t num_seed
     }
   }
   return 0;
+}
+
+void IndexGappedMinimizer::DumpHash(std::string out_path, int32_t num_bases) {
+  FILE *fp = fopen(out_path.c_str(), "w");
+  for (auto it=hash_.begin(); it!=hash_.end(); it++) {
+    uint64_t key = it->first;
+    SeedHashValue shv = it->second;
+//    fprintf (fp, "%6X\t%ld\t%ld\n", key, shv.start, shv.num);
+    std::string key_string = SeedToString_(key, num_bases);
+    fprintf (fp, "%s\t%ld\t%ld\n", key_string.c_str(), shv.start, shv.num);
+  }
+  fclose(fp);
+}
+
+void IndexGappedMinimizer::DumpSortedHash(std::string out_path, int32_t num_bases) {
+  std::vector<std::tuple<std::string, int64_t, int64_t> > sorted_hash;
+  sorted_hash.reserve(hash_.size());
+  for (auto it=hash_.begin(); it!=hash_.end(); it++) {
+    uint64_t key = it->first;
+    SeedHashValue shv = it->second;
+    std::string key_string = SeedToString_(key, num_bases);
+    sorted_hash.push_back(std::make_tuple(key_string, shv.start, shv.num));
+  }
+  std::sort(sorted_hash.begin(), sorted_hash.end(), [](const std::tuple<std::string, int64_t, int64_t>& a, const std::tuple<std::string, int64_t, int64_t>& b) { return ((std::get<2>(a)) > (std::get<2>(b))); });
+
+  FILE *fp = fopen(out_path.c_str(), "w");
+  for (int64_t i=0; i<sorted_hash.size(); i++) {
+    fprintf (fp, "%s\t%ld\t%ld\n", std::get<0>(sorted_hash[i]).c_str(), std::get<1>(sorted_hash[i]), std::get<2>(sorted_hash[i]));
+  }
+  fclose(fp);
+}
+
+void IndexGappedMinimizer::DumpSeeds(std::string out_path, int32_t num_bases) {
+  FILE *fp = fopen(out_path.c_str(), "w");
+  for (int64_t i=0; i<seeds_.size(); i++) {
+    uint64_t key = (uint64_t) (seeds_[i] >> 64);
+    uint64_t coded_pos = seeds_[i] & 0x0000000000000000FFFFFFFFFFFFFFFF;
+    IndexPos ipos(coded_pos);
+//    fprintf (fp, "%6X %ld\n", key, ipos.get_pos());
+    std::string key_string = SeedToString_(key, num_bases);
+    fprintf (fp, "%s %ld\n", key_string.c_str(), ipos.get_pos());
+  }
+  fclose(fp);
+}
+
+int IndexGappedMinimizer::OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val) {
+  if (percentil < 0.0 || percentil > 1.0) { return 1; }
+
+  std::vector<int32_t> key_counts;
+  key_counts.resize(hash_.size(), 0);
+  int64_t currkey = 0;
+  double avg = 0.0, stddev = 0.0, sum = 0.0;
+  // Initialize the array of counts. Needed for percentil calculation.
+  // Also, calculate the avg on the fly.
+  for (auto it = hash_.begin(); it != hash_.end(); it++) {
+    key_counts[currkey++] = it->second.num;
+    avg += it->second.num;
+    sum += it->second.num;
+  }
+  if (key_counts.size() > 0) { avg /= key_counts.size(); }
+
+  // Calculate the standard deviation.
+  for (int64_t i=0; i<key_counts.size(); i++) {
+    stddev += (key_counts[i] - avg) * (key_counts[i] - avg);
+  }
+  if (key_counts.size() > 1) { stddev /= (key_counts.size() - 1); } // Unbiased estimator.
+  stddev = sqrt(stddev);
+
+  // Calculate the percentil.
+  pquickSort(&(key_counts[0]), key_counts.size(), num_threads);
+  double perc_val = key_counts[percentil * (key_counts.size() - 1)];
+//  LOG_ALL("key_counts.size() = %ld\n", key_counts.size());
+//  LOG_ALL("Simple percentil (percentage of the total array): %f\n", perc_val);
+
+//  double perc_sum = 0.0;
+//  for (int64_t i=0; i<key_counts.size(); i++) {
+//    if ((perc_sum + key_counts[i]) >= (sum * percentil)) {
+//      perc_val = key_counts[i];
+//      break;
+//    }
+//    perc_sum += key_counts[i];
+//  }
+//  LOG_ALL("Weighted percentil (percentage of the total array): %f\n", perc_val);
+
+  *ret_avg = avg;
+  *ret_stddev = stddev;
+  *ret_percentil_val = perc_val;
+
+  return 0;
+}
+
+inline std::string IndexGappedMinimizer::SeedToString_(uint64_t seed,
+                                                       int32_t num_bases) {
+  std::stringstream ss;
+  for (int32_t i=0; i<num_bases; i++) {
+    ss << "ACGT"[(seed & 0x03)];
+    seed >>= 2;
+  }
+  std::string seed_string = ss.str();
+  std::reverse(seed_string.begin(), seed_string.end());
+  return seed_string;
 }
