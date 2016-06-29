@@ -73,20 +73,29 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 //    fflush(stdout);
 
     uint64_t seq_id = seqs.get_sequences()[i]->get_sequence_absolute_id() + 0; // The '+ 0' is actually short for this: + ((orientation == kReverse) ? num_sequences_forward_ : 0);
-    int64_t num_seeds_processed = AddSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seeds_[seed_starts_for_seq[i]]));
+    int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seeds_[seed_starts_for_seq[i]]));
     if (use_minimizers) {
-      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, minimizer_window_len);
+      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, 2, minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
     }
-    FlagDuplicates_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed);
+  }
+
+//  DumpSeeds("temp/seeds.sparse.minimizers.csv", max_incl_bits/2);
+
+  if (use_minimizers) {
+    // Remove all excess seeds so that sorting will be faster.
+    LOG_ALL("Removing excess seeds.\n");
+    int64_t num_dense_seeds = MakeSeedListDense_(&(seeds_[0]), seeds_.size());
+    seeds_.resize(num_dense_seeds);
   }
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("\n"), std::string("[]"));
 
-//  DumpSeeds("temp/seeds.minimizers.csv", max_incl_bits/2);
+//  DumpSeeds("temp/seeds.dense.minimizers.csv", max_incl_bits/2);
 
   LOG_ALL("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();
   pquickSort(&(seeds_[0]), seeds_.size(), num_threads);
+  //    FlagDuplicates_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed);
 //  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Making unique (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC)), std::string(__FUNCTION__));
 //  diff_time = clock();
 
@@ -200,7 +209,7 @@ void IndexGappedMinimizer::AllocateSpaceForSeeds_(const SequenceFile& seqs, bool
   seeds_.resize(*total_num_seeds);
 }
 
-int IndexGappedMinimizer::AddSeedsForSeq_(int8_t* seqdata, int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape>& compiled_shapes, uint128_t* seed_list) {
+int IndexGappedMinimizer::CollectSeedsForSeq_(int8_t* seqdata, int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape>& compiled_shapes, uint128_t* seed_list) {
   int64_t max_seed_len = 0;
   for (int32_t i=0; i<compiled_shapes.size(); i++) {
     max_seed_len = std::max(max_seed_len, (int64_t) compiled_shapes[i].shape.size());
@@ -303,14 +312,16 @@ inline uint64_t IndexGappedMinimizer::ReverseComplementSeed_(uint64_t seed, int3
   }
   return rev_seed;
 }
-// It's advisible that the window_len is an even number, because the seed_list contains fwd and rev complements of seeds, interleaved.
-int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seeds, int32_t window_len) {
+
+// Parameter window_len specifies the length of the window in the number of bases. For each base, there may be more than one seed
+// (e.g. rev. complement, multiple indexes, etc.), and for this reason the parameter num_seeds_per_base is given.
+int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seeds, int64_t num_seeds_per_base, int32_t window_len) {
   if (window_len > num_seeds) { return 1; }
 
   std::deque<int>  q(window_len);
 
   // Setup the initial deque.
-  for (int64_t i=0; i<window_len; i++) {
+  for (int64_t i=0; i<window_len*num_seeds_per_base; i++) {
     // Remove smaller elements if any.
     while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) <= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
       q.pop_back();
@@ -323,7 +334,7 @@ int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seed
 
   // Every other seed is the reverse complement of the previous one.
   // Thus the sliding window will skip 2 instead of 1 seed.
-  for (int64_t i=window_len; i<num_seeds; i+=2) {
+  for (int64_t i=window_len; i<num_seeds; i+=num_seeds_per_base) {
     // Store the largest element of the previous window.
     minimizer_indices.push_back(q.front());
     // Remove the elements which are out of this window-
@@ -451,6 +462,25 @@ int IndexGappedMinimizer::OccurrenceStatistics_(double percentil, int32_t num_th
   *ret_percentil_val = perc_val;
 
   return 0;
+}
+
+int IndexGappedMinimizer::MakeSeedListDense_(uint128_t* seed_list, int64_t num_seeds) {
+  int64_t offset = 0;
+  int64_t i = 0;
+  for (i=0; (i+offset)<num_seeds; i++) {
+    while (GET_POS_FROM_CODED_SEED(seed_list[i+offset]) == 0) {
+      offset += 1;
+    }
+    seed_list[i] = seed_list[i+offset];
+  }
+  return i;
+}
+
+void IndexGappedMinimizer::CollectMinimizers(int8_t* seqdata, int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape>& compiled_shapes, int64_t minimizer_window_len, std::vector<uint128_t> &seed_list) {
+  int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seed_list[0]));
+  MakeMinimizers_(&(seed_list[0]), num_seeds_processed, 2*compiled_shapes.size(), minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
+  int64_t num_dense_seeds = MakeSeedListDense_(&(seed_list[0]), seed_list.size());
+  seed_list.resize(num_dense_seeds);
 }
 
 inline std::string IndexGappedMinimizer::SeedToString_(uint64_t seed,

@@ -78,6 +78,8 @@ class IndexGappedMinimizer {
   void DumpSortedHash(std::string out_path, int32_t num_bases);
   void DumpSeeds(std::string out_path, int32_t num_bases);
 
+  static void CollectMinimizers(int8_t *seqdata, int8_t *seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape> &compiled_shapes, int64_t minimizer_window_len, std::vector<uint128_t> &seed_list);
+
  private:
   std::vector<uint128_t> seeds_;      // A seed is encoded with: upper (MSB) 64 bits are the seed key, and lower (LSB) 64 bits are the ID of the sequence and the position (1-based, and encoded as in the IndexPos class). The position is 1-based to allow for undefined values.
   SeedHashType hash_;                 // A lookup for seeds by their key.
@@ -94,10 +96,12 @@ class IndexGappedMinimizer {
 
   void AssignData_(const SequenceFile &seqs, bool index_reverse_strand);
   void AllocateSpaceForSeeds_(const SequenceFile &seqs, bool index_reverse_strand, int64_t num_shapes, int64_t max_seed_len, int64_t num_fwd_seqs, std::vector<int64_t> &seed_starts_for_seq, int64_t *total_num_seeds);
-  int AddSeedsForSeq_(int8_t *seqdata, int8_t *seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape> &compiled_shapes, uint128_t *seed_list);
-  inline uint64_t SeedHashFunction_(uint64_t seed);
-  inline uint64_t ReverseComplementSeed_(uint64_t seed, int32_t num_bases);
-  int MakeMinimizers_(uint128_t *seed_list, int64_t num_seeds, int32_t window_len);
+  static int CollectSeedsForSeq_(int8_t *seqdata, int8_t *seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape> &compiled_shapes, uint128_t *seed_list);
+  static inline uint64_t SeedHashFunction_(uint64_t seed);
+  static inline uint64_t ReverseComplementSeed_(uint64_t seed, int32_t num_bases);
+  static int MakeMinimizers_(uint128_t *seed_list, int64_t num_seeds, int64_t num_seeds_per_base, int32_t window_len);
+  // Removes empty values, and shifts other seeds towards the top of the list.
+  static int MakeSeedListDense_(uint128_t *seed_list, int64_t num_seeds);
   int FlagDuplicates_(uint128_t *seed_list, int64_t num_seeds);
   int OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val);
 
