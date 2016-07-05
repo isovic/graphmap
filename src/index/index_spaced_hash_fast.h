@@ -131,6 +131,14 @@ class IndexSpacedHashFast : public Index {
   void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
   void CalcPercentileHits_(int64_t *seed_counts, int64_t num_seeds, double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
 
+  // Creates a transcriptome from a given reference sequence and a path to a file with gene annotations.
+  // Parameters:
+  // @annotations_path Path to a GFF file (or another supported format) which contains the annotations of exonic regions.
+  // @references A SequenceFile object which contains reference sequences already loaded from disk.
+  // @transcripts A SequenceFile which will contain the generated transcriptomes.
+  // @return 0 if everything went fine (C-style).
+  int MakeTranscript_(std::string annotations_path, const SequenceFile &references, SequenceFile &transcripts);
+
 };
 
 #endif /* INDEX_SPACED_HASH_H_ */
