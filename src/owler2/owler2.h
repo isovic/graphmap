@@ -51,9 +51,9 @@ class Owler2 {
   void Run(ProgramParameters &parameters);
 
   // Process a given set of reads.
-  void ProcessReads(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SequenceFile *reads, FILE *fp_out);
+  void ProcessReads(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SequenceFile *reads, const std::vector<CompiledShape> &lookup_shapes, FILE *fp_out);
 
-  int ProcessRead(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SingleSequence *read, OwlerResult *owler_result);
+  int ProcessRead(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SingleSequence *read, const std::vector<CompiledShape> &lookup_shapes, OwlerResult *owler_result);
 
 ////  int CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);
 //

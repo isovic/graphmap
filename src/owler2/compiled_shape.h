@@ -38,4 +38,12 @@ class CompiledShape {
 
 std::vector<CompiledShape> CompileShapes(const std::vector<std::string> &shapes);
 
+// For a given shape, for every don't cate ('0') base generate all three combinations for the same seed, containing at the position: 0 (deletion), 1 (match/mismatch) and 2 (insertion).
+// E.g. for a shape "1110111", this function will generate three shapes: "11111", "1110111" and "11100111".
+// The shapes vector is not cleared, so the function can be re-used to add multiple shapes.
+int CreateLookupShapes(std::string index_shape, std::vector<std::string> &shapes);
+
+// Converts a base 10 number x to a base N number with n digits.
+void Base10ToBaseN(int32_t x, int32_t N, int32_t n, std::vector<int8_t> &digits);
+
 #endif /* SRC_OWLER2_COMPILED_SHAPE_H_ */
