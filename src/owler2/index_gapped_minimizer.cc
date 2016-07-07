@@ -391,7 +391,12 @@ void IndexGappedMinimizer::DumpHash(std::string out_path, int32_t num_bases) {
     SeedHashValue shv = it->second;
 //    fprintf (fp, "%6X\t%ld\t%ld\n", key, shv.start, shv.num);
     std::string key_string = SeedToString(key, num_bases);
-    fprintf (fp, "%s\t%ld\t%ld\n", key_string.c_str(), shv.start, shv.num);
+    fprintf (fp, "%s\t%ld\t%ld\t", key_string.c_str(), shv.start, shv.num);
+
+    for (int64_t j=0; j<shv.num; j++) {
+      fprintf (fp, "%ld ", GET_REAL_POS_FROM_HIT(seeds_[shv.start + j]));
+    }
+    fprintf (fp, "\n");
   }
   fclose(fp);
 }
