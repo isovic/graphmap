@@ -297,7 +297,7 @@ int IndexGappedMinimizer::CollectSeedsForSeq_(const int8_t* seqdata, const int8_
 
         uint64_t rev_seed = ReverseComplementSeed_(seed, compiled_shapes[shape_id].num_incl_bits/2);
         uint64_t rev_key = SeedHashFunction_(rev_seed);
-        uint64_t rev_position = position | kIndexIdReverse;
+        uint64_t rev_position = position | kIndexIdReverse64;
         seed_list[seed_id] = (((uint128_t) rev_key) << 64) | (((uint128_t) seq_id) << 32) | (((uint128_t) rev_position) << 0);
         seed_id += 1;
       }
@@ -332,7 +332,7 @@ int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seed
   // Setup the initial deque.
   for (int64_t i=0; i<window_len*num_seeds_per_base; i++) {
     // Remove smaller elements if any.
-    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) <= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
+    while ( (!q.empty()) && GET_KEY_FROM_HIT(seed_list[i]) <= GET_KEY_FROM_HIT(seed_list[q.back()])) {
       q.pop_back();
     }
     q.push_back(i);
@@ -351,7 +351,7 @@ int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seed
       q.pop_front();
     }
     // Remove smaller elements if any.
-    while ( (!q.empty()) && GET_KEY_FROM_CODED_SEED(seed_list[i]) <= GET_KEY_FROM_CODED_SEED(seed_list[q.back()])) {
+    while ( (!q.empty()) && GET_KEY_FROM_HIT(seed_list[i]) <= GET_KEY_FROM_HIT(seed_list[q.back()])) {
       q.pop_back();
     }
 
@@ -390,7 +390,7 @@ void IndexGappedMinimizer::DumpHash(std::string out_path, int32_t num_bases) {
     uint64_t key = it->first;
     SeedHashValue shv = it->second;
 //    fprintf (fp, "%6X\t%ld\t%ld\n", key, shv.start, shv.num);
-    std::string key_string = SeedToString_(key, num_bases);
+    std::string key_string = SeedToString(key, num_bases);
     fprintf (fp, "%s\t%ld\t%ld\n", key_string.c_str(), shv.start, shv.num);
   }
   fclose(fp);
@@ -402,7 +402,7 @@ void IndexGappedMinimizer::DumpSortedHash(std::string out_path, int32_t num_base
   for (auto it=hash_.begin(); it!=hash_.end(); it++) {
     uint64_t key = it->first;
     SeedHashValue shv = it->second;
-    std::string key_string = SeedToString_(key, num_bases);
+    std::string key_string = SeedToString(key, num_bases);
     sorted_hash.push_back(std::make_tuple(key_string, shv.start, shv.num));
   }
   std::sort(sorted_hash.begin(), sorted_hash.end(), [](const std::tuple<std::string, int64_t, int64_t>& a, const std::tuple<std::string, int64_t, int64_t>& b) { return ((std::get<2>(a)) > (std::get<2>(b))); });
@@ -421,7 +421,7 @@ void IndexGappedMinimizer::DumpSeeds(std::string out_path, int32_t num_bases) {
     uint64_t coded_pos = seeds_[i] & 0x0000000000000000FFFFFFFFFFFFFFFF;
     IndexPos ipos(coded_pos);
 //    fprintf (fp, "%6X %ld\n", key, ipos.get_pos());
-    std::string key_string = SeedToString_(key, num_bases);
+    std::string key_string = SeedToString(key, num_bases);
     fprintf (fp, "%s %ld\n", key_string.c_str(), ipos.get_pos());
   }
   fclose(fp);
@@ -477,7 +477,7 @@ int IndexGappedMinimizer::MakeSeedListDense_(uint128_t* seed_list, int64_t num_s
   int64_t offset = 0;
   int64_t i = 0;
   for (i=0; (i+offset)<num_seeds; i++) {
-    while (GET_POS_FROM_CODED_SEED_WITH_REV(seed_list[i+offset]) == 0) {
+    while (GET_POS_FROM_HIT_WITH_REV(seed_list[i+offset]) == 0) {
       offset += 1;
     }
     seed_list[i] = seed_list[i+offset];
@@ -502,14 +502,21 @@ void IndexGappedMinimizer::set_lookup_shapes(
   lookup_shapes_ = lookupShapes;
 }
 
-inline std::string IndexGappedMinimizer::SeedToString_(uint64_t seed,
-                                                       int32_t num_bases) {
-  std::stringstream ss;
-  for (int32_t i=0; i<num_bases; i++) {
-    ss << "ACGT"[(seed & 0x03)];
-    seed >>= 2;
-  }
-  std::string seed_string = ss.str();
-  std::reverse(seed_string.begin(), seed_string.end());
-  return seed_string;
+double IndexGappedMinimizer::get_count_cutoff() const {
+  return count_cutoff_;
+}
+
+void IndexGappedMinimizer::set_count_cutoff(double countCutoff) {
+  count_cutoff_ = countCutoff;
+}
+
+int IndexGappedMinimizer::GetHits(uint64_t seed_key, uint128_t** seeds,
+                                  int64_t *num_seeds) const {
+  auto it = hash_.find(seed_key);
+  if (it == hash_.end()) { return 1; }
+
+  *seeds = (uint128_t *) &seeds_[it->second.start];
+  *num_seeds = it->second.num;
+
+  return 0;
 }

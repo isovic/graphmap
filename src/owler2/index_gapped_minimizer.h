@@ -39,15 +39,19 @@ typedef dense_hash_map<uint64_t, SeedHashValue, std::hash<uint64_t> > SeedHashTy
 #include "utility/utility_general.h"
 #include "compiled_shape.h"
 
-const uint32_t kIndexIdReverse = ((uint32_t) 1) << 31;
-const uint32_t kIndexMaskStrand = ~((uint32_t) kIndexIdReverse);
-const uint64_t kIndexMaskLowerBits = 0x00000000FFFFFFFF;
-const uint64_t kIndexMaskUpperBits = 0xFFFFFFFF00000000;
+const uint32_t kIndexIdReverse128 = ((uint128_t) 1) << 31;
+const uint32_t kIndexIdReverse64 = ((uint32_t) 1) << 31;
+const uint32_t kIndexMaskStrand64 = ~((uint32_t) kIndexIdReverse64);
+const uint64_t kIndexMaskLowerBits64 = 0x00000000FFFFFFFF;
+const uint64_t kIndexMaskUpperBits64 = 0xFFFFFFFF00000000;
 
-#define GET_KEY_FROM_CODED_SEED(x)  ((uint64_t) (x >> 64))
-#define GET_SEQ_ID_FROM_CODED_SEED(x)  ((uint64_t) ((x >> 32) & kIndexMaskLowerBits))
-#define GET_POS_FROM_CODED_SEED_WITH_REV(x)  ((uint64_t) (x & kIndexMaskLowerBits))
-#define GET_REAL_POS_FROM_CODED_SEED(x)  ((uint64_t) (x & kIndexMaskStrand))
+#define GET_KEY_FROM_HIT(x)  ((uint64_t) (x >> 64))
+#define GET_REAL_POS_FROM_HIT(x)  ((uint64_t) (x & kIndexMaskStrand64))
+#define GET_SEQ_ID_FROM_HIT(x)  ((uint64_t) ((x >> 32) & kIndexMaskLowerBits64))
+#define GET_CODED_SEED_FROM_HIT(x)  ((uint64_t) (x &0x0FFFFFFFFFFFFFFFF))
+#define GET_POS_FROM_HIT_WITH_REV(x)  ((uint64_t) (x & kIndexMaskLowerBits64))
+
+#define IS_HIT_REVERSE(x) (((uint128_t) & kIndexIdReverse128) == 0)
 
 class IndexPos {
  public:
@@ -63,8 +67,8 @@ class IndexPos {
     id = coded_pos >> 32;
     pos = coded_pos & (0x00000000FFFFFFFF);
   }
-  bool is_rev() { return (pos & (kIndexIdReverse)) != 0; }
-  inline uint32_t get_pos() { return (pos & kIndexMaskStrand); }
+  bool is_rev() { return (pos & (kIndexIdReverse64)) != 0; }
+  inline uint32_t get_pos() { return (pos & kIndexMaskStrand64); }
   inline uint32_t get_id() { return id; }
 };
 
@@ -75,6 +79,8 @@ class IndexGappedMinimizer {
 
   void Clear();
   int CreateFromSequenceFile(const SequenceFile &seqs, const std::vector<CompiledShape> &compiled_shapes, float min_avg_seed_qv, bool index_reverse_strand, bool use_minimizers, int32_t minimizer_window_len, int32_t num_threads);
+  int GetHits(uint64_t seed_key, uint128_t **seeds, int64_t *num_seeds) const;
+
   void DumpHash(std::string out_path, int32_t num_bases);
   void DumpSortedHash(std::string out_path, int32_t num_bases);
   void DumpSeeds(std::string out_path, int32_t num_bases);
@@ -82,6 +88,8 @@ class IndexGappedMinimizer {
   static void CollectMinimizers(const int8_t *seqdata, const int8_t *seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape> &compiled_shapes, int64_t minimizer_window_len, std::vector<uint128_t> &seed_list, int64_t *num_minimizers);
   const std::vector<CompiledShape>& get_lookup_shapes() const;
   void set_lookup_shapes(const std::vector<CompiledShape>& lookupShapes);
+  double get_count_cutoff() const;
+  void set_count_cutoff(double countCutoff);
 
  private:
   std::vector<uint128_t> seeds_;      // A seed is encoded with: upper (MSB) 64 bits are the seed key, and lower (LSB) 64 bits are the ID of the sequence and the position (1-based, and encoded as in the IndexPos class). The position is 1-based to allow for undefined values.
@@ -108,9 +116,20 @@ class IndexGappedMinimizer {
   static int MakeSeedListDense_(uint128_t *seed_list, int64_t num_seeds);
   int FlagDuplicates_(uint128_t *seed_list, int64_t num_seeds);
   int OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val);
-
-  // Helper functions for debugging.
-  inline std::string SeedToString_(uint64_t seed, int32_t num_bases);
 };
+
+// Helper functions for debugging.
+
+inline std::string SeedToString(uint64_t seed,
+                                                       int32_t num_bases) {
+  std::stringstream ss;
+  for (int32_t i=0; i<num_bases; i++) {
+    ss << "ACGT"[(seed & 0x03)];
+    seed >>= 2;
+  }
+  std::string seed_string = ss.str();
+  std::reverse(seed_string.begin(), seed_string.end());
+  return seed_string;
+}
 
 #endif /* SRC_OWLER2_INDEX_GAPPED_MINIMIZER_H_ */
