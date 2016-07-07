@@ -45,9 +45,14 @@ const uint32_t kIndexMaskStrand64 = ~((uint32_t) kIndexIdReverse64);
 const uint64_t kIndexMaskLowerBits64 = 0x00000000FFFFFFFF;
 const uint64_t kIndexMaskUpperBits64 = 0xFFFFFFFF00000000;
 
+const uint128_t OWLER2_MASK_LOWER_64 = ((uint128_t) 0x0000000000000000FFFFFFFFFFFFFFFF);
+const uint128_t OWLER2_MASK_UPPER_64 = ((uint128_t) 0xFFFFFFFFFFFFFFFF0000000000000000);
+
+
+
 #define GET_KEY_FROM_HIT(x)  ((uint64_t) (x >> 64))
-#define GET_REAL_POS_FROM_HIT(x)  ((uint64_t) (x & kIndexMaskStrand64))
-#define GET_SEQ_ID_FROM_HIT(x)  ((uint64_t) ((x >> 32) & kIndexMaskLowerBits64))
+#define GET_REAL_POS_FROM_HIT(x)  ((uint64_t) ((x & OWLER2_MASK_LOWER_64) & kIndexMaskStrand64))
+#define GET_SEQ_ID_FROM_HIT(x)  ((uint64_t) (((x & OWLER2_MASK_LOWER_64) >> 32) & kIndexMaskLowerBits64))
 #define GET_CODED_SEED_FROM_HIT(x)  ((uint64_t) (x &0x0FFFFFFFFFFFFFFFF))
 #define GET_POS_FROM_HIT_WITH_REV(x)  ((uint64_t) (x & kIndexMaskLowerBits64))
 

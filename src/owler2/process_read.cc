@@ -34,12 +34,16 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
 
   int64_t num_valid_hits = 0;
   std::vector<uint128_t> hits;
+  hits.resize(read->get_sequence_length());
+  int64_t last_hit_id = 0;
+
   for (int64_t i=0; i<num_minimizers; i++) {
     // Reverse complements are already indexed, so skip them here.
     if (IS_HIT_REVERSE(minimizers[i])) { continue; }
 
     uint64_t key = GET_KEY_FROM_HIT(minimizers[i]);
     uint64_t pos = GET_REAL_POS_FROM_HIT(minimizers[i]);
+    uint128_t coded_pos = minimizers[i] << 64;
     uint128_t *seeds = NULL;
     int64_t num_seeds = 0;
     if (index->GetHits(key, &seeds, &num_seeds)) {
@@ -53,8 +57,27 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
       continue;
     }
 
-    printf ("[%ld] %s\t%ld\t%ld\n", num_valid_hits, SeedToString(key, 12).c_str(), pos, num_seeds);
+//    printf ("[%ld] %s\t%ld\t%ld\n", num_valid_hits, SeedToString(key, 12).c_str(), pos, num_seeds);
+
+    if ((last_hit_id + num_seeds) >= hits.size()) {
+      hits.resize(hits.size() + read->get_sequence_length());
+    }
+
+    memcpy(&hits[last_hit_id], seeds, num_seeds);
+    for (int32_t j=0; i<num_seeds; j++) {
+      hits[last_hit_id + j] = (hits[last_hit_id + j] & OWLER2_MASK_UPPER_64) | coded_pos;
+    }
+    last_hit_id += num_seeds;
+
     num_valid_hits += 1;
+  }
+
+  for (int64_t i=0; i<last_hit_id; i++) {
+    int64_t qid = GET_SEQ_ID_FROM_HIT(hits[i] >> 64);
+    int64_t qstart = GET_POS_FROM_HIT_WITH_REV(hits[i] >> 64);
+    int64_t rid = GET_SEQ_ID_FROM_HIT(hits[i]);
+    int64_t rstart = GET_POS_FROM_HIT_WITH_REV(hits[i]);
+    printf ("qid = %ld, qstart = %ld, rid = %ld, rstart = %ld\n", qid, qstart, rid, rstart);
   }
 
   printf ("read_length = %ld\n", read->get_sequence_length());
