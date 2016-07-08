@@ -47,12 +47,16 @@ const uint64_t kIndexMaskUpperBits64 = 0xFFFFFFFF00000000;
 
 
 
+#define MAKE_HIT(key64, seqid32, pos32) ((((uint128_t) key64) << 64) | (((uint128_t) seqid32) << 32) | ((uint128_t) pos32))
 #define GET_KEY_FROM_HIT(x)  ((uint64_t) ((x) >> 64))
-#define GET_REAL_POS_FROM_HIT(x)  ((uint64_t) (((x) & ((uint128_t) 0x000000000000000000000000EFFFFFFF))))
+/// #define GET_REAL_POS_FROM_HIT(x)  ((uint64_t) (((x) & ((uint128_t) 0x000000000000000000000000EFFFFFFF))))
 // & kIndexMaskStrand64))
 #define GET_SEQ_ID_FROM_HIT(x)  ((uint64_t) ((((x) & ((uint128_t) 0x0000000000000000FFFFFFFFFFFFFFFF)) >> 32) & kIndexMaskLowerBits64))
 #define GET_CODED_SEED_FROM_HIT(x)  ((uint64_t) ((x) &0x0FFFFFFFFFFFFFFFF))
-#define GET_POS_FROM_HIT_WITH_REV(x)  ((uint64_t) ((x) & kIndexMaskLowerBits64))
+/// #define GET_POS_FROM_HIT_WITH_REV(x)  ((uint64_t) ((x) & kIndexMaskLowerBits64))
+
+#define GET_REAL_POS_FROM_HIT(x)  (((uint64_t) (x)) & ((uint64_t) 0x00000000EFFFFFFF))
+#define GET_POS_FROM_HIT_WITH_REV(x)  (((uint64_t) (x)) & ((uint64_t) 0x00000000FFFFFFFF))
 
 #define IS_HIT_REVERSE(x) (((uint128_t) & kIndexIdReverse128) == 0)
 

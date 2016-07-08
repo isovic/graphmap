@@ -13,6 +13,8 @@
 #include <tuple>
 #include <deque>
 
+
+
 IndexGappedMinimizer::IndexGappedMinimizer() {
   hash_.set_empty_key(empty_hash_key);
   Clear();
@@ -91,7 +93,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("\n"), std::string("[]"));
 
-//  DumpSeeds("temp/seeds.dense.minimizers.csv", max_incl_bits/2);
+  DumpSeeds("temp/seeds.dense.minimizers.csv", max_incl_bits/2);
 
   LOG_ALL("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();

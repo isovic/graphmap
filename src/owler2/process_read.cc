@@ -91,10 +91,10 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
   }
 
   for (int64_t i=0; i<last_hit_id; i++) {
-    int64_t qid = GET_SEQ_ID_FROM_HIT(hits[i] >> 64);
-    int64_t qstart = GET_REAL_POS_FROM_HIT((hits[i] >> 64));
-    int64_t rid = GET_SEQ_ID_FROM_HIT(hits[i]);
-    int64_t rstart = GET_REAL_POS_FROM_HIT(hits[i]);
+    uint64_t qid = GET_SEQ_ID_FROM_HIT(hits[i] >> 64);
+    uint64_t qstart = GET_REAL_POS_FROM_HIT((hits[i] >> 64));
+    uint64_t rid = GET_SEQ_ID_FROM_HIT(hits[i]);
+    uint64_t rstart = GET_REAL_POS_FROM_HIT(hits[i]);
     printf ("qid = %ld, qstart = %ld, rid = %ld, rstart = %ld\n", qid, qstart, rid, rstart);
 //    printf ("%ld\n", hits[i]);
   }
