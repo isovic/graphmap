@@ -93,7 +93,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("\n"), std::string("[]"));
 
-  DumpSeeds("temp/seeds.dense.minimizers.csv", max_incl_bits/2);
+//  DumpSeeds("temp/seeds.dense.minimizers.csv", max_incl_bits/2);
 
   LOG_ALL("Sorting the seeds (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
   diff_time = clock();
@@ -329,7 +329,7 @@ inline uint64_t IndexGappedMinimizer::ReverseComplementSeed_(uint64_t seed, int3
 int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seeds, int64_t num_seeds_per_base, int32_t window_len) {
   if (window_len > num_seeds) { return 1; }
 
-  std::deque<int>  q(window_len);
+  std::deque<int>  q(num_seeds_per_base*window_len);
 
   // Setup the initial deque.
   for (int64_t i=0; i<window_len*num_seeds_per_base; i++) {
@@ -345,11 +345,11 @@ int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seed
 
   // Every other seed is the reverse complement of the previous one.
   // Thus the sliding window will skip 2 instead of 1 seed.
-  for (int64_t i=window_len; i<num_seeds; i+=num_seeds_per_base) {
+  for (int64_t i=window_len*num_seeds_per_base; i<num_seeds; i+=num_seeds_per_base) {
     // Store the largest element of the previous window.
     minimizer_indices.push_back(q.front());
     // Remove the elements which are out of this window-
-    while ((!q.empty()) && q.front() <= (i - window_len)) {
+    while ((!q.empty()) && q.front() <= (i - window_len*num_seeds_per_base)) {
       q.pop_front();
     }
     // Remove smaller elements if any.
@@ -370,6 +370,7 @@ int IndexGappedMinimizer::MakeMinimizers_(uint128_t* seed_list, int64_t num_seed
   }
   for (int64_t i=0; i<num_seeds; i++) {
     if (keep[i] == false) {
+//      seed_list[i] = (seed_list[i] >> 64) << 64;
       seed_list[i] = 0;
     }
   }
@@ -432,6 +433,14 @@ void IndexGappedMinimizer::DumpSeeds(std::string out_path, int32_t num_bases) {
     fprintf (fp, "%s %ld\n", key_string.c_str(), ipos.get_pos());
   }
   fclose(fp);
+}
+
+const std::vector<int64_t>& IndexGappedMinimizer::get_reference_lengths() const {
+  return reference_lengths_;
+}
+
+void IndexGappedMinimizer::set_reference_lengths(const std::vector<int64_t>& referenceLengths) {
+  reference_lengths_ = referenceLengths;
 }
 
 int IndexGappedMinimizer::OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val) {

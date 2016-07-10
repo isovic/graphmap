@@ -39,9 +39,9 @@ typedef dense_hash_map<uint64_t, SeedHashValue, std::hash<uint64_t> > SeedHashTy
 #include "utility/utility_general.h"
 #include "compiled_shape.h"
 
-const uint32_t kIndexIdReverse128 = ((uint128_t) 1) << 31;
-const uint32_t kIndexIdReverse64 = ((uint32_t) 1) << 31;
-const uint32_t kIndexMaskStrand64 = ~((uint32_t) kIndexIdReverse64);
+const uint64_t kIndexIdReverse128 = ((uint128_t) 1) << 31;
+const uint64_t kIndexIdReverse64 = ((uint64_t) 1) << 31;
+const uint64_t kIndexMaskStrand64 = ~((uint64_t) kIndexIdReverse64);
 const uint64_t kIndexMaskLowerBits64 = 0x00000000FFFFFFFF;
 const uint64_t kIndexMaskUpperBits64 = 0xFFFFFFFF00000000;
 
@@ -55,10 +55,11 @@ const uint64_t kIndexMaskUpperBits64 = 0xFFFFFFFF00000000;
 #define GET_CODED_SEED_FROM_HIT(x)  ((uint64_t) ((x) &0x0FFFFFFFFFFFFFFFF))
 /// #define GET_POS_FROM_HIT_WITH_REV(x)  ((uint64_t) ((x) & kIndexMaskLowerBits64))
 
-#define GET_REAL_POS_FROM_HIT(x)  (((uint64_t) (x)) & ((uint64_t) 0x00000000EFFFFFFF))
+// #define GET_REAL_POS_FROM_HIT(x)  (((uint64_t) (x)) & ((uint64_t) 0x00000000EFFFFFFF))
+#define GET_REAL_POS_FROM_HIT(x)  ((uint64_t) (x & 0x000000007FFFFFFF))
 #define GET_POS_FROM_HIT_WITH_REV(x)  (((uint64_t) (x)) & ((uint64_t) 0x00000000FFFFFFFF))
 
-#define IS_HIT_REVERSE(x) (((uint128_t) & kIndexIdReverse128) == 0)
+#define IS_HIT_REVERSE(x) ((((uint128_t) x ) & (((uint128_t) 1) << 31)) != 0)
 
 class IndexPos {
  public:
@@ -97,6 +98,8 @@ class IndexGappedMinimizer {
   void set_lookup_shapes(const std::vector<CompiledShape>& lookupShapes);
   double get_count_cutoff() const;
   void set_count_cutoff(double countCutoff);
+  const std::vector<int64_t>& get_reference_lengths() const;
+  void set_reference_lengths(const std::vector<int64_t>& referenceLengths);
 
  private:
   std::vector<uint128_t> seeds_;      // A seed is encoded with: upper (MSB) 64 bits are the seed key, and lower (LSB) 64 bits are the ID of the sequence and the position (1-based, and encoded as in the IndexPos class). The position is 1-based to allow for undefined values.
