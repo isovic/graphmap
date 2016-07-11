@@ -119,9 +119,21 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
     uint64_t rstart = GET_POS_FROM_HIT_WITH_REV((hits[i] >> 64));
     uint64_t qid = GET_SEQ_ID_FROM_HIT(hits[i]);
 //    uint64_t qstart = GET_REAL_POS_FROM_HIT(hits[i]);
-    uint64_t qstart = GET_POS_FROM_HIT_WITH_REV()(hits[i]);
+    uint64_t qstart = GET_POS_FROM_HIT_WITH_REV(hits[i]);
     printf ("qid = %ld, qfwd = %d, qstart = %ld, qlen = %ld, rid = %ld, rfwd = %d, rstart = %ld, rlen = %ld\n", qid, IS_HIT_REVERSE(hits[i]), qstart, index->get_reference_lengths()[qid], rid, IS_HIT_REVERSE(hits[i] >> 64), rstart, index->get_reference_lengths()[rid]);
 //    printf ("%ld\n", hits[i]);
+  }
+
+  int64_t streak_start_hit = 0;
+  int64_t streak_end_hit = 1;
+  while (streak_start_hit < last_hit_id) {
+    int64_t rstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1] >> 64);
+    int64_t rstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit] >> 64);
+    int64_t qstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1]);
+    int64_t qstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit]);
+    int64_t l = rstart - qstart;
+    int64_t l_prev = rstart_prev - qstart_prev;
+    if (
   }
 
   exit(1);
