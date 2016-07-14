@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <map>
 #include "index/index.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
@@ -138,7 +139,11 @@ class IndexSpacedHashFast : public Index {
   // @transcripts A SequenceFile which will contain the generated transcriptomes.
   // @return 0 if everything went fine (C-style).
   int MakeTranscript_(std::string annotations_path, const SequenceFile &references, SequenceFile &transcripts);
-
+  int GenerateExons(std::string annotations_path, std::map<std::string, std::vector<std::pair<std::string, char>>> &seqToTrans, std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &transToExons);
+  std::string trim(std::string s);
+  std::vector<std::string> split(std::string s, char c);
+  std::string getSequenceName(SingleSequence &seq);
+  std::string getTID(std::string s);
 };
 
 #endif /* INDEX_SPACED_HASH_H_ */
