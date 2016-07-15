@@ -79,7 +79,7 @@ class IndexSpacedHashFast : public Index {
 
   void Clear();
   int LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose);
-  int GenerateFromTranscriptomeFile(std::string sequence_file_path, std::string gtf_path);
+  int GenerateTranscriptomeFromFile(std::string sequence_file_path, std::string gtf_path);
 
   int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **entire_sa, uint64_t *start_hit, uint64_t *num_hits) const;
   void Verbose(FILE *fp) const;

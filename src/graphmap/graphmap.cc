@@ -208,7 +208,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
       if (parameters.gtf_path == "") {
         index_prim->GenerateFromFile(parameters.reference_path);
       } else {
-        index_prim->GenerateFromTranscriptomeFile(parameters.reference_path, parameters.gtf_path);
+        index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
       }
 
       int prim_index_stored = index_prim->StoreToFile(parameters.index_file);
@@ -237,7 +237,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
         if (parameters.gtf_path == "") {
           index_sec->GenerateFromFile(parameters.reference_path);
         } else {
-          index_sec->GenerateFromTranscriptomeFile(parameters.reference_path, parameters.gtf_path);
+          index_sec->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
         }
         int sec_index_stored = index_sec->StoreToFile(parameters.index_file + std::string("sec"));
         if (sec_index_generated || sec_index_stored) { return 1; }
@@ -250,7 +250,12 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   } else {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
 
-    index_prim->GenerateFromFile(parameters.reference_path);
+    if (parameters.gtf_path == "") {
+      index_prim->GenerateFromFile(parameters.reference_path);
+    } else {
+      index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+    }
+
     index_prim->StoreToFile(parameters.index_file);
 
     if (parameters.sensitive_mode == true) {

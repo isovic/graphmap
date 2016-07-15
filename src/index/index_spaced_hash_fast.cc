@@ -1048,11 +1048,28 @@ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path,
   return 0;
 }
 
-int IndexSpacedHashFast::GenerateFromTranscriptomeFile(std::string sequence_file_path, std::string gtf_path) {
+int IndexSpacedHashFast::GenerateTranscriptomeFromFile(std::string sequence_file_path, std::string gtf_path) {
   Clear();
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file, and creating a transcriptome index.\n"), "GenerateFromFile");
   SequenceFile sequences(sequence_file_path);
   SequenceFile transcript_sequences;
+
+  // Verbose output for debugging.
+  fprintf (stderr, "Sequence file before transcriptome generation:\n");
+  sequences.Verbose(stderr);
+  fflush(stderr);
+
   MakeTranscript_(gtf_path, sequences, transcript_sequences);
+
+  // Verbose output for debugging.
+  fprintf (stderr, "Transcribed sequences:\n");
+  transcript_sequences.Verbose(stderr);
+  fflush(stderr);
+
+  // Sanity check.
+  if (transcript_sequences.get_sequences().size() == 0) {
+    return 1;
+  }
+
   return GenerateFromSequenceFile(transcript_sequences);
 }
