@@ -15,7 +15,6 @@
 #include "index/index.h"
 #include "index/index_hash.h"
 #include "index/index_sa.h"
-#include "index/index_spaced_hash.h"
 #include "containers/vertices.h"
 #include "utility/evalue.h"
 #include "containers/path_graph_entry.h"

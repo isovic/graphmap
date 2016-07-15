@@ -108,6 +108,8 @@ struct ProgramParameters {
 
   double max_error_rate = 1.0f;
   double max_indel_error_rate = 1.0f;
+
+  std::string gtf_path;
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);

@@ -9,7 +9,8 @@
 #include <algorithm>
 #include "owler/owler.h"
 //#include "sam/sam_entry.h"
-#include "index/index_hash.h"
+//#include "index/index_hash.h"
+#include "index/index_spaced_hash_fast.h"
 
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
@@ -218,7 +219,7 @@ int Owler::CollectSeedHits(OwlerData* owler_data, std::vector<Index*> &indexes, 
       if (index == NULL)
         continue;
 
-      int64_t k = (int64_t) ((IndexSpacedHash *) index)->get_shape_index_length();
+      int64_t k = (int64_t) ((IndexSpacedHashFast *) index)->get_shape_index_length();
       if ((i + k) >= readlength)
         continue;
 

@@ -195,10 +195,22 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
     // Check whether the index needs to be rebuilt, or if it can only be loaded.
     if (parameters.rebuild_index == false) {
-      int prim_index_loaded = index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
+      int prim_index_loaded = 0;
+      if (parameters.gtf_path == "") {
+        index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
+      } else {
+        index_prim->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file, (parameters.verbose_level > 0));
+      }
+
       if (prim_index_loaded) { return 1; }
     } else {
-      int prim_index_generated = index_prim->GenerateFromFile(parameters.reference_path);
+      int prim_index_generated = 0;
+      if (parameters.gtf_path == "") {
+        index_prim->GenerateFromFile(parameters.reference_path);
+      } else {
+        index_prim->GenerateFromTranscriptomeFile(parameters.reference_path, parameters.gtf_path);
+      }
+
       int prim_index_stored = index_prim->StoreToFile(parameters.index_file);
       if (prim_index_generated || prim_index_stored) { return 1; }
     }
@@ -213,10 +225,20 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
       }
 
       if (parameters.rebuild_index == false) {
-        int sec_index_loaded = index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+        int sec_index_loaded = 0;
+        if (parameters.gtf_path == "") {
+          index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+        } else {
+          index_sec->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+        }
         if (sec_index_loaded) { return 1; }
       } else {
-        int sec_index_generated = index_sec->GenerateFromFile(parameters.reference_path);
+        int sec_index_generated = 0;
+        if (parameters.gtf_path == "") {
+          index_sec->GenerateFromFile(parameters.reference_path);
+        } else {
+          index_sec->GenerateFromTranscriptomeFile(parameters.reference_path, parameters.gtf_path);
+        }
         int sec_index_stored = index_sec->StoreToFile(parameters.index_file + std::string("sec"));
         if (sec_index_generated || sec_index_stored) { return 1; }
       }

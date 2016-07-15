@@ -1,5 +1,5 @@
 /*
- * index_spaced_hash.h
+ * index_spaced_hash_fast.h
  *
  *  Created on: July 11, 2015
  *      Author: ivan
@@ -78,6 +78,9 @@ class IndexSpacedHashFast : public Index {
   IndexSpacedHashFast(uint32_t shape_type);
 
   void Clear();
+  int LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose);
+  int GenerateFromTranscriptomeFile(std::string sequence_file_path, std::string gtf_path);
+
   int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **entire_sa, uint64_t *start_hit, uint64_t *num_hits) const;
   void Verbose(FILE *fp) const;
   std::string VerboseToString() const;
