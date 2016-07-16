@@ -1006,3 +1006,70 @@ int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *
 
   return 0;
 }
+
+
+
+
+int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose) {
+  FILE *fp=NULL;
+  fp = fopen(out_index_path.c_str(), "r");
+  if (fp != NULL) {
+    fclose(fp);
+    int ret_load_from_file = LoadFromFile(out_index_path);
+
+    if (ret_load_from_file == 0) {
+      return 0;
+    }
+
+    if (verbose == true) {
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index needs to be rebuilt. It was generated using an older version.\n"), "LoadOrGenerate");
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("ret_load_from_file = %d\n", ret_load_from_file), "LoadOrGenerate");
+      fflush(stderr);
+    }
+  }
+
+  if (verbose == true) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Started generating new index from file '%s'...\n", reference_path.c_str()), "LoadOrGenerate");
+    fflush(stderr);
+  }
+
+  GenerateTranscriptomeFromFile(reference_path, gtf_path);
+
+  if (verbose == true) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Storing new index to file '%s'...\n", out_index_path.c_str()), "LoadOrGenerate");
+  }
+
+  StoreToFile(out_index_path);
+
+  if (verbose == true) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("New index stored.\n"), "LoadOrGenerate");
+  }
+
+  return 0;
+}
+
+int IndexSpacedHashFast::GenerateTranscriptomeFromFile(std::string sequence_file_path, std::string gtf_path) {
+  Clear();
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file, and creating a transcriptome index.\n"), "GenerateFromFile");
+  SequenceFile sequences(sequence_file_path);
+  SequenceFile transcript_sequences;
+
+  // Verbose output for debugging.
+  fprintf (stderr, "Sequence file before transcriptome generation:\n");
+  sequences.Verbose(stderr);
+  fflush(stderr);
+
+  MakeTranscript_(gtf_path, sequences, transcript_sequences);
+
+  // Verbose output for debugging.
+  fprintf (stderr, "Transcribed sequences:\n");
+  transcript_sequences.Verbose(stderr);
+  fflush(stderr);
+
+  // Sanity check.
+  if (transcript_sequences.get_sequences().size() == 0) {
+    return 1;
+  }
+
+  return GenerateFromSequenceFile(transcript_sequences);
+}

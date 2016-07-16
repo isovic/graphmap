@@ -24,6 +24,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->gtf_path, VALUE_TYPE_STRING, "", "gtf", "", "Path to a General Transfer Format file. If specified, a transcriptome will be built from the reference sequence and used for mapping.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "in-fmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
 //  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
   argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.", 0, "Input/Output options");
@@ -160,7 +161,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
     fprintf (stderr, "\n");
     VerboseShortHelpAndExit(argc, argv);
   }
-  if (!fileExists(parameters->reads_path.c_str())) {
+  if (parameters->calc_only_index == false && !fileExists(parameters->reads_path.c_str())) {
     fprintf (stderr, "Reads file does not exist: '%s'\n\n", parameters->reads_path.c_str());
     VerboseShortHelpAndExit(argc, argv);
   }

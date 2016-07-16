@@ -16,7 +16,6 @@
 #include "containers/range.h"
 #include "sequences/single_sequence.h"
 #include "index/index.h"
-#include "index/index_spaced_hash.h"
 
 class SeedHit {
  public:

@@ -227,7 +227,7 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
   bool self_overlap = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
 
   float bin_size_inverse = (bin_size > 0) ? (1.0f / ((float) bin_size)) : (0.0f);
-  int64_t k = (int64_t) ((IndexSpacedHash *) indexes[0])->get_shape_index_length();
+  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
 
   mapping_data->bin_size = bin_size;
   mapping_data->num_seeds_with_no_hits = 0;
@@ -239,7 +239,7 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
 //  hit_coords.reserve(parameters->max_num_hits * read->get_sequence_length() + 1);
 
   for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
-    IndexSpacedHash *index = (IndexSpacedHash *) indexes[index_id];
+    IndexSpacedHashFast *index = (IndexSpacedHashFast *) indexes[index_id];
     if (index == NULL) { continue; }
 
     for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {
