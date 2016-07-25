@@ -34,6 +34,7 @@ int IndexSpacedHashFast::MakeTranscript_(std::string annotations_path, const Seq
 				s->ReverseComplement();
 			}
 			transcripts.AddSequence(s, true);
+			// outputSeq(header, headerLen, s->get_data(), seqLen);
 		}
 	}
 	return 0;
@@ -56,11 +57,11 @@ int IndexSpacedHashFast::GenerateExons(
 			continue;
 		}
 		std::string tid = getTID(fields[8]);
-		if(!transToExons[tid].empty()) {
+		if(transToExons[tid].empty()) {
 			seqToTrans[split(fields[0], ' ')[0]].push_back(std::make_pair(tid, fields[6][0]));
 		}
 		int64_t left, right;
-	    std::stringstream ss(line);
+	    std::stringstream ss(fields[3] + " " + fields[4]);
 		ss >> left >> right;
 		transToExons[tid].push_back(std::make_pair(left, right));
 	}
@@ -72,7 +73,7 @@ std::string IndexSpacedHashFast::getTID(std::string attributes) {
 		s = trim(s);
 		auto keyValue = split(s, ' ');
 		if(keyValue[0] == "transcript_id") {
-			return keyValue[1];
+			return split(keyValue[1], '"')[1];
 		}
 	}
 	return "";
@@ -80,10 +81,18 @@ std::string IndexSpacedHashFast::getTID(std::string attributes) {
 
 std::string IndexSpacedHashFast::trim(std::string s) {
 	std::string ret = "";
-	for(int i = 0; i < s.size(); i++) {
-		if(!std::isspace(s[i]))
-			ret += s[i];
+	int i, j;
+	for(i = 0; i < s.size(); i++) {
+		if(!std::isspace(s[i])) {
+			break;
+		}
 	}
+	for(j = s.size() - 1; j >= 0; j--) {
+		if(!std::isspace(s[j])) {
+			break;
+		}
+	}
+	for(; i <= j; i++) ret += s[i];
 	return ret;
 }
 
@@ -91,13 +100,12 @@ std::vector<std::string> IndexSpacedHashFast::split(std::string s, char c) {
 	std::vector<std::string> v;
     std::string temp = "";
     for(int i = 0; i < s.size(); i++) {
-        char c = s[i];
-        if(c == '\t') {
+        if(s[i] == c) {
             v.push_back(temp);
             temp = "";
         }
         else
-            temp += c;
+            temp += s[i];
     }
     v.push_back(temp);
 	return v;
@@ -105,8 +113,19 @@ std::vector<std::string> IndexSpacedHashFast::split(std::string s, char c) {
 
 std::string IndexSpacedHashFast::getSequenceName(SingleSequence &seq) {
 	std::string name = "";
-	for(int i = 1; i < seq.get_data_length() && seq.get_data()[i] != ' '; i++) {
-		name += seq.get_data()[i];
+	for(int i = 0; i < seq.get_header_length() && seq.get_header()[i] != ' '; i++) {
+		name += seq.get_header()[i];
 	}
 	return name;
+}
+
+void IndexSpacedHashFast::outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen) {
+	std::cout << ">";
+	for(int i = 0; i< headerLen; i++)
+		std::cout << header[i];
+	for(int i = 0; i < seqLen; i++) {
+		if(i % 80 == 0) std::cout << "\n";
+		std::cout << seq[i];
+	}
+	std::cout << "\n";
 }

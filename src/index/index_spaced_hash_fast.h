@@ -147,6 +147,7 @@ class IndexSpacedHashFast : public Index {
   std::vector<std::string> split(std::string s, char c);
   std::string getSequenceName(SingleSequence &seq);
   std::string getTID(std::string s);
+  void outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen);
 };
 
 #endif /* INDEX_SPACED_HASH_H_ */
