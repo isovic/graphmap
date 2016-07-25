@@ -103,7 +103,8 @@ void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGapped
 
   // Set up the starting and ending read index.
   int64_t start_i = (parameters.debug_read >= 0) ? ((int64_t) parameters.debug_read) : (parameters.start_read >= 0)?((int64_t) parameters.start_read) : 0;
-  int64_t end_i = (parameters.num_reads_to_process >= 0) ? (start_i + (int64_t) parameters.num_reads_to_process) : reads->get_sequences().size();
+  int64_t end_i = (parameters.debug_read >= 0) ? 1 :
+                  (parameters.num_reads_to_process >= 0) ? (start_i + (int64_t) parameters.num_reads_to_process) : reads->get_sequences().size();
 
   // Initialize the counters.
   int64_t num_mapped = 0, num_unmapped = 0;

@@ -6,6 +6,8 @@
  */
 
 #include "owler2/owler2.h"
+#include "owler2/lcskpp_packed.h"
+#include "containers/clusters.h"
 
 uint128_t OWLER2_MASK_LOWER_64 = ((uint128_t) 0x0000000000000000FFFFFFFFFFFFFFFF);
 uint128_t OWLER2_MASK_UPPER_64 = ((uint128_t) 0x0000000000000000FFFFFFFFFFFFFFFF) << 64;
@@ -127,16 +129,55 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
   int64_t streak_start_hit = 0;
   int64_t streak_end_hit = 1;
   while (streak_start_hit < last_hit_id) {
-    int64_t rstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1] >> 64);
-    int64_t rstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit] >> 64);
-    int64_t qstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1]);
-    int64_t qstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit]);
-    int64_t l = rstart - qstart;
-    int64_t l_prev = rstart_prev - qstart_prev;
-    if (
+//    int64_t rstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1] >> 64);
+//    int64_t rstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit] >> 64);
+//    int64_t qstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1]);
+//    int64_t qstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit]);
+//    int64_t l = rstart - qstart;
+//    int64_t l_prev = rstart_prev - qstart_prev;
+
+    // Get all hits for a particular reference, and call LCSk.
+    int64_t prev_rid = hits[streak_end_hit-1] >> 96;
+    int64_t rid = hits[streak_end_hit] >> 96;
+    if (rid != prev_rid) {
+
+      int64_t lcskpp_length = 0;
+      std::vector<int32_t> lcskpp_indices;
+      int rc_lcsk = LCSkPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(), &lcskpp_length, &lcskpp_indices, false);
+
+      /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
+      std::vector<int> first_filtered_lcskpp_indices, second_filtered_lcskpp_indices;
+      /// Filter the LCSk anchors.
+      std::vector<ClusterAndIndices *> clusters;
+      std::vector<int> cluster_indices;
+      std::vector<int32_t> cluster_ids;
+      FilterAnchorsByChainingPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
+                                  read, &parameters, lcskpp_indices, parameters.error_rate/2 + 0.01f,
+                                  200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+      GenerateClustersPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
+                             2, 50, 50, 0.0, first_filtered_lcskpp_indices, read, &parameters, clusters, cluster_indices, &cluster_ids);
+
+#ifndef RELEASE_VERSION
+      if (parameters.verbose_level > 5 && read->get_sequence_absolute_id() == parameters.debug_read) {
+        WriteLCSkDebug(FormatString("temp/owler2/scores-%ld.csv", prev_rid),
+                       read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+                       ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), NULL, NULL);
+        WriteLCSkDebug(FormatString("temp/owler2/lcs-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+                       ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &lcskpp_indices, NULL);
+        WriteLCSkDebug(FormatString("temp/owler2/filt-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+                       ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &first_filtered_lcskpp_indices, NULL);
+        WriteLCSkDebug(FormatString("temp/owler2/clust-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+                       ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &cluster_indices, &cluster_ids);
+      }
+#endif
+
+      streak_start_hit = streak_end_hit;
+    }
+
+    streak_end_hit += 1;
   }
 
-  exit(1);
+//  exit(1);
 
   return 0;
 }

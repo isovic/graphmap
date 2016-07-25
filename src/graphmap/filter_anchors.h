@@ -22,6 +22,7 @@
 #include "containers/region.h"
 #include "containers/mapping_data.h"
 #include "containers/vertices.h"
+#include "containers/clusters.h"
 
 /// These are some constants used for filtering shady anchors.
 /// TODO: This can be omitted if dynamic programming was used to penalize the anchor distances.
@@ -41,15 +42,7 @@ using uint128_t = unsigned __int128;
 /// ref_id << 96 | query_start << 64 | ref_start << 32 | query_id
 #define pack128(qstart,rstart,qid,rid)         ((((uint128_t) rid) << 96) | (((uint128_t) qstart) << 64) | (((uint128_t) rstart) << 32) | ((uint128_t) qid))
 
-struct ClusterAndIndices {
-  Range query;
-  Range ref;
-  int32_t num_anchors = 0;
-  int32_t coverage = 0;
-  std::vector<int> lcskpp_indices;
-};
-
-int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rpos, double indel_bandwidth_margin, int32_t fwd_length, int32_t dist_aab, int32_t dist_dbm, double *score_gap, double *score_dist);
+// int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rpos, double indel_bandwidth_margin, int32_t fwd_length, int32_t dist_aab, int32_t dist_dbm, double *score_gap, double *score_dist);
 
 void GetPositionsFromRegistry2(const Vertices& registry_entries, int64_t vertex_id, int32_t *qpos_start, int32_t *rpos_start, int32_t *qpos_end, int32_t *rpos_end);
 void GetPositionsFromRegistry(const Vertices& registry_entries, const std::vector<int> &lcskpp_indices, int64_t lcskpp_id, int32_t *qpos_start, int32_t *rpos_start, int32_t *qpos_end, int32_t *rpos_end);

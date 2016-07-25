@@ -82,7 +82,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
     }
   }
 
-//  DumpSeeds("temp/seeds.sparse.minimizers.csv", max_incl_bits/2);
+  DumpSeeds("temp/seeds.sparse.minimizers.csv", max_incl_bits/2);
 
   if (use_minimizers) {
     // Remove all excess seeds so that sorting will be faster.
@@ -441,6 +441,15 @@ const std::vector<int64_t>& IndexGappedMinimizer::get_reference_lengths() const 
 
 void IndexGappedMinimizer::set_reference_lengths(const std::vector<int64_t>& referenceLengths) {
   reference_lengths_ = referenceLengths;
+}
+
+const std::vector<std::string>& IndexGappedMinimizer::get_headers() const {
+  return headers_;
+}
+
+void IndexGappedMinimizer::set_headers(
+    const std::vector<std::string>& headers) {
+  headers_ = headers;
 }
 
 int IndexGappedMinimizer::OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val) {

@@ -10,7 +10,7 @@
 
 //#define DEBUG_TEST1
 
-const int32_t chain_dist_aab = 5;
+const int32_t kChainDistAab = 5;
 const int32_t chain_dist_dbm = 15;
 
 
@@ -206,7 +206,7 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
       LOG_DEBUG_SPEC_NO_HEADER("  Considering anchor %ld (i = %ld, lcskpp_indices[%ld] = %d, chains.back().back() = %d): start = [%d, %d], end = [%d, %d]. max_score_id = %ld\n", next_id, i, next_id, lcskpp_indices[next_id], chains.back().back(), next_qpos_start, next_rpos_start, next_qpos_end, next_rpos_end, max_score_id);
 
       double score_gap = 0.0, score_mismatch = 0.0;
-      int64_t ret_val = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead, chain_dist_aab, chain_dist_dbm, &score_gap, &score_mismatch);
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, next_qpos_end, next_rpos_end, indel_bandwidth_margin, chain_len_lookahead, kChainDistAab, chain_dist_dbm, &score_gap, &score_mismatch);
 
       if (ret_val > 0) {
         LOG_DEBUG_SPEC_NO_HEADER("    - Breaking. CalcScore returned a value > 0 (ret_val = %ld)\n", ret_val);
@@ -370,7 +370,7 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
       int32_t prev_qpos_start = 0, prev_rpos_start = 0, prev_qpos_end = 0, prev_rpos_end = 0;
       GetPositionsFromRegistry(registry_entries, lcskpp_indices, (i + 1), &prev_qpos_start, &prev_rpos_start, &prev_qpos_end, &prev_rpos_end);
 
-      int64_t ret_val = CalcScore(qpos_start, rpos_start, prev_qpos_end, prev_rpos_end, indel_bandwidth_margin, -1, chain_dist_aab, chain_dist_dbm, &score_gap, &score_dist);
+      int64_t ret_val = CalcScore(qpos_start, rpos_start, prev_qpos_end, prev_rpos_end, indel_bandwidth_margin, -1, kChainDistAab, chain_dist_dbm, &score_gap, &score_dist);
 
       if (ret_val > 0) {
         LOG_DEBUG_SPEC("  Closing the cluster. Cluster ID: %ld, ret_val = %ld.\n\n", ret_clusters.size(), ret_val);
@@ -524,3 +524,11 @@ int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_scor
   fclose(fp);
   return 0;
 }
+
+
+
+
+
+
+
+
