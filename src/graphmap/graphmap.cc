@@ -397,8 +397,10 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
     // If the order of the reads should be kept, store them in a vector, otherwise output the alignment to file.
     if (parameters->output_in_original_order == false) {
-      #pragma omp critical
-      fprintf (fp_out, "%s\n", sam_line.c_str());
+      if (sam_line.size() > 0) {
+        #pragma omp critical
+        fprintf (fp_out, "%s\n", sam_line.c_str());
+      }
     }
     else {
       #pragma omp critical
