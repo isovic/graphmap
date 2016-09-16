@@ -19,9 +19,12 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
   std::vector<std::string> shvec = {"1111110111111"};
   std::vector<CompiledShape> ls = CompileShapes(shvec);
 
+  printf ("\n");
+  fflush(stdout);
   for (int32_t i=0; i<ls.size(); i++) {
     printf ("Lookup shape: %s\n", ls[i].shape.c_str());
   }
+  fflush(stdout);
 
   std::vector<uint128_t> minimizers;
   minimizers.resize(ls.size() * read->get_sequence_length() * 2);     // Allocate maximum space for the seeds. Factor 2 is for the reverse complement.
@@ -30,7 +33,7 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
 
   printf ("num_minimizers = %ld\n", num_minimizers);
 
-  int64_t max_count = ceil(index->get_count_cutoff());
+  int64_t max_count = std::max((int64_t) ceil(index->get_count_cutoff()), (int64_t) 5);
 
   printf ("max_count = %ld\n", max_count);
 
@@ -54,48 +57,53 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
   int64_t last_hit_id = 0;
 
   for (int64_t i=0; i<num_minimizers; i++) {
+    uint64_t key = GET_KEY_FROM_HIT(minimizers[i]);
+    uint64_t pos = GET_REAL_POS_FROM_HIT(minimizers[i]);
+    uint64_t seq_id = read->get_sequence_absolute_id();
+    uint128_t coded_pos = minimizers[i] & (0x0FFFFFFFFFFFFFFFF); // << 64;
+
     // Reverse complements are already indexed, so skip them here.
 //    if (IS_HIT_REVERSE(minimizers[i])) { continue; }
 //    printf ("\n");
 //    printf ("%s\t%ld\t%ld\t%ld\n", SeedToString(((uint64_t) ((minimizers[i] >> 64) & 0x0FFFFFFFF)), 12).c_str(), ((uint64_t) ((minimizers[i] >> 32) & 0x0FFFFFFFF)), ((uint64_t) ((minimizers[i]) & 0x0FFFFFFFF)), GET_REAL_POS_FROM_HIT(((uint64_t) ((minimizers[i]) & 0x0FFFFFFFF))));
-    if ((minimizers[i] & (((uint128_t) 1) << 31)) != 0) { continue; }
+//    if ((minimizers[i] & (((uint128_t) 1) << 31)) != 0) {
+//      printf ("[i = %d/%d] key = %s\tpos = %ld\tread_id = %ld -> SKIPPED REVERSE!\n", (i+1), num_minimizers, SeedToString(key, 12).c_str(), pos, seq_id);
+//      continue;
+//    }
 
-    uint64_t key = GET_KEY_FROM_HIT(minimizers[i]);
-    uint64_t pos = GET_REAL_POS_FROM_HIT(minimizers[i]);
-    uint128_t coded_pos = minimizers[i] & (0x0FFFFFFFFFFFFFFFF); // << 64;
-
-    printf ("[i = %d/%d] key = %s\tpos = %ld\n", (i+1), num_minimizers, SeedToString(key, 12).c_str(), pos);
+    printf ("[i = %d/%d] key = %s\tkey = %ld\tpos = %6ld\tread_id = %ld", (i+1), num_minimizers, SeedToString(key, 12).c_str(), key, pos, seq_id);
     fflush(stdout);
 
-    uint128_t *seeds = NULL;
-    int64_t num_seeds = 0;
-    if (index->GetHits(key, &seeds, &num_seeds)) {
-//      printf ("%s skip\n", SeedToString(key, 12).c_str());
+    uint128_t *seed_hits = NULL;
+    int64_t num_seed_hits = 0;
+    if (index->GetHits(key, &seed_hits, &num_seed_hits)) {
+      // The key can't be found.
+      printf ("\tThe key can't be found.\n", SeedToString(key, 12).c_str());
       continue;
     }
 
 //    printf ("%X\t%ld\n", key, num_seeds);
-    if (max_count > 0 && num_seeds > max_count) {
+    if (max_count > 0 && num_seed_hits > max_count) {
 //      printf ("%s\t%ld\tskip\n", SeedToString(key, 12).c_str(), num_seeds);
       continue;
     }
 
-//    printf ("[%ld] %s\t%ld\t%ld\t%s\n", num_valid_hits, SeedToString(key, 12).c_str(), pos, num_seeds, SeedToString(key, 12).c_str());
+    printf ("\t[%ld] %s\tnum_hits = %ld\n", num_valid_hits, SeedToString(key, 12).c_str(), num_seed_hits);
 
-    if ((last_hit_id + num_seeds) >= hits.size()) {
+    if ((last_hit_id + num_seed_hits) >= hits.size()) {
       hits.resize(hits.size() + read->get_sequence_length());
 //      printf ("resize\n");
     }
 
 //    memcpy(&hits[last_hit_id], seeds, num_seeds*sizeof(uint128_t));
-    for (int32_t j=0; j<num_seeds; j++) {
+    for (int32_t j=0; j<num_seed_hits; j++) {
 //      hits[last_hit_id + j] = (hits[last_hit_id + j] & OWLER2_MASK_LOWER_64) | coded_pos;
-      hits[last_hit_id + j] = (seeds[j] << 64) | coded_pos;
+      hits[last_hit_id + j] = (seed_hits[j] << 64) | coded_pos;
 //      uint64_t t = hits[last_hit_id + j] >> 64;
 //      printf ("[j = %d/%d] low 64 bits: pos = %ld, hits[%ld] = %ld, high 64 bits: hits[%ld] = %ld, seed pos: %ld\n", (j+1), num_seeds, pos, last_hit_id + j, GET_REAL_POS_FROM_HIT(hits[last_hit_id + j]), last_hit_id + j, GET_REAL_POS_FROM_HIT(hits[last_hit_id + j]>>64), GET_REAL_POS_FROM_HIT(seeds[j]));
 //      printf ("%ld\n", GET_REAL_POS_FROM_HIT(t));
     }
-    last_hit_id += num_seeds;
+    last_hit_id += num_seed_hits;
 //    printf ("last_hit_id = %ld\n", last_hit_id);
 //    printf ("\n");
 
@@ -116,73 +124,137 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
 
   std::sort(hits.begin(), hits.begin() + last_hit_id);
 
+  // Just debug output.
   for (int64_t i=0; i<last_hit_id; i++) {
     uint64_t rid = GET_SEQ_ID_FROM_HIT(hits[i] >> 64);
     uint64_t qid = GET_SEQ_ID_FROM_HIT(hits[i]);
     int32_t rfwd = IS_HIT_REVERSE(hits[i] >> 64);
     int32_t qfwd = IS_HIT_REVERSE(hits[i]);
-    uint64_t rstart = GET_POS_FROM_HIT_WITH_REV((hits[i] >> 64));
-    uint64_t qstart = GET_POS_FROM_HIT_WITH_REV(hits[i]);
+//    uint64_t rstart = GET_POS_FROM_HIT_WITH_REV((hits[i] >> 64));
+//    uint64_t qstart = GET_POS_FROM_HIT_WITH_REV(hits[i]);
 
-//    uint64_t rstart = GET_REAL_POS_FROM_HIT((hits[i] >> 64));
-//    uint64_t qstart = GET_REAL_POS_FROM_HIT(hits[i]);
+    uint64_t rstart = GET_REAL_POS_FROM_HIT((hits[i] >> 64));
+    uint64_t qstart = GET_REAL_POS_FROM_HIT(hits[i]);
     if (qid == rid) { continue; }
-    printf ("qid = %ld, qfwd = %d, qstart = %ld, qlen = %ld, rid = %ld, rfwd = %d, rstart = %ld, rlen = %ld\t%s\n", qid, qfwd, qstart, index->get_reference_lengths()[qid], rid, rfwd, rstart, index->get_reference_lengths()[rid], index->get_headers()[rid].c_str());
+    std::string r_header = (index->get_headers()[rid].length() > 30) ? index->get_headers()[rid].substr(0, 30) : index->get_headers()[rid];
+    printf ("[%ld] qid = %ld, qfwd = %d, qstart = %ld, qlen = %ld, rid = %ld, rfwd = %d, rstart = %ld, rlen = %ld\t%s\n", i, qid, qfwd, qstart, index->get_reference_lengths()[qid], rid, rfwd, rstart, index->get_reference_lengths()[rid], r_header.c_str());
+    fflush(stdout);
 //    printf ("%ld\n", hits[i]);
   }
 
-  int64_t streak_start_hit = 0;
-  int64_t streak_end_hit = 1;
-  while (streak_start_hit < last_hit_id) {
-//    int64_t rstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1] >> 64);
-//    int64_t rstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit] >> 64);
-//    int64_t qstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1]);
-//    int64_t qstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit]);
-//    int64_t l = rstart - qstart;
-//    int64_t l_prev = rstart_prev - qstart_prev;
+  printf ("Running the interesting bit.\n");
 
-    // Get all hits for a particular reference, and call LCSk.
-    int64_t prev_rid = hits[streak_end_hit-1] >> 96;
-    int64_t rid = hits[streak_end_hit] >> 96;
-    if (rid != prev_rid) {
+//  for (int64_t i=0; i<last_hit_id; i++) {
+//    int64_t hit_seq_id = hits[i] >> 96;
+//    int64_t pos = GET_REAL_POS_FROM_HIT(hits[i]);
+//    int64_t rev = GET_
+//    printf ("hit_seq_id = %ld, pos = %ld, rev = %c\n", hit_seq_id);
+//  }
 
-      if (prev_rid != read_id) {
-        int64_t lcskpp_length = 0;
-        std::vector<int32_t> lcskpp_indices;
-        int rc_lcsk = LCSkPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(), &lcskpp_length, &lcskpp_indices, false);
+  int64_t streak_start = 0, streak_end = 0;
+  while (streak_start < last_hit_id) {
+    int64_t start_seq_id = hits[streak_start] >> 96;
+    int64_t curr_seq_id = -1;
 
-        /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
-        std::vector<int> first_filtered_lcskpp_indices, second_filtered_lcskpp_indices;
-        /// Filter the LCSk anchors.
-        std::vector<ClusterAndIndices *> clusters;
-        std::vector<int> cluster_indices;
-        std::vector<int32_t> cluster_ids;
-        FilterAnchorsByChainingPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
-                                    read, &parameters, lcskpp_indices, parameters.error_rate/2 + 0.01f,
-                                    200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
-        GenerateClustersPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
-                               2, 50, 50, 0.0, first_filtered_lcskpp_indices, read, &parameters, clusters, cluster_indices, &cluster_ids);
-
-#ifndef RELEASE_VERSION
-        if (parameters.verbose_level > 5 && read->get_sequence_absolute_id() == parameters.debug_read) {
-          WriteLCSkDebug(FormatString("temp/owler2/scores-%ld.csv", prev_rid),
-                         read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), NULL, NULL);
-          WriteLCSkDebug(FormatString("temp/owler2/lcs-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &lcskpp_indices, NULL);
-          WriteLCSkDebug(FormatString("temp/owler2/filt-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &first_filtered_lcskpp_indices, NULL);
-          WriteLCSkDebug(FormatString("temp/owler2/clust-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &cluster_indices, &cluster_ids);
-        }
-#endif
-      }
-
-      streak_start_hit = streak_end_hit;
+    while (streak_end < last_hit_id && (curr_seq_id = hits[streak_end] >> 96) == start_seq_id) {
+      streak_end += 1;
+//      printf ("streak_end = %ld\n", streak_end);
     }
 
-    streak_end_hit += 1;
+    if (start_seq_id == read_id) {
+      printf ("(continue) streak_start = %ld, streak_end = %ld, start_seq_id = %ld, curr_seq_id = %ld, last_hit_id = %ld\n", streak_start, streak_end, start_seq_id, curr_seq_id, last_hit_id);
+      streak_start = streak_end;
+      continue;
+    }
+
+    printf ("streak_start = %ld, streak_end = %ld, start_seq_id = %ld, curr_seq_id = %ld, last_hit_id = %ld\n", streak_start, streak_end, start_seq_id, curr_seq_id, last_hit_id);
+
+    int64_t lcskpp_length = 0;
+    std::vector<int32_t> lcskpp_indices;
+//    int rc_lcsk = LCSkPacked(&hits[streak_start], (streak_end - streak_start), ls[0].shape.size(), &lcskpp_length, &lcskpp_indices, false);
+
+    /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
+    std::vector<int> first_filtered_lcskpp_indices, second_filtered_lcskpp_indices;
+    /// Filter the LCSk anchors.
+    std::vector<ClusterAndIndices *> clusters;
+    std::vector<int> cluster_indices;
+    std::vector<int32_t> cluster_ids;
+//    FilterAnchorsByChainingPacked(&hits[streak_start], (streak_end - streak_start), ls[0].shape.size(),
+//                                read, &parameters, lcskpp_indices, parameters.error_rate/2 + 0.01f,
+//                                200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+//    GenerateClustersPacked(&hits[streak_start], (streak_end - streak_start), ls[0].shape.size(),
+//                           2, 50, 50, 0.0, first_filtered_lcskpp_indices, read, &parameters, clusters, cluster_indices, &cluster_ids);
+
+#ifndef RELEASE_VERSION
+    if (parameters.verbose_level > 5 && read->get_sequence_absolute_id() == parameters.debug_read) {
+      WriteLCSkDebug(FormatString("temp/owler2/scores-%ld.csv", start_seq_id),
+                     read->get_header(), read->get_sequence_length(), index->get_headers()[start_seq_id], index->get_reference_lengths()[start_seq_id],
+                     ls[0].shape.size(), &hits[streak_start], (streak_end - streak_start), NULL, NULL);
+      WriteLCSkDebug(FormatString("temp/owler2/lcs-%ld.csv", start_seq_id), read->get_header(), read->get_sequence_length(), index->get_headers()[start_seq_id], index->get_reference_lengths()[start_seq_id],
+                     ls[0].shape.size(), &hits[streak_start], (streak_end - streak_start), &lcskpp_indices, NULL);
+      WriteLCSkDebug(FormatString("temp/owler2/filt-%ld.csv", start_seq_id), read->get_header(), read->get_sequence_length(), index->get_headers()[start_seq_id], index->get_reference_lengths()[start_seq_id],
+                     ls[0].shape.size(), &hits[streak_start], (streak_end - streak_start), &first_filtered_lcskpp_indices, NULL);
+      WriteLCSkDebug(FormatString("temp/owler2/clust-%ld.csv", start_seq_id), read->get_header(), read->get_sequence_length(), index->get_headers()[start_seq_id], index->get_reference_lengths()[start_seq_id],
+                     ls[0].shape.size(), &hits[streak_start], (streak_end - streak_start), &cluster_indices, &cluster_ids);
+    }
+#endif
+
+    streak_start = streak_end;
   }
+
+
+
+//  int64_t streak_start_hit = 0;
+//  int64_t streak_end_hit = 1;
+//  while (streak_start_hit < last_hit_id && streak_end_hit <= last_hit_id) {
+////    int64_t rstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1] >> 64);
+////    int64_t rstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit] >> 64);
+////    int64_t qstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1]);
+////    int64_t qstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit]);
+////    int64_t l = rstart - qstart;
+////    int64_t l_prev = rstart_prev - qstart_prev;
+//
+//    // Get all hits for a particular reference, and call LCSk.
+//    int64_t prev_rid = hits[streak_end_hit-1] >> 96;
+//    int64_t rid = hits[streak_end_hit] >> 96;
+//    if (rid != prev_rid || (streak_end_hit + 1 == last_hit_id)) {
+//      if (prev_rid != read_id) {
+//        int64_t lcskpp_length = 0;
+//        std::vector<int32_t> lcskpp_indices;
+//        int rc_lcsk = LCSkPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(), &lcskpp_length, &lcskpp_indices, false);
+//
+//        /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
+//        std::vector<int> first_filtered_lcskpp_indices, second_filtered_lcskpp_indices;
+//        /// Filter the LCSk anchors.
+//        std::vector<ClusterAndIndices *> clusters;
+//        std::vector<int> cluster_indices;
+//        std::vector<int32_t> cluster_ids;
+//        FilterAnchorsByChainingPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
+//                                    read, &parameters, lcskpp_indices, parameters.error_rate/2 + 0.01f,
+//                                    200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+//        GenerateClustersPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
+//                               2, 50, 50, 0.0, first_filtered_lcskpp_indices, read, &parameters, clusters, cluster_indices, &cluster_ids);
+//
+//#ifndef RELEASE_VERSION
+//        if (parameters.verbose_level > 5 && read->get_sequence_absolute_id() == parameters.debug_read) {
+//          WriteLCSkDebug(FormatString("temp/owler2/scores-%ld.csv", prev_rid),
+//                         read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), NULL, NULL);
+//          WriteLCSkDebug(FormatString("temp/owler2/lcs-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &lcskpp_indices, NULL);
+//          WriteLCSkDebug(FormatString("temp/owler2/filt-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &first_filtered_lcskpp_indices, NULL);
+//          WriteLCSkDebug(FormatString("temp/owler2/clust-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
+//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &cluster_indices, &cluster_ids);
+//        }
+//#endif
+//      }
+//
+//      streak_start_hit = streak_end_hit;
+//    }
+//
+//    streak_end_hit += 1;
+//  }
 
 //  exit(1);
 

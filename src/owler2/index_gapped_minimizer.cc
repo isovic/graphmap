@@ -78,11 +78,11 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
     uint64_t seq_id = seqs.get_sequences()[i]->get_sequence_absolute_id() + 0; // The '+ 0' is actually short for this: + ((orientation == kReverse) ? num_sequences_forward_ : 0);
     int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seeds_[seed_starts_for_seq[i]]));
     if (use_minimizers) {
-      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, 2, minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
+//      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, 2, minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
     }
   }
 
-  DumpSeeds("temp/seeds.sparse.minimizers.csv", max_incl_bits/2);
+//  DumpSeeds("temp/seeds.sparse.minimizers.csv", max_incl_bits/2);
 
   if (use_minimizers) {
     // Remove all excess seeds so that sorting will be faster.
@@ -121,16 +121,29 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
   for (int64_t i=0; i<seeds_.size(); i++) {
     if (seeds_[i] == 0) { continue; }
     uint64_t key = (uint64_t) (seeds_[i] >> 64);
+//    if (key == 3168870) {
+//      printf ("\n--------------> Key koji fali!!\n");
+//    }
+//    if (key ==
     if (init == false) {
       new_hash_val.start = i;
       new_hash_val.num = 1;
       init = true;
+//      if (key == 3168870) {
+//        printf ("--------------> init == false, new_hash_val.start = %ld, new_hash_val.num = %ld\n", new_hash_val.start, new_hash_val.num);
+//      }
     } else if (key != prev_key && new_hash_val.num > 0) {
       hash_[prev_key] = new_hash_val;
       new_hash_val.start = i;
-      new_hash_val.num = 0;
+      new_hash_val.num = 1;
+//      if (key == 3168870) {
+//        printf ("--------------> key != prev_key && new_hash_val.num > 0\n");
+//      }
     } else {
       new_hash_val.num += 1;
+//      if (key == 3168870) {
+//        printf ("--------------> else\n");
+//      }
     }
     prev_key = key;
   }
@@ -299,7 +312,7 @@ int IndexGappedMinimizer::CollectSeedsForSeq_(const int8_t* seqdata, const int8_
 
         uint64_t rev_seed = ReverseComplementSeed_(seed, compiled_shapes[shape_id].num_incl_bits/2);
         uint64_t rev_key = SeedHashFunction_(rev_seed);
-        uint64_t rev_position = position | kIndexIdReverse64;
+        uint64_t rev_position = (seqlen - position - 1) | kIndexIdReverse64;
         seed_list[seed_id] = (((uint128_t) rev_key) << 64) | (((uint128_t) seq_id) << 32) | (((uint128_t) rev_position) << 0);
         seed_id += 1;
       }
@@ -389,19 +402,21 @@ int IndexGappedMinimizer::FlagDuplicates_(uint128_t* seed_list, int64_t num_seed
 
 void IndexGappedMinimizer::DumpHash(std::string out_path, int32_t num_bases) {
   FILE *fp = fopen(out_path.c_str(), "w");
-  for (auto it=hash_.begin(); it!=hash_.end(); it++) {
-    uint64_t key = it->first;
-    SeedHashValue shv = it->second;
-//    fprintf (fp, "%6X\t%ld\t%ld\n", key, shv.start, shv.num);
-    std::string key_string = SeedToString(key, num_bases);
-    fprintf (fp, "%s\t%ld\t%ld\t", key_string.c_str(), shv.start, shv.num);
+  if (fp != NULL) {
+    for (auto it=hash_.begin(); it!=hash_.end(); it++) {
+      uint64_t key = it->first;
+      SeedHashValue shv = it->second;
+  //    fprintf (fp, "%6X\t%ld\t%ld\n", key, shv.start, shv.num);
+      std::string key_string = SeedToString(key, num_bases);
+      fprintf (fp, "%s\t%ld\t%ld\t", key_string.c_str(), shv.start, shv.num);
 
-    for (int64_t j=0; j<shv.num; j++) {
-      fprintf (fp, "%ld ", GET_REAL_POS_FROM_HIT(seeds_[shv.start + j]));
+      for (int64_t j=0; j<shv.num; j++) {
+        fprintf (fp, "%ld ", GET_REAL_POS_FROM_HIT(seeds_[shv.start + j]));
+      }
+      fprintf (fp, "\n");
     }
-    fprintf (fp, "\n");
+    fclose(fp);
   }
-  fclose(fp);
 }
 
 void IndexGappedMinimizer::DumpSortedHash(std::string out_path, int32_t num_bases) {
@@ -424,15 +439,18 @@ void IndexGappedMinimizer::DumpSortedHash(std::string out_path, int32_t num_base
 
 void IndexGappedMinimizer::DumpSeeds(std::string out_path, int32_t num_bases) {
   FILE *fp = fopen(out_path.c_str(), "w");
-  for (int64_t i=0; i<seeds_.size(); i++) {
-    uint64_t key = (uint64_t) (seeds_[i] >> 64);
-    uint64_t coded_pos = seeds_[i] & 0x0000000000000000FFFFFFFFFFFFFFFF;
-    IndexPos ipos(coded_pos);
-//    fprintf (fp, "%6X %ld\n", key, ipos.get_pos());
-    std::string key_string = SeedToString(key, num_bases);
-    fprintf (fp, "%s %ld\n", key_string.c_str(), ipos.get_pos());
+  if (fp != NULL) {
+    for (int64_t i=0; i<seeds_.size(); i++) {
+      uint64_t key = (uint64_t) (seeds_[i] >> 64);
+      uint64_t coded_pos = seeds_[i] & 0x0000000000000000FFFFFFFFFFFFFFFF;
+      uint64_t ref_id = GET_SEQ_ID_FROM_HIT(seeds_[i]);
+      IndexPos ipos(coded_pos);
+  //    fprintf (fp, "%6X %ld\n", key, ipos.get_pos());
+      std::string key_string = SeedToString(key, num_bases);
+      fprintf (fp, "%s %ld %ld %s %15ld\n", key_string.c_str(), ipos.get_pos(), ipos.seq_id, ((ipos.is_rev() == true) ? "r" : "f"), key);
+    }
+    fclose(fp);
   }
-  fclose(fp);
 }
 
 const std::vector<int64_t>& IndexGappedMinimizer::get_reference_lengths() const {

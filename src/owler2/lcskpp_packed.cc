@@ -193,16 +193,16 @@ int WriteLCSkDebug(std::string out_file, std::string qname, int64_t qlen, std::s
   if (lcskpp_indices != NULL && cluster_ids == NULL) {
     /// In this case, output only the filtered indices.
     for (int64_t i=0; i<lcskpp_indices->size(); i++) {
-      int32_t rpos = get_lcsk128_rpos(packed_hits[(*lcskpp_indices)[i]]);
-      int32_t qpos = get_lcsk128_qpos(packed_hits[(*lcskpp_indices)[i]]);
+      int32_t rpos = get_lcsk128_rpos(packed_hits[(*lcskpp_indices)[i]]) & 0x07FFFFFFF;
+      int32_t qpos = get_lcsk128_qpos(packed_hits[(*lcskpp_indices)[i]]) & 0x07FFFFFFF;
       fprintf (fp_out, "%ld\t%ld\t0\n", qpos, rpos);
       fprintf (fp_out, "%ld\t%ld\t0\n", qpos+k, rpos+k);
     }
   } else if(lcskpp_indices != NULL && cluster_ids != NULL) {
     /// Output filtered indices and include cluster colors as well.
     for (int64_t i=0; i<lcskpp_indices->size(); i++) {
-      int32_t rpos = get_lcsk128_rpos(packed_hits[(*lcskpp_indices)[i]]);
-      int32_t qpos = get_lcsk128_qpos(packed_hits[(*lcskpp_indices)[i]]);
+      int32_t rpos = get_lcsk128_rpos(packed_hits[(*lcskpp_indices)[i]]) & 0x07FFFFFFF;
+      int32_t qpos = get_lcsk128_qpos(packed_hits[(*lcskpp_indices)[i]]) & 0x07FFFFFFF;
       fprintf (fp_out, "%ld\t%ld\t%d\n", qpos, rpos, (*cluster_ids)[i]);
       fprintf (fp_out, "%ld\t%ld\t%d\n", qpos+k, rpos+k, (*cluster_ids)[i]);
     }
@@ -210,8 +210,8 @@ int WriteLCSkDebug(std::string out_file, std::string qname, int64_t qlen, std::s
   } else {
     /// Else, output everything.
     for (int64_t i=0; i<n_hits; i++) {
-      int32_t rpos = get_lcsk128_rpos(packed_hits[i]);
-      int32_t qpos = get_lcsk128_qpos(packed_hits[i]);
+      int32_t rpos = get_lcsk128_rpos(packed_hits[i]); // & 0x07FFFFFFF;
+      int32_t qpos = get_lcsk128_qpos(packed_hits[i]); // & 0x07FFFFFFF;
       fprintf (fp_out, "%ld\t%ld\t0\n", qpos, rpos);
       fprintf (fp_out, "%ld\t%ld\t0\n", qpos+k, rpos+k);
     }
