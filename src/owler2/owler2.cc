@@ -109,12 +109,14 @@ void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGapped
   // Initialize the counters.
   int64_t num_mapped = 0, num_unmapped = 0;
 
-  LOG_ALL("Starting to process reads from %ld to %ld.\n", start_i, end_i);
+  LOG_ALL("Starting to process reads from %ld to %ld using %ld threads.\n", start_i, end_i, num_threads);
 
   // Process all reads in parallel.
   #pragma omp parallel for num_threads(num_threads) shared(reads, parameters, last_time, num_mapped, num_unmapped, fp_out) schedule(dynamic, 1)
   for (int64_t i=start_i; i<end_i; i++) {
     uint32_t thread_id = omp_get_thread_num();
+//    printf ("Read %ld\n", i);
+//    fflush(stdout);
 
     if (thread_id == 0 && parameters.verbose_level > 5) {
       std::stringstream ss;
@@ -132,6 +134,7 @@ void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGapped
     ProcessRead(parameters, index, reads->get_sequences()[i], lookup_shapes, &owler_result);
   }
 
+  LOG_NEWLINE;
 }
 
 FILE* Owler2::OpenOutFile_(std::string out_sam_path) {

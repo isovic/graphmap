@@ -109,6 +109,8 @@ struct ProgramParameters {
 
   double max_error_rate = 1.0f;
   double max_indel_error_rate = 1.0f;
+
+  int64_t min_num_minimizers = 10;     // Minimum number of minimizers which should occur between two reads to consider running LCSk.
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);

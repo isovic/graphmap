@@ -76,11 +76,15 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 //    fflush(stdout);
 
     uint64_t seq_id = seqs.get_sequences()[i]->get_sequence_absolute_id() + 0; // The '+ 0' is actually short for this: + ((orientation == kReverse) ? num_sequences_forward_ : 0);
-    int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seeds_[seed_starts_for_seq[i]]));
+    int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, seq_id + seqs.get_sequences().size(), compiled_shapes, &(seeds_[seed_starts_for_seq[i]]), &(seeds_[seed_starts_for_seq[seqs.get_sequences().size() + i]]));
     if (use_minimizers) {
 //      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, 2, minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
+      MakeMinimizers_(&(seeds_[seed_starts_for_seq[i]]), num_seeds_processed, 1, minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
+      MakeMinimizers_(&(seeds_[seed_starts_for_seq[seqs.get_sequences().size() + i]]), num_seeds_processed, 1, minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
     }
   }
+
+  LOG_NEWLINE;
 
 //  DumpSeeds("temp/seeds.sparse.minimizers.csv", max_incl_bits/2);
 
@@ -216,15 +220,24 @@ void IndexGappedMinimizer::AssignData_(const SequenceFile& seqs, bool index_reve
 void IndexGappedMinimizer::AllocateSpaceForSeeds_(const SequenceFile& seqs, bool index_reverse_strand, int64_t num_shapes, int64_t max_seed_len, int64_t num_fwd_seqs, std::vector<int64_t>& seed_starts_for_seq, int64_t* total_num_seeds) {
   seeds_.clear();
   seed_starts_for_seq.clear();
-  seed_starts_for_seq.resize(seqs.get_sequences().size() * 2);
-//  seed_ends_for_seq.clear();
-//  seed_ends_for_seq.resize(seqs.get_sequences().size() * 2);
+
+  if (index_reverse_strand == true) {
+    seed_starts_for_seq.resize(seqs.get_sequences().size() * 2);
+  } else {
+    seed_starts_for_seq.resize(seqs.get_sequences().size() * 1);
+  }
+
+  // Distribute bins for forward strand.
   *total_num_seeds = 0;
   for (int64_t i=0; i<seqs.get_sequences().size(); i++) {
     seed_starts_for_seq[i] = *total_num_seeds;
     *total_num_seeds += (seqs.get_sequences()[i]->get_sequence_length() - max_seed_len) * num_shapes;
-    if (index_reverse_strand == true) {
-//      seed_starts_for_seq[i + num_sequences_forward_] = *total_num_seeds + (seqs.get_sequences()[i]->get_sequence_length() - max_seed_len) * num_shapes;
+  }
+
+  // Distribute bins for reverse strand if required.
+  if (index_reverse_strand == true) {
+    for (int64_t i=0; i<seqs.get_sequences().size(); i++) {
+      seed_starts_for_seq[seqs.get_sequences().size() + i] = *total_num_seeds;
       *total_num_seeds += (seqs.get_sequences()[i]->get_sequence_length() - max_seed_len) * num_shapes;
     }
   }
@@ -233,7 +246,7 @@ void IndexGappedMinimizer::AllocateSpaceForSeeds_(const SequenceFile& seqs, bool
   seeds_.resize(*total_num_seeds);
 }
 
-int IndexGappedMinimizer::CollectSeedsForSeq_(const int8_t* seqdata, const int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape>& compiled_shapes, uint128_t* seed_list) {
+int IndexGappedMinimizer::CollectSeedsForSeq_(const int8_t* seqdata, const int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id_fwd, uint64_t seq_id_rev, const std::vector<CompiledShape>& compiled_shapes, uint128_t* seed_list_fwd, uint128_t* seed_list_rev) {
   int64_t max_seed_len = 0;
   for (int32_t i=0; i<compiled_shapes.size(); i++) {
     max_seed_len = std::max(max_seed_len, (int64_t) compiled_shapes[i].shape.size());
@@ -307,13 +320,14 @@ int IndexGappedMinimizer::CollectSeedsForSeq_(const int8_t* seqdata, const int8_
         uint64_t seed = compiled_shapes[shape_id].CreateSeedFromShape(buffer);
         uint64_t key = SeedHashFunction_(seed);
         uint64_t position = pos + split_start[i] + 1;     // Make the position 1-based.
-        seed_list[seed_id] = (((uint128_t) key) << 64) | (((uint128_t) seq_id) << 32) | (((uint128_t) position) << 0);
-        seed_id += 1;
+        seed_list_fwd[seed_id] = (((uint128_t) key) << 64) | (((uint128_t) seq_id_fwd) << 32) | (((uint128_t) position) << 0);
+//        seed_id += 1;
 
         uint64_t rev_seed = ReverseComplementSeed_(seed, compiled_shapes[shape_id].num_incl_bits/2);
         uint64_t rev_key = SeedHashFunction_(rev_seed);
-        uint64_t rev_position = (seqlen - position - 1) | kIndexIdReverse64;
-        seed_list[seed_id] = (((uint128_t) rev_key) << 64) | (((uint128_t) seq_id) << 32) | (((uint128_t) rev_position) << 0);
+        uint64_t rev_position = (seqlen - position - 1); // | kIndexIdReverse64;
+        seed_list_rev[seed_id] = (((uint128_t) rev_key) << 64) | (((uint128_t) seq_id_rev) << 32) | (((uint128_t) rev_position) << 0);
+
         seed_id += 1;
       }
 
@@ -470,6 +484,14 @@ void IndexGappedMinimizer::set_headers(
   headers_ = headers;
 }
 
+int64_t IndexGappedMinimizer::get_num_sequences_forward() const {
+  return num_sequences_forward_;
+}
+
+void IndexGappedMinimizer::set_num_sequences_forward(int64_t num_sequences_forward) {
+  num_sequences_forward_ = num_sequences_forward;
+}
+
 int IndexGappedMinimizer::OccurrenceStatistics_(double percentil, int32_t num_threads, double* ret_avg, double* ret_stddev, double *ret_percentil_val) {
   if (percentil < 0.0 || percentil > 1.0) { return 1; }
 
@@ -520,17 +542,32 @@ int IndexGappedMinimizer::MakeSeedListDense_(uint128_t* seed_list, int64_t num_s
   int64_t offset = 0;
   int64_t i = 0;
   for (i=0; (i+offset)<num_seeds; i++) {
-    while (GET_POS_FROM_HIT_WITH_REV(seed_list[i+offset]) == 0) {
+    while ((i+offset) < num_seeds && GET_POS_FROM_HIT_WITH_REV(seed_list[i+offset]) == 0) {
       offset += 1;
     }
-    seed_list[i] = seed_list[i+offset];
+    if ((i+offset) < num_seeds) {
+      seed_list[i] = seed_list[i+offset];
+    }
   }
   return i;
 }
 
-void IndexGappedMinimizer::CollectMinimizers(const int8_t* seqdata, const int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id, const std::vector<CompiledShape>& compiled_shapes, int64_t minimizer_window_len, std::vector<uint128_t> &seed_list, int64_t *num_minimizers) {
-  int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id, compiled_shapes, &(seed_list[0]));
-  MakeMinimizers_(&(seed_list[0]), num_seeds_processed, 2*compiled_shapes.size(), minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
+void IndexGappedMinimizer::CollectMinimizers(const int8_t* seqdata, const int8_t* seqqual, int64_t seqlen, float min_avg_seed_qv, uint64_t seq_id_fwd, uint64_t seq_id_rev, const std::vector<CompiledShape>& compiled_shapes, int64_t minimizer_window_len, std::vector<uint128_t> &seed_list, int64_t *num_minimizers) {
+  /// Determine the maximum length of all shapes, to limit the last kmer being checked.
+  int64_t max_seed_len = 0;
+  for (int32_t i=0; i<compiled_shapes.size(); i++) {
+    max_seed_len = std::max(max_seed_len, (int64_t) compiled_shapes[i].shape.size());
+  }
+
+  int64_t num_seeds_fwd = (seqlen - max_seed_len + 1) * compiled_shapes.size();
+
+  seed_list.clear();
+  seed_list.resize(num_seeds_fwd * 2);     // Allocate maximum space for the seeds. Factor 2 is for the reverse complement.
+
+  int64_t num_seeds_processed = CollectSeedsForSeq_(seqdata, seqqual, seqlen, min_avg_seed_qv, seq_id_fwd, seq_id_rev, compiled_shapes, &(seed_list[0]), &(seed_list[num_seeds_fwd]));
+//  MakeMinimizers_(&(seed_list[0]), num_seeds_processed, 2*compiled_shapes.size(), minimizer_window_len);     // 2 only refers to the fwd and rev complement (2 seeds per base).
+  MakeMinimizers_(&(seed_list[0]), num_seeds_fwd, compiled_shapes.size(), minimizer_window_len);                  // Forward strand.
+  MakeMinimizers_(&(seed_list[num_seeds_fwd]), num_seeds_fwd, compiled_shapes.size(), minimizer_window_len);      // Reverse complement.
   int64_t num_dense_seeds = MakeSeedListDense_(&(seed_list[0]), seed_list.size());
 //  seed_list.resize(num_dense_seeds);
   *num_minimizers = num_dense_seeds;
