@@ -15,7 +15,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   ArgumentParser argparser;
 
-  argparser.AddCompositeArgument("illumina", "-a gotoh -w normal -M 5 -X 4 -G 8 -E 6");
+  argparser.AddCompositeArgument("illumina", "-a anchorgotoh -w normal -M 5 -X 4 -G 8 -E 6");
 //  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
   argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 //  argparser.AddCompositeArgument("sensitive", "-a gotoh -w sg -M 5 -X 4 -G 8 -E 6");
@@ -38,9 +38,9 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n sg       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n sggotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with Gotoh.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
-#ifndef RELEASE_VERSION
+//#ifndef RELEASE_VERSION
   argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "approach", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n (Currently no other options are provided. This is a placeholder for future features, such as cDNA mapping)", 0, "Alignment options");
-#endif
+//#endif
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.", 0, "Alignment options");
   argparser.AddArgument(&parameters->overlapper, VALUE_TYPE_BOOL, "", "overlapper", "0", "Perform overlapping instead of mapping. Skips self-hits if reads and reference files contain same sequences, and outputs lenient secondary alignments.", 0, "Alignment options");
   argparser.AddArgument(&parameters->no_self_hits, VALUE_TYPE_BOOL, "", "no-self-hits", "0", "Similar to overlapper, but skips mapping of sequences with same headers. Same sequences can be located on different paths, and their overlap still skipped.", 0, "Alignment options");
