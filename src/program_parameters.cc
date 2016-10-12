@@ -161,7 +161,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
     fprintf (stderr, "\n");
     VerboseShortHelpAndExit(argc, argv);
   }
-  if (!fileExists(parameters->reads_path.c_str())) {
+  if (parameters->calc_only_index == false && !fileExists(parameters->reads_path.c_str())) {
     fprintf (stderr, "Reads file does not exist: '%s'\n\n", parameters->reads_path.c_str());
     VerboseShortHelpAndExit(argc, argv);
   }
