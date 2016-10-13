@@ -38,7 +38,7 @@ OBJ_FILES_FOLDER_LINUX := $(addprefix $(OBJ_LINUX)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_EXTCIGAR := $(addprefix $(OBJ_EXTCIGAR)/,$(OBJ_FILES))
 OBJ_FILES_FOLDER_MAC := $(addprefix $(OBJ_MAC)/,$(OBJ_FILES))
 
-LIB_DIRS = -L"/usr/local/lib" -L"$(CODEBASE)/seqlib/src/libs/libdivsufsort-2.0.1/build/lib"
+LIB_DIRS = -L"/usr/local/lib"
 CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
 # INCLUDE = -I"./src/" -I"/usr/include/" -I"libs/libdivsufsort-2.0.1/build/include" -I"libs/seqan-library-1.4.2/include"
 # INCLUDE = -I"./src/" -I"/usr/include/" -I"src/libs/seqan-library-1.4.2/include"
