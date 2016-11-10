@@ -89,14 +89,14 @@ void Owler2::Run(ProgramParameters& parameters) {
   FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output file is specified. If it is not, then output to STDOUT.
 
   std::vector<CompiledShape> lookup_shapes;
-  ProcessReads(parameters, &index, query_seqs, lookup_shapes, fp_out);
+  ProcessReads(parameters, &index, query_seqs, compiled_shapes, lookup_shapes, fp_out);
 
   LOG_ALL("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f));
   if (fp_out != stdout)
     fclose(fp_out);
 }
 
-void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGappedMinimizer* index, const SequenceFile* reads, const std::vector<CompiledShape> &lookup_shapes, FILE* fp_out) {
+void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGappedMinimizer* index, const SequenceFile* reads, const std::vector<CompiledShape> &index_shapes, const std::vector<CompiledShape> &lookup_shapes, FILE* fp_out) {
   clock_t time_start = clock();
   clock_t last_time = time_start;
   int32_t num_threads = parameters.num_threads;
@@ -130,8 +130,18 @@ void Owler2::ProcessReads(const ProgramParameters& parameters, const IndexGapped
     }
 
 //    std::string mapping_out_str;
-    OwlerResult owler_result;
-    ProcessRead(parameters, index, reads->get_sequences()[i], lookup_shapes, &owler_result);
+//    std::shared_ptr<OverlapLine> overlap_result(new OverlapResult);
+//    std::shared_ptr<OverlapLine> overlap_result;
+    std::string overlap_lines;
+    ProcessRead(parameters, index, reads->get_sequences()[i], index_shapes, lookup_shapes, overlap_lines);
+
+    #pragma omp critical
+    {
+      if (overlap_lines.size() > 0) {
+        printf ("%s\n", overlap_lines.c_str());
+      }
+      fflush(stdout);
+    }
   }
 
   LOG_NEWLINE;

@@ -8,11 +8,13 @@
 #include "owler2/owler2.h"
 #include "owler2/lcskpp_packed.h"
 #include "containers/clusters.h"
+#include "owler2/overlap_factory.h"
+#include "owler2/overlap.h"
 
 uint128_t OWLER2_MASK_LOWER_64 = ((uint128_t) 0x0000000000000000FFFFFFFFFFFFFFFF);
 uint128_t OWLER2_MASK_UPPER_64 = ((uint128_t) 0x0000000000000000FFFFFFFFFFFFFFFF) << 64;
 
-int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMinimizer* index, const SingleSequence* read, const std::vector<CompiledShape> &lookup_shapes, OwlerResult *owler_result) {
+int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMinimizer* index, const SingleSequence* read, const std::vector<CompiledShape> &index_shapes, const std::vector<CompiledShape> &lookup_shapes, std::string &overlap_lines) {
 //  const auto &ls = index->get_lookup_shapes();
   int64_t read_id = read->get_sequence_absolute_id();
 
@@ -33,7 +35,7 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
 //  printf ("num_minimizers = %ld\n", num_minimizers);
 
   int64_t max_count = std::max((int64_t) ceil(index->get_count_cutoff()), (int64_t) 5);
-  max_count = 35;
+//  max_count = 35;
 
 //  printf ("max_count = %ld\n", max_count);
 
@@ -179,6 +181,9 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
 
 //    printf ("num_minimizers = %ld, streak_start = %ld, streak_end = %ld, start_seq_id = %ld, curr_seq_id = %ld, last_hit_id = %ld\n", (streak_end - streak_start), streak_start, streak_end, start_seq_id, curr_seq_id, last_hit_id);
 
+    int64_t start_seq_id_fwd = start_seq_id % (index->get_num_sequences_forward());
+    bool is_ref_reverse = start_seq_id >= index->get_num_sequences_forward();
+
     int64_t lcskpp_length = 0;
     std::vector<int32_t> lcskpp_indices;
     int rc_lcsk = LCSkPacked(&hits[streak_start], (streak_end - streak_start), ls[0].shape.size(), &lcskpp_length, &lcskpp_indices, false);
@@ -194,6 +199,21 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
                                 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
     GenerateClustersPacked(&hits[streak_start], (streak_end - streak_start), ls[0].shape.size(),
                            2, 50, 50, 0.0, first_filtered_lcskpp_indices, read, &parameters, clusters, cluster_indices, &cluster_ids);
+
+    OverlapLine overlap_result;
+    OverlapFactory::GetOverlap(&hits[streak_start], (streak_end - streak_start), clusters, cluster_indices, cluster_ids,
+                               read->get_sequence_absolute_id() + 1, read->get_header(), read->get_sequence_length(),
+                               start_seq_id_fwd + 1, index->get_headers()[start_seq_id], index->get_reference_lengths()[start_seq_id], is_ref_reverse, overlap_result);
+
+//    overlap_result.reset(new_overlap_result);
+
+    if (!CheckOverlapQuality(parameters, overlap_result)) {
+      if (overlap_lines.size() > 0) { overlap_lines += "\n"; }
+      overlap_lines += overlap_result.WriteMHAP();
+//      overlap_lines += overlap_result.WritePAF();
+//      printf ("--> %s\n", overlap_result.WriteMHAP().c_str());
+//      fflush(stdout);
+    }
 
 #ifndef RELEASE_VERSION
     if (parameters.verbose_level > 5 && read->get_sequence_absolute_id() == parameters.debug_read) {
@@ -212,61 +232,27 @@ int Owler2::ProcessRead(const ProgramParameters& parameters, const IndexGappedMi
     streak_start = streak_end;
   }
 
+  return 0;
+}
 
+int Owler2::CheckOverlapQuality(const ProgramParameters& parameters,
+                                const OverlapLine &overlap) const {
+  int64_t Aspan = overlap.Aend - overlap.Astart;
+  int64_t Bspan = overlap.Bend - overlap.Bstart;
 
-//  int64_t streak_start_hit = 0;
-//  int64_t streak_end_hit = 1;
-//  while (streak_start_hit < last_hit_id && streak_end_hit <= last_hit_id) {
-////    int64_t rstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1] >> 64);
-////    int64_t rstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit] >> 64);
-////    int64_t qstart_prev = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit-1]);
-////    int64_t qstart = (int64_t) GET_POS_FROM_HIT_WITH_REV(hits[streak_end_hit]);
-////    int64_t l = rstart - qstart;
-////    int64_t l_prev = rstart_prev - qstart_prev;
-//
-//    // Get all hits for a particular reference, and call LCSk.
-//    int64_t prev_rid = hits[streak_end_hit-1] >> 96;
-//    int64_t rid = hits[streak_end_hit] >> 96;
-//    if (rid != prev_rid || (streak_end_hit + 1 == last_hit_id)) {
-//      if (prev_rid != read_id) {
-//        int64_t lcskpp_length = 0;
-//        std::vector<int32_t> lcskpp_indices;
-//        int rc_lcsk = LCSkPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(), &lcskpp_length, &lcskpp_indices, false);
-//
-//        /// Filter the LCSk anchors, first pass. This pass filters outliers, but does not generate clusters.
-//        std::vector<int> first_filtered_lcskpp_indices, second_filtered_lcskpp_indices;
-//        /// Filter the LCSk anchors.
-//        std::vector<ClusterAndIndices *> clusters;
-//        std::vector<int> cluster_indices;
-//        std::vector<int32_t> cluster_ids;
-//        FilterAnchorsByChainingPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
-//                                    read, &parameters, lcskpp_indices, parameters.error_rate/2 + 0.01f,
-//                                    200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
-//        GenerateClustersPacked(&hits[streak_start_hit], (streak_end_hit - streak_start_hit), ls[0].shape.size(),
-//                               2, 50, 50, 0.0, first_filtered_lcskpp_indices, read, &parameters, clusters, cluster_indices, &cluster_ids);
-//
-//#ifndef RELEASE_VERSION
-//        if (parameters.verbose_level > 5 && read->get_sequence_absolute_id() == parameters.debug_read) {
-//          WriteLCSkDebug(FormatString("temp/owler2/scores-%ld.csv", prev_rid),
-//                         read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), NULL, NULL);
-//          WriteLCSkDebug(FormatString("temp/owler2/lcs-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &lcskpp_indices, NULL);
-//          WriteLCSkDebug(FormatString("temp/owler2/filt-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &first_filtered_lcskpp_indices, NULL);
-//          WriteLCSkDebug(FormatString("temp/owler2/clust-%ld.csv", prev_rid), read->get_header(), read->get_sequence_length(), index->get_headers()[prev_rid], index->get_reference_lengths()[prev_rid],
-//                         ls[0].shape.size(), &hits[streak_start_hit], (streak_end_hit - streak_start_hit), &cluster_indices, &cluster_ids);
-//        }
-//#endif
-//      }
-//
-//      streak_start_hit = streak_end_hit;
-//    }
-//
-//    streak_end_hit += 1;
-//  }
+  double min_span = std::min(Aspan, Bspan);
+  double max_span = std::max(Aspan, Bspan);
 
-//  exit(1);
+  if ((min_span / max_span) > parameters.max_error_rate) {
+    return 1;
+  }
+
+  if (Aspan < parameters.min_overlap_len_perc * overlap.Alen ||
+      Aspan < parameters.min_overlap_len_abs ||
+      Bspan < parameters.min_overlap_len_perc * overlap.Blen ||
+      Bspan < parameters.min_overlap_len_abs) {
+    return 1;
+  }
 
   return 0;
 }

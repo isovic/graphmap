@@ -111,6 +111,8 @@ struct ProgramParameters {
   double max_indel_error_rate = 1.0f;
 
   int64_t min_num_minimizers = 10;     // Minimum number of minimizers which should occur between two reads to consider running LCSk.
+  double min_overlap_len_perc = 0.05;   // For Owler mode, minimum length of the overlap area compared to the read length. E.g. overlap_len should be >= min_overlap_len_perc * read_len.
+  int64_t min_overlap_len_abs = 200;    // For Owler mode, an additional complementary parameter. If the overlap area is of length < min_overlap_len_abs, it is skipped.
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);

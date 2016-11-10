@@ -160,7 +160,7 @@ int IndexGappedMinimizer::CreateFromSequenceFile(const SequenceFile& seqs, const
 
   double avg = 0.0f, stddev = 0.0f, perc9999 = 0.0f;
   LOG_ALL("Calculating the distribution statistics for key counts (%.5f sec, diff: %.5f sec).\n", (((float) (clock() - absolute_time))/CLOCKS_PER_SEC), (((float) (clock() - diff_time))/CLOCKS_PER_SEC));
-  OccurrenceStatistics_(0.9999, num_threads, &avg, &stddev, &perc9999);
+  OccurrenceStatistics_(0.99, num_threads, &avg, &stddev, &perc9999);
   count_cutoff_ = perc9999;
   LOG_ALL("Index statistics: average key count = %f, std dev = %f, percentil(99.99%) = %f\n", avg, stddev, perc9999);
 
@@ -319,7 +319,7 @@ int IndexGappedMinimizer::CollectSeedsForSeq_(const int8_t* seqdata, const int8_
       for (int64_t shape_id=0; shape_id<compiled_shapes.size(); shape_id++) {
         uint64_t seed = compiled_shapes[shape_id].CreateSeedFromShape(buffer);
         uint64_t key = SeedHashFunction_(seed);
-        uint64_t position = pos + split_start[i] + 1;     // Make the position 1-based.
+        uint64_t position = pos + split_start[i]; // + 1;     // Make the position 1-based.
         seed_list_fwd[seed_id] = (((uint128_t) key) << 64) | (((uint128_t) seq_id_fwd) << 32) | (((uint128_t) position) << 0);
 //        seed_id += 1;
 

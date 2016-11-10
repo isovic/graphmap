@@ -31,13 +31,13 @@
 #include "containers/mapping_data.h"
 #include "utility/evalue.h"
 #include "containers/vertices.h"
+#include "overlap_factory.h"
 
 #include "owler/owler_data.h"
 
 //#include "index/index_spaced_hash_fast.h"
 // #include "index/index_owler.h"
 #include "owler2/index_brute.h"
-#include "owler2/owler_result.h"
 #include "owler2/index_gapped_minimizer.h"
 
 
@@ -51,9 +51,9 @@ class Owler2 {
   void Run(ProgramParameters &parameters);
 
   // Process a given set of reads.
-  void ProcessReads(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SequenceFile *reads, const std::vector<CompiledShape> &lookup_shapes, FILE *fp_out);
+  void ProcessReads(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SequenceFile *reads, const std::vector<CompiledShape> &index_shapes, const std::vector<CompiledShape> &lookup_shapes, FILE *fp_out);
 
-  int ProcessRead(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SingleSequence *read, const std::vector<CompiledShape> &lookup_shapes, OwlerResult *owler_result);
+  int ProcessRead(const ProgramParameters &parameters, const IndexGappedMinimizer *index, const SingleSequence *read, const std::vector<CompiledShape> &index_shapes, const std::vector<CompiledShape> &lookup_shapes, std::string &overlap_lines);
 
 ////  int CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);
 //
@@ -106,6 +106,8 @@ class Owler2 {
   void CalcLCSFromLocalScoresCacheFriendly2_(OwlerData* owler_data, int64_t ref_hits_start, int64_t ref_hits_end, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
 
   int CalcCoveredBases(std::vector<SeedHit2> &seed_hits, int64_t seed_length, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *ret_cov_A, int64_t *ret_cov_B);
+
+  int CheckOverlapQuality(const ProgramParameters &parameters, const OverlapLine &overlap) const;
 
   // Calculates the LCSk of the anchors using the Fenwick tree.
 //  void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
