@@ -444,7 +444,7 @@ std::string GraphMap::GenerateSAMHeader_(ProgramParameters &parameters, Index *i
 
   ss_header << "@HD\t" <<
                "VN:1.0\t" <<
-               "SO:unknown\t" <<
+               "SO:unknown" <<
                "\n";
 
   for (int64_t reference_id=0; reference_id<((int64_t) index->get_num_sequences_forward()); reference_id++) {

@@ -57,7 +57,10 @@ LD_LIBS = -lpthread -lgomp -lm -lz
 
 all: gcc_version_check linux
 
+install: /usr/bin/graphmap
 
+/usr/bin/graphmap: bin/Linux-x64/graphmap
+	cp bin/Linux-x64/graphmap /usr/bin/graphmap
 
 modules:
 	git submodule update --init --recursive
