@@ -61,7 +61,7 @@ all: gcc_version_check linux
 
 modules:
 	git submodule update --init --recursive
-	git submodule foreach git pull origin master
+	# git submodule foreach git pull origin master
 
 testing: $(OBJ_FILES_FOLDER_TESTING)
 	mkdir -p $(dir $(BIN))

@@ -7,7 +7,7 @@
 
 #include "alignment_wrappers.h"
 
-
+#include "libs/edlibcigar.h"
 
 int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
                                   const int8_t *reference_data, int64_t reference_length,
@@ -41,7 +41,7 @@ int LocalizeAlignmentPosWithMyers(const int8_t *read_data, int64_t read_length,
 
   int myers_return_code = edlibCalcEditDistance(query, query_length, target, target_length,
                         128, -1, EDLIB_MODE_HW, false, false, &current_score, &current_positions, &start_locations, &current_num_positions,
-                        &current_alignment, &current_alignment_length);
+                        &current_alignment, &current_alignment_length, NULL);
 
   if (current_num_positions == 0 || myers_return_code != EDLIB_STATUS_OK) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, true, "Something went wrong when calculating the ending position using Myers HW. No positions were returned.\n", "CalculateAlignmentStartAndEnd");
@@ -889,7 +889,7 @@ int MyersSHWWrapper(const int8_t *read_data, int64_t read_length,
 int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
                              const int8_t *reference_data, int64_t reference_length,
                              int64_t *ret_alignment_position_end,
-                             int64_t *ret_edit_distance, int myers_mode_code) {
+                             int64_t *ret_edit_distance, EdlibAlignMode edlib_mode_code) {
 
     if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
       return ALIGNMENT_WRONG_DATA;
@@ -904,9 +904,11 @@ int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
     int *start_locations = NULL;
     int found_k = 0;
 
+    // EdlibAlignMode edlib_mode_code = myers_mode_code;
+
     int myers_return_code = edlibCalcEditDistance((const unsigned char *) read_data, read_length,
                           (const unsigned char *) reference_data, reference_length,
-                          alphabet_length, -1, myers_mode_code, false, false, &score, &positions, &start_locations, &num_positions,
+                          alphabet_length, -1, edlib_mode_code, false, false, &score, &positions, &start_locations, &num_positions,
                           &alignment, &alignment_length, &found_k);
 
     if (myers_return_code == EDLIB_STATUS_ERROR || num_positions == 0) {
