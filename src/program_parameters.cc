@@ -107,7 +107,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
     std::stringstream ss;
-    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n", SOFTWARE_NAME;
+    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n" << SOFTWARE_NAME << " ";
     ss << "Version: " <<  GRAPHMAP_CURRENT_VERSION << "\n";
     ss << "Build date: " <<  std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE).c_str() << "\n";
     ss << "\n";
@@ -254,7 +254,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
     std::stringstream ss;
-    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n", SOFTWARE_NAME;
+    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n" << SOFTWARE_NAME << " ";
     ss << "Version: " <<  GRAPHMAP_CURRENT_VERSION << "\n";
     ss << "Build date: " <<  std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE).c_str() << "\n";
     ss << "\n";

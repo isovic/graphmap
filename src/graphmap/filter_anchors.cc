@@ -375,6 +375,7 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
       if (ret_val > 0) {
         LOG_DEBUG_SPEC("  Closing the cluster. Cluster ID: %ld, ret_val = %ld.\n\n", ret_clusters.size(), ret_val);
         ret_clusters.push_back(new_cluster);
+        new_cluster = NULL;
         new_cluster = new ClusterAndIndices;
       }
 
@@ -390,6 +391,9 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
   if (new_cluster->lcskpp_indices.size() != 0) {
     LOG_DEBUG_SPEC("  Closing the cluster. Cluster ID: %ld.\n\n", ret_clusters.size());
     ret_clusters.push_back(new_cluster);
+    new_cluster = NULL;
+  } else {
+    delete new_cluster;
   }
 
   LOG_DEBUG_SPEC_NEWLINE;
@@ -444,6 +448,9 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
 
   for (int64_t i = (ret_clusters.size() - 1); i >= 0; i--) {
     if (ret_clusters[i]->lcskpp_indices.size() == 0) {
+      if (*(ret_clusters.begin() + i)) {
+        delete *(ret_clusters.begin() + i);
+      }
       ret_clusters.erase(ret_clusters.begin() + i);
     }
   }
