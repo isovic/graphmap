@@ -1,6 +1,6 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.3.1__**  
-Release date: 12 October 2016  
+**__Current Version: 0.3.2__**  
+Release date: 19 December 2016  
 
 **Important**  
 GraphMap's command line has changed significantly between version 0.3.x and 0.2x - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
@@ -32,7 +32,7 @@ git clone https://github.com/isovic/graphmap.git
 cd graphmap  
 make modules  
 make  
-  
+
 # To align:  
 ./bin/Linux-x64/graphmap align -r reference.fa -d reads.fasta -o output.sam  
 

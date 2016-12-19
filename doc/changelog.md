@@ -1,5 +1,11 @@
 ## GraphMap - ChangeLog
 
+**__Version 0.3.1 -> 0.3.2__**  
+Release date: 19 December 2016  
+- There were segfaults caused by recently-introduced bugs to Edlib. It has since been updated, and this version of GraphMap now includes the fixed version of Edlib.
+- There was a memory leak when generating clusters.
+- Minor fixes to some syntax.
+
 **__Version 0.3.0 -> 0.3.1__**  
 Release date: 12 October 2016  
 - Important: Fixed MD field issues
