@@ -369,6 +369,75 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
     return EDLIB_STATUS_OK;
 }
 
+// Converts the alignment array to a more compact CIGAR form, where each CIGAR operation is a std::pair of single-letter operation name and count.
+int AlignmentToExtendedCigarArray(unsigned char* alignment, int alignmentLength, std::vector<CigarOp> &cigar) {
+  cigar.clear();
+
+  unsigned char *alignment_with_clipping = alignment;
+
+  if (alignment[0] == EDLIB_I || alignment[alignmentLength-1] == EDLIB_I) {
+    alignment_with_clipping = (unsigned char *) malloc(sizeof(unsigned char) * (alignmentLength + 1));
+    memcpy(alignment_with_clipping, alignment, alignmentLength);
+    alignment_with_clipping[alignmentLength] = '\0';
+
+    for (int64_t i=0; i<alignmentLength; i++) {
+      if (alignment_with_clipping[i] == EDLIB_I)
+        alignment_with_clipping[i] = EDLIB_S;
+      else break;
+    }
+    for (int64_t i=(((int64_t) alignmentLength) - 1); i>=0; i--) {
+      if (alignment_with_clipping[i] == EDLIB_I)
+        alignment_with_clipping[i] = EDLIB_S;
+      else break;
+    }
+  }
+
+  unsigned char lastMove = -1;  // Code of last move.
+  int numOfSameMoves = 0;
+  for (int i = 0; i <= alignmentLength; i++) {
+      // if new sequence of same moves started
+      if (i == alignmentLength || alignment_with_clipping[i] != lastMove) {
+          if (i > 0) {  // if previous sequence of same moves ended
+              // Write number of moves to cigar string.
+              char move_op = EdlibOpToCharExtended(lastMove);
+              if (move_op == 0) {
+                return EDLIB_STATUS_ERROR;
+              }
+              CigarOp cigar_op(move_op, numOfSameMoves, 0, 0);
+//              cigar.push_back(std::make_pair(move_op, numOfSameMoves));
+              cigar.push_back(cigar_op);
+          }
+          if (i < alignmentLength) {
+              numOfSameMoves = 0;
+              lastMove = alignment_with_clipping[i];
+          }
+      }
+      numOfSameMoves++;
+  }
+
+  if (alignment_with_clipping != alignment)
+    free(alignment_with_clipping);
+
+  // Initialize reference and read positions.
+  int64_t pos_on_ref = 0;
+  int64_t pos_on_read = 0;
+  for (int64_t i=0; i<cigar.size(); i++) {
+    cigar[i].pos_query = pos_on_read;
+    cigar[i].pos_ref = pos_on_ref;
+
+    if (cigar[i].op == 'M' || cigar[i].op == '=' || cigar[i].op == 'X') {
+      pos_on_read += cigar[i].count;
+      pos_on_ref += cigar[i].count;
+    } else if (cigar[i].op == 'I' || cigar[i].op == 'S') {
+      pos_on_read += cigar[i].count;
+    } else if (cigar[i].op == 'D') {
+      pos_on_ref += cigar[i].count;
+    }
+  }
+
+  return EDLIB_STATUS_OK;
+}
+
 int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLength) {
   if (alignment == NULL || alignmentLength == 0)
       return 0;
@@ -526,57 +595,48 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
 }
 
 std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start) {
-  int64_t num_same_moves = 0;
-  int64_t read_position = 0;
-  int64_t ref_position = 0;
+  std::vector<CigarOp> cigar_array;
+  AlignmentToExtendedCigarArray(&alignment[0], alignment.size(), cigar_array);
+  int32_t offset = 0;
+  for (int32_t i=0; i<cigar_array.size(); i++) {
+    if (cigar_array[i].op != '=' && cigar_array[i].op != 'X' && cigar_array[i].op != 'M' && cigar_array[i].op != 'D') {
+      offset += 1;
+      continue;
+    } else if (i > 0 && cigar_array[i].op == cigar_array[i-offset-1].op) {
+      cigar_array[i-offset-1].count += cigar_array[i].count;
+      offset += 1;
+      continue;
+    }
+    cigar_array[i-offset] = cigar_array[i];
+  }
 
-  int64_t num_eq = 0;
-  int64_t num_d = 0;
+  cigar_array.resize(cigar_array.size() - offset);
 
   std::stringstream md;
 
-  for (int i = 0; i < alignment.size(); i++) {
-    char align_op = alignment[i];
+  for (int32_t i=0; i<cigar_array.size(); i++) {
+    int64_t ref_position = cigar_array[i].pos_ref + alignment_position_start;
 
-    if (align_op == EDLIB_S) {
-      num_eq = 0;
-      num_d = 0;
-      continue;
-    }
-
-    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL) {
-      num_eq += 1;
-      num_d = 0;
-      ref_position += 1;
-
-    } else if (align_op == EDLIB_I) {
-      continue;
-
-    } else {
-//      if (num_eq > 0) {
-        md << num_eq; num_eq = 0;
-//      }
-      if (align_op == EDLIB_X) {
-        md << ((char) ref_data[alignment_position_start + ref_position]);
-        num_eq = 0;
-        num_d = 0;
-        ref_position += 1;
-      } else if (align_op == EDLIB_D) {
-        if (num_d == 0) { md << "^"; }
-        md << ((char) ref_data[alignment_position_start + ref_position]);
-        num_eq = 0;
-        num_d += 1;
-        ref_position += 1;
-      } else if (align_op == EDLIB_I) {
-        num_d = 0;
-        num_eq = 0;
+    if (cigar_array[i].op == '=') {
+      md << cigar_array[i].count;
+//      md << "_";
+    } else if (cigar_array[i].op == 'X') {
+      for (int32_t j=0; j<cigar_array[i].count; j++) {
+        md << ref_data[ref_position + j];
+        if ((j + 1) < cigar_array[i].count) {
+          md << '0';
+        }
+      }
+    } else if (cigar_array[i].op == 'D') {
+      md << '^';
+      for (int32_t j=0; j<cigar_array[i].count; j++) {
+        md << ref_data[ref_position + j];
       }
     }
-  }
 
-  if (num_eq > 0) {
-    md << num_eq; num_eq = 0;
-    num_eq = 0;
+    if ((i + 1) < cigar_array.size() && cigar_array[i].op != '=' && cigar_array[i+1].op != '=') {
+      md << '0';
+    }
   }
 
   return md.str();

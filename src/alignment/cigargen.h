@@ -18,6 +18,7 @@
 
 #include "libs/edlib.h"
 #include "utility/utility_general.h"
+#include "sequences/sequence_alignment.h"
 
 #define EDLIB_M 0
 #define EDLIB_EQUAL 0
@@ -28,9 +29,28 @@
 #define EDLIB_H 5     /// Not used in GraphMap currently (26.01.2016.)
 #define EDLIB_NOP 6
 
+inline char EdlibOpToChar(int8_t op) {
+  return (op == EDLIB_M || op == EDLIB_EQUAL || op == EDLIB_X) ? 'M' :
+          (op == EDLIB_I) ? 'I' :
+             (op == EDLIB_D) ? 'D' :
+                 (op == EDLIB_S) ? 'S' :
+                     (op == EDLIB_H) ? 'H' : 0;
+}
+
+inline char EdlibOpToCharExtended(int8_t op) {
+  return (op == EDLIB_EQUAL) ? '=' :
+           (op == EDLIB_X) ? 'X' :
+               (op == EDLIB_M) ? 'M' :
+                   (op == EDLIB_I) ? 'I' :
+                       (op == EDLIB_D) ? 'D' :
+                           (op == EDLIB_S) ? 'S' :
+                               (op == EDLIB_H) ? 'H' : 0;
+}
+
 std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength, bool extended_format);
 int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength, char** cigar_);
 int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char** cigar_);
+int AlignmentToExtendedCigarArray(unsigned char* alignment, int alignmentLength, std::vector<CigarOp> &cigar);
 std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start);
 
 /// Searches for consecutive EDLIB_I and EDLIB_D (or vice versa) operations, and replaces the overlap with EDLIB_X.

@@ -54,6 +54,13 @@ class GraphMap {
   // Collects alignments from the given mapping_data and converts them into an appropriate output format (string).
   int CollectAlignments(const SingleSequence *read, const ProgramParameters *parameters, MappingData *mapping_data, std::string &ret_aln_lines);
 
+  // Allows the usage of GraphMap as an API.
+  int Align(const SequenceFile *ref, const SequenceFile *reads, const ProgramParameters &parameters);
+
+  // Allows the usage of GraphMap as an API. Converts the std::string objects to SingleSequence and initializes SequenceFiles,
+  // after which the above function is called. Headers for sequences are automatically generated: ref_%d and query_%d for ref_seqs and read_seqs, respectivelly.
+  int Align(std::vector<std::string> ref_seqs, std::vector<std::string> read_seqs, const ProgramParameters &parameters);
+
 
 
  private:

@@ -519,7 +519,7 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
       num_unmapped_alignments += 1;
       continue;
     }
-    if (ss.str().size() > 0)
+    if (ss.tellp() > 0)
       ss << "\n";
 
     if (parameters->outfmt == "sam") {

@@ -1,6 +1,18 @@
 ## GraphMap - ChangeLog
 
+**__Version 0.3.1 -> 0.3.2__**  
+Release date: 19 December 2016  
+- There were segfaults caused by recently-introduced bugs to Edlib. It has since been updated, and this version of GraphMap now includes the fixed version of Edlib.
+- There was a memory leak when generating clusters.
+- Minor fixes to some syntax.
+
+**__Version 0.3.0 -> 0.3.1__**  
+Release date: 12 October 2016  
+- Important: Fixed MD field issues
+- Minor bug fixes: composite command line parameter ```-x illumina``` depended on a parameter which wasn't defined properly, filtered empty SAM lines, etc.
+
 **__Version 0.22 -> 0.3.0__**  
+Release date: 15 April 2016  
 **Important change in command line parameters.** The new version is not completely compatible to the previous one. For this reason, the minor version number has changed.  
 - Changed the version numbering from: ```x.yz``` to ```x.y.z```
 - Implemented a new argument parser.
