@@ -1071,5 +1071,7 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(std::string sequence_file
     return 1;
   }
 
+//  transcript_sequences.WriteFASTA("test_transcript.fasta");
+
   return GenerateFromSequenceFile(transcript_sequences);
 }
