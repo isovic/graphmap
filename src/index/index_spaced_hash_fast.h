@@ -11,6 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <stdint.h>
 #include "index/index.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
@@ -79,7 +80,7 @@ class IndexSpacedHashFast : public Index {
 
   void Clear();
   int LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose);
-  int GenerateTranscriptomeFromFile(std::string sequence_file_path, std::string gtf_path);
+  int GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path);
 
   int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **entire_sa, uint64_t *start_hit, uint64_t *num_hits) const;
   void Verbose(FILE *fp) const;
@@ -125,6 +126,12 @@ class IndexSpacedHashFast : public Index {
 
   std::vector<CompiledSeed> compiled_seeds_;
 
+  // A map from genome (chromosome) name (e.g. header split to first space) to a vector containing all transcriptomes which can be generated from that chromosome.
+  // Each pair is a (transcript_id, strand), where strand is either '+' or '-';
+  std::map<std::string, std::vector<std::pair<std::string, char>>> genome_id_to_trans_id_;
+  // A map from transcript_id to a vector containing pairs of coordinates. Each pair of coordinates presents one exon which makes the transcriptome.
+  std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> trans_id_to_exons_;
+
   int CreateIndex_(int8_t *data, uint64_t data_length);
   int SerializeIndex_(FILE *fp_out);
   int DeserializeIndex_(FILE *fp_in);
@@ -141,13 +148,17 @@ class IndexSpacedHashFast : public Index {
   // @references A SequenceFile object which contains reference sequences already loaded from disk.
   // @transcripts A SequenceFile which will contain the generated transcriptomes.
   // @return 0 if everything went fine (C-style).
-  int MakeTranscript_(std::string annotations_path, const SequenceFile &references, SequenceFile &transcripts);
-  int GenerateExons(std::string annotations_path, std::map<std::string, std::vector<std::pair<std::string, char>>> &seqToTrans, std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &transToExons);
-  std::string trim(std::string s);
-  std::vector<std::string> split(std::string s, char c);
-  std::string getSequenceName(SingleSequence &seq);
-  std::string getTID(std::string s);
-  void outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen);
+  int MakeTranscript_(const std::map<std::string, std::vector<std::pair<std::string, char>>> &genome_id_to_trans_id,
+                      const std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_exons,
+                      const SequenceFile &references, SequenceFile &transcripts) const;
+  int ParseExons_(const std::string &annotations_path,
+                  std::map<std::string, std::vector<std::pair<std::string, char>>> &genomeToTrans,
+                  std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &transToExons) const;
+  std::string trim(std::string s) const;
+  std::vector<std::string> split(std::string s, char c) const;
+  std::string getSequenceName(const SingleSequence &seq) const;
+  std::string getTID(std::string s) const;
+  void outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen) const;
 };
 
 #endif /* INDEX_SPACED_HASH_H_ */

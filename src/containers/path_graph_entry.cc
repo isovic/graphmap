@@ -535,6 +535,43 @@ std::string PathGraphEntry::GenerateM5FromInfoAlignment_(const AlignmentResults 
   return ss.str();
 }
 
+std::string PathGraphEntry::GenerateMHAP(bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  for (int64_t i=0; i<alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) {
+      if (i > 0) { ss << "\n"; }
+      ss << GenerateMHAPFromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
+    }
+  }
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateMHAPFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  float jaccard_score = ((float) alignment_info.nonclipped_length) / ((float) alignment_info.num_eq_ops);
+  int64_t shared_minmers = alignment_info.num_eq_ops;
+
+  ss << (read_->get_sequence_absolute_id() + 1) << " ";
+  ss << (alignment_info.ref_id + 1) << " ";
+  ss << jaccard_score << " ";
+  ss << shared_minmers << " ";
+
+  ss << ((alignment_info.orientation == kForward) ? 0 : 1) << " ";  /// A is reverse
+  ss << alignment_info.query_start << " ";
+  ss << alignment_info.query_end << " ";
+  ss << alignment_info.query_len << " ";
+
+  ss << 0 << " ";
+  ss << alignment_info.ref_start << " ";
+  ss << alignment_info.ref_end << " ";
+  ss << alignment_info.ref_len;
+
+  return ss.str();
+}
+
 float PathGraphEntry::get_fpfilter_cov_bases() {
   return fpfilter_cov_bases_;
 }

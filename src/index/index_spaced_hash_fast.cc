@@ -136,6 +136,9 @@ void IndexSpacedHashFast::Clear() {
 
   num_kmers_ = 0;
   all_kmers_size_ = 0;
+
+  genome_id_to_trans_id_.clear();
+  trans_id_to_exons_.clear();
 }
 
 int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const {
@@ -1048,18 +1051,24 @@ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path,
   return 0;
 }
 
-int IndexSpacedHashFast::GenerateTranscriptomeFromFile(std::string sequence_file_path, std::string gtf_path) {
+int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path) {
   Clear();
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file, and creating a transcriptome index.\n"), "GenerateFromFile");
   SequenceFile sequences(sequence_file_path);
-  SequenceFile transcript_sequences;
 
   // Verbose output for debugging.
   fprintf (stderr, "Sequence file before transcriptome generation:\n");
   sequences.Verbose(stderr);
   fflush(stderr);
 
-  MakeTranscript_(gtf_path, sequences, transcript_sequences);
+  // Parse the GTF for exons.
+  genome_id_to_trans_id_.clear();
+  trans_id_to_exons_.clear();
+  ParseExons_(gtf_path, genome_id_to_trans_id_, trans_id_to_exons_);
+
+  // Construct transcriptome sequences
+  SequenceFile transcript_sequences;
+  MakeTranscript_(genome_id_to_trans_id_, trans_id_to_exons_, sequences, transcript_sequences);
 
   // Verbose output for debugging.
   fprintf (stderr, "Transcribed sequences:\n");

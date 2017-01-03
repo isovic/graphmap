@@ -528,6 +528,8 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAFG();
     } else if (parameters->outfmt == "m5") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateM5((num_mapped_alignments == 0), parameters->verbose_sam_output);
+    } else if (parameters->outfmt == "mhap") {
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateMHAP((num_mapped_alignments == 0), parameters->verbose_sam_output);
     } else {  // Default to SAM output if the specified format is unknown.
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
     }
