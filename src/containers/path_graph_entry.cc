@@ -559,15 +559,37 @@ std::string PathGraphEntry::GenerateMHAPFromInfoAlignment_(const AlignmentResult
   ss << jaccard_score << " ";
   ss << shared_minmers << " ";
 
-  ss << ((alignment_info.orientation == kForward) ? 0 : 1) << " ";  /// A is reverse
-  ss << alignment_info.query_start << " ";
-  ss << alignment_info.query_end << " ";
-  ss << alignment_info.query_len << " ";
+  if (alignment_info.orientation == kForward) {
+    ss << 0 << " ";
+    ss << alignment_info.query_start << " ";
+    ss << alignment_info.query_end << " ";
+    ss << alignment_info.query_len << " ";
 
-  ss << 0 << " ";
-  ss << alignment_info.ref_start << " ";
-  ss << alignment_info.ref_end << " ";
-  ss << alignment_info.ref_len;
+    ss << 0 << " ";
+    ss << alignment_info.ref_start << " ";
+    ss << alignment_info.ref_end << " ";
+    ss << alignment_info.ref_len;
+  } else {
+    ss << 0 << " ";
+    ss << (alignment_info.query_len - alignment_info.query_end - 1) << " ";
+    ss << (alignment_info.query_len - alignment_info.query_start - 1) << " ";
+    ss << alignment_info.query_len << " ";
+
+    ss << 1 << " ";
+    ss << alignment_info.ref_start << " ";
+    ss << alignment_info.ref_end << " ";
+    ss << alignment_info.ref_len;
+  }
+
+//  ss << ((alignment_info.orientation == kForward) ? 0 : 1) << " ";  /// A is reverse
+//  ss << alignment_info.query_start << " ";
+//  ss << alignment_info.query_end << " ";
+//  ss << alignment_info.query_len << " ";
+//
+//  ss << 0 << " ";
+//  ss << alignment_info.ref_start << " ";
+//  ss << alignment_info.ref_end << " ";
+//  ss << alignment_info.ref_len;
 
   return ss.str();
 }
