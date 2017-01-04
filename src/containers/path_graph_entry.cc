@@ -513,7 +513,7 @@ std::string PathGraphEntry::GenerateM5FromInfoAlignment_(const AlignmentResults 
   ss << qname_for_out << " ";
   ss << qlen << " ";
   ss << alignment_info.query_start << " ";
-  ss << alignment_info.query_end << " ";
+  ss << alignment_info.query_end  << " ";
   ss << ((alignment_info.orientation == kForward) ? "+" : "-") << " ";
 
   ss << rname_for_out << " ";

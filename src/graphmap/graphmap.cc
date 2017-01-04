@@ -189,8 +189,12 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     if (fp == NULL) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
     } else {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
+      if (parameters.rebuild_index == false) {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
+      } else {
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists, but will be rebuild.\n"), "Index");
+      }
     }
 
     // Check whether the index needs to be rebuilt, or if it can only be loaded.

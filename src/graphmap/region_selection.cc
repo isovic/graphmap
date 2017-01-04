@@ -64,7 +64,7 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
   mapping_data->num_seeds_over_limit = 0;
   mapping_data->num_seeds_errors = 0;
 
-  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
+  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_max_width(); // get_shape_index_length();
 
   mapping_data->time_region_alloc = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();
@@ -139,6 +139,9 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
             int64_t position_bin = floor(((float) l_local) * bin_size_inverse);
 
             // We mark the last update with (i + 1) and not only i to avoid the default value of zero that has been set with vector initialization.
+//            printf ("\nreference_index = %ld, position_bin = %ld, hits_id = %ld/%ld, j = %ld/%ld\n", reference_index, position_bin, hits_id, hit_vector.size(), j, hit_counts[hits_id]);
+//            fflush(stdout);
+
             if (last_update_chromosome[reference_index][position_bin] == (i + 1)) {
               continue;
             }
@@ -229,7 +232,8 @@ int GraphMap::RegionSelectionNoBins_(int64_t bin_size, MappingData* mapping_data
   bool no_self_overlap = (parameters->no_self_hits == true);
 
   float bin_size_inverse = (bin_size > 0) ? (1.0f / ((float) bin_size)) : (0.0f);
-  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
+//  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
+  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_max_width(); // get_shape_index_length();
 
   mapping_data->bin_size = bin_size;
   mapping_data->num_seeds_with_no_hits = 0;
@@ -423,7 +427,8 @@ int GraphMap::RegionSelectionNoCopyWithDensehash_(int64_t bin_size, MappingData*
   mapping_data->num_seeds_over_limit = 0;
   mapping_data->num_seeds_errors = 0;
 
-  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
+//  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_index_length();
+  int64_t k = (int64_t) ((IndexSpacedHashFast *) indexes[0])->get_shape_max_width(); // get_shape_index_length();
 
   mapping_data->time_region_alloc = ((double) clock() - diff_clock) / CLOCKS_PER_SEC;
   diff_clock = clock();

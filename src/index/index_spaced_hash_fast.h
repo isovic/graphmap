@@ -94,6 +94,8 @@ class IndexSpacedHashFast : public Index {
   void set_shape_index(char* shapeIndex);
   int64_t get_shape_index_length() const;
   void set_shape_index_length(int64_t shapeIndexLength);
+  int64_t get_shape_max_width() const;
+  void set_shape_max_width(int64_t shape_max_width);
 
   /// This class overrides the RawPositionToReferenceIndexWithReverse with a much faster implementation. In the IndexSpacedHashFast, the reference id is already stored in the seed hit position.
 //  int64_t RawPositionToReferenceIndexWithReverse(int64_t raw_position) const;
@@ -120,6 +122,7 @@ class IndexSpacedHashFast : public Index {
 //  int64_t k_;
   char *shape_index_;
   int64_t shape_index_length_;
+  int64_t shape_max_width_;
   int64_t *all_kmers_;
   int64_t all_kmers_size_;
   std::vector<std::string> shapes_lookup_;
@@ -139,7 +142,7 @@ class IndexSpacedHashFast : public Index {
   int InitShapesPredefined(uint32_t shape_type);
   int64_t GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const;
   int64_t CalcNumHashKeysFromShape(const char *shape, int64_t shape_length) const;
-  void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
+  void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t shape_max_width, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
   void CalcPercentileHits_(int64_t *seed_counts, int64_t num_seeds, double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
 
   // Creates a transcriptome from a given reference sequence and a path to a file with gene annotations.

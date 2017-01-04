@@ -159,15 +159,17 @@ int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *
   return ((int64_t) ret);
 }
 
-void IndexSpacedHashFast::CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const {  // std::vector<int64_t> &ret_kmer_counts) {
+void IndexSpacedHashFast::CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t shape_max_width, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const {  // std::vector<int64_t> &ret_kmer_counts) {
   int64_t hash_key = -1;
 
 //  ret_kmer_counts.resize(std::pow(2, (2 * k)));
   int64_t num_kmers = CalcNumHashKeysFromShape(shape, shape_length);
   int64_t *kmer_counts = (int64_t *) calloc(sizeof(int64_t), num_kmers);
 
-  for (uint64_t i = 0; i < (sequence_length - shape_length + 1); i++) {
+  for (uint64_t i = 0; i < (sequence_length - shape_max_width + 1); i++) {
     int8_t *seed_start = &(sequence_data[i]);
+//    printf ("shape = '%s', shape_length = %ld, shape_max_width = %ld, i = %ld, sequence_length = %ld\n", shape, shape_length, shape_max_width, i, sequence_length);
+//    fflush(stdout);
     hash_key = GenerateHashKeyFromShape(seed_start, shape, shape_length);
 
     if (hash_key < 0)
@@ -271,8 +273,11 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t 
   seed_length = shape_index_length_;
   ret_hits.clear();
   ret_num_hits.clear();
-  ret_hits.resize(shapes_lookup_.size(), NULL);
-  ret_num_hits.resize(shapes_lookup_.size(), 0);
+//  ret_hits.resize(shapes_lookup_.size(), NULL);
+//  ret_num_hits.resize(shapes_lookup_.size(), 0);
+
+//  printf ("seed = '%s'\n", GetSubstring((char *) seed, seed_length).c_str());
+//  fflush(stdout);
 
   int64_t total_num_hits = 0;
   for (int64_t i = 0; i < shapes_lookup_.size(); i++) {
@@ -281,9 +286,9 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t 
       continue;
     }
 
-    ret_hits[i] = &kmer_hash_array_[hash_key][0];
-    ret_num_hits[i] = kmer_counts_[hash_key];
-    total_num_hits += ret_num_hits[i];
+    ret_hits.push_back(&kmer_hash_array_[hash_key][0]);
+    ret_num_hits.push_back(kmer_counts_[hash_key]);
+    total_num_hits += ret_num_hits.back();
   }
 
   if (total_num_hits == 0) {
@@ -446,7 +451,7 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
 
   int64_t num_kmers = 0;
-  CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, &kmer_counts_, &num_kmers);
+  CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, shape_max_width_, &kmer_counts_, &num_kmers);
   int64_t *kmer_countdown = (int64_t *) malloc(sizeof(int64_t) * num_kmers);
   memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
   num_kmers_ = num_kmers;
@@ -479,10 +484,8 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   uint64_t current_ref_id = 0;
 
   /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
-  int64_t k = 0;
-  for (int32_t i = 0; i < shape_index_length_; i++) {
-    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
-  }
+//  int64_t k = shape_index_length_; // shape_max_width_;
+  int64_t k = shape_max_width_;
 
   for (uint64_t i = 0; i < (data_length_ - k + 1); i++) {
     if (i >= (reference_starting_pos_[current_ref_id] + reference_lengths_[current_ref_id]))
@@ -490,8 +493,6 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 
     int8_t *seed_start = &(data_[i]);
     hash_key = GenerateHashKeyFromShape(seed_start, shape_index_, shape_index_length_);
-
-//    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("%s = %ld = %X\n", GetSubstring((char *) seed_start, k_).c_str(), hash_key, hash_key), "[]");
 
     if (hash_key < 0)
       continue;
@@ -509,6 +510,8 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 //    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
 //    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
     int64_t coded_position = (int64_t) ((ref_id << 32) | local_pos);
+
+//    LOG_DEBUG("%s = %ld = %X, local_pos = %lu\n", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key, local_pos);
 
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
     kmer_countdown[hash_key] += 1;
@@ -562,11 +565,20 @@ void IndexSpacedHashFast::set_shape_index_length(int64_t shapeIndexLength) {
   shape_index_length_ = shapeIndexLength;
 }
 
+int64_t IndexSpacedHashFast::get_shape_max_width() const {
+  return shape_max_width_;
+}
+
+void IndexSpacedHashFast::set_shape_max_width(int64_t shape_max_width) {
+  shape_max_width_ = shape_max_width;
+}
+
 int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
   if (shape_index_)
     free(shape_index_);
   shape_index_ = NULL;
   shape_index_length_ = 0;
+  shape_max_width_ = 0;
   if (kmer_hash_array_)
     free(kmer_hash_array_);
   kmer_hash_array_ = NULL;
@@ -579,15 +591,9 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
 
   int64_t vector_length = 0;
 
-  LogSystem::GetInstance().Log(
-  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
-                                      true, FormatString("\t- k_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
   if (fread(&shape_index_length_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Error(
-    SEVERITY_INT_FATAL,
-                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
-                                 ERR_FILE_READ_DATA,
-                                                                                             "Occured when reading variable shape_index_length_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
     return 1;
   }
 
@@ -601,6 +607,12 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
     return 1;
   }
   shape_index_[shape_index_length_] = '\0';
+
+  // Calculate the max width (each gap can consume two spaces).
+  shape_max_width_ = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    shape_max_width_ += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
 
   LogSystem::GetInstance().Log(
   VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
@@ -783,6 +795,7 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
   }
 
   shape_index_length_ = shape_for_indexing.size();
+
   shape_index_ = (char *) malloc(sizeof(char) * (shape_index_length_ + 1));
   memmove(shape_index_, shape_for_indexing.c_str(), shape_index_length_);
   shape_index_[shape_index_length_] = '\0';
@@ -792,6 +805,12 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
   compiled_seeds_.clear();
   for (int32_t i = 0; i < shapes_for_search.size(); i++) {
     compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
+  }
+
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  shape_max_width_ = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    shape_max_width_ += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
   }
 
   return 0;
@@ -821,6 +840,12 @@ int IndexSpacedHashFast::InitShapes(std::string shape_for_indexing, std::vector<
     compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
   }
 
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  shape_max_width_ = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    shape_max_width_ += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
+
   return 0;
 }
 
@@ -828,10 +853,10 @@ int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int
   int64_t read_length = read->get_sequence_length();
 
   /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
-  int64_t k = 0;
-  for (int32_t i = 0; i < shape_index_length_; i++) {
-    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
-  }
+  int64_t k = shape_max_width_; // 0;
+//  for (int32_t i = 0; i < shape_index_length_; i++) {
+//    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+//  }
 
   /// Calculate all the hash keys.
   std::vector<unsigned __int128> hash_keys_with_pos;
