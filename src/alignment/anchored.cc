@@ -830,6 +830,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     if (index->is_transcriptome()) {
       LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
       ConvertFromTranscriptomeToGenomeAln(index, curr_aln);
+
     }
 
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
