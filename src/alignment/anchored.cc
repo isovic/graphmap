@@ -827,6 +827,11 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
     curr_aln->ref_end = final_aln_pos_end; // % ref_data_len;
 
+    if (index->is_transcriptome()) {
+      LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
+      ConvertFromTranscriptomeToGenomeAln(index, curr_aln);
+    }
+
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
