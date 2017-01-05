@@ -139,6 +139,7 @@ void IndexSpacedHashFast::Clear() {
 
   genome_id_to_trans_id_.clear();
   trans_id_to_exons_.clear();
+  is_transcriptome_ = false;
 }
 
 int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const {
@@ -1038,12 +1039,17 @@ int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *
 
 
 
+bool IndexSpacedHashFast::is_transcriptome() const {
+  return is_transcriptome_;
+}
+
 int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose) {
   FILE *fp=NULL;
   fp = fopen(out_index_path.c_str(), "r");
   if (fp != NULL) {
     fclose(fp);
     int ret_load_from_file = LoadFromFile(out_index_path);
+    is_transcriptome_ = true;
 
     if (ret_load_from_file == 0) {
       return 0;
@@ -1062,6 +1068,7 @@ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path,
   }
 
   GenerateTranscriptomeFromFile(reference_path, gtf_path);
+  is_transcriptome_ = true;
 
   if (verbose == true) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Storing new index to file '%s'...\n", out_index_path.c_str()), "LoadOrGenerate");
@@ -1099,6 +1106,8 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
   fprintf (stderr, "Transcribed sequences:\n");
   transcript_sequences.Verbose(stderr);
   fflush(stderr);
+
+  is_transcriptome_ = true;
 
   // Sanity check.
   if (transcript_sequences.get_sequences().size() == 0) {

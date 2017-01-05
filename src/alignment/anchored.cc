@@ -8,6 +8,8 @@
 #include <alignment/alignment_wrappers.h>
 #include "alignment/alignment.h"
 
+#include "alignment/transcriptome_mod.h"
+
 enum ClusterAlnType {
   kAlnBeginning = 0,
   kAlnCluster = 1,
@@ -827,10 +829,9 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
     curr_aln->ref_end = final_aln_pos_end; // % ref_data_len;
 
-    if (index->is_transcriptome()) {
+    if (((IndexSpacedHashFast *) index)->is_transcriptome()) {
       LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
-      ConvertFromTranscriptomeToGenomeAln(index, curr_aln);
-
+      ConvertFromTranscriptomeToGenomeAln((IndexSpacedHashFast *) index, curr_aln);
     }
 
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
@@ -854,6 +855,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
       LOG_DEBUG_SPEC("Alignment is ok!\n");
     }
 
+    LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
     double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
     double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
     if (error_rate > parameters->max_error_rate) {

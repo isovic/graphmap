@@ -109,6 +109,8 @@ class IndexSpacedHashFast : public Index {
   // Experimental function, does not copy the hits but only returns the pointers to the buckets.
   int FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, std::vector<int64_t *> &ret_hits, std::vector<uint64_t> &ret_num_hits) const;
 
+  bool is_transcriptome() const;
+
 //  int get_k() const;
 //  void set_k(int k);
 //  const std::vector<std::vector<int64_t> >& get_kmer_hash() const;
@@ -129,6 +131,7 @@ class IndexSpacedHashFast : public Index {
 
   std::vector<CompiledSeed> compiled_seeds_;
 
+  bool is_transcriptome_;
   // A map from genome (chromosome) name (e.g. header split to first space) to a vector containing all transcriptomes which can be generated from that chromosome.
   // Each pair is a (transcript_id, strand), where strand is either '+' or '-';
   std::map<std::string, std::vector<std::pair<std::string, char>>> genome_id_to_trans_id_;
