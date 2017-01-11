@@ -74,6 +74,12 @@ int IndexSpacedHashFast::ParseExons_(const std::string &annotations_path,
 		ss >> left >> right;
 		transToExons[tid].push_back(std::make_pair(left, right));
 	}
+
+	for (auto& trans: transToExons) {
+	  std::sort(trans.second.begin(), trans.second.end(),
+	            [](const std::pair<int64_t, int64_t> &a, const std::pair<int64_t, int64_t> &b){ return (a.first < b.first); });
+	}
+
 	return 0;
 }
 
@@ -126,6 +132,18 @@ std::string IndexSpacedHashFast::getSequenceName(const SingleSequence &seq) cons
 		name += seq.get_header()[i];
 	}
 	return name;
+}
+
+const std::map<std::string, std::vector<std::pair<std::string, char> > >& IndexSpacedHashFast::get_genome_id_to_trans_id() const {
+  return genome_id_to_trans_id_;
+}
+
+const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& IndexSpacedHashFast::get_trans_id_to_exons() const {
+  return trans_id_to_exons_;
+}
+
+const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& IndexSpacedHashFast::get_trans_id_to_regions() const {
+  return trans_id_to_regions_;
 }
 
 void IndexSpacedHashFast::outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen) const {

@@ -139,6 +139,7 @@ void IndexSpacedHashFast::Clear() {
 
   genome_id_to_trans_id_.clear();
   trans_id_to_exons_.clear();
+  trans_id_to_regions_.clear();
   is_transcriptome_ = false;
 }
 
@@ -1043,6 +1044,8 @@ bool IndexSpacedHashFast::is_transcriptome() const {
   return is_transcriptome_;
 }
 
+// TODO: This needs to be fixed! Transcriptome is loaded from the given index, but the GTF needs to be parsed as well.
+// Next, currently whatever happens (whether the index exists or not) everything will also be re-generated (the call to GenerateTranscriptomeFromFile)!
 int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose) {
   FILE *fp=NULL;
   fp = fopen(out_index_path.c_str(), "r");
@@ -1102,6 +1105,9 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
   SequenceFile transcript_sequences;
   MakeTranscript_(genome_id_to_trans_id_, trans_id_to_exons_, sequences, transcript_sequences);
 
+  trans_id_to_regions_.clear();
+  MakeRegions_(trans_id_to_exons_, trans_id_to_regions_);
+
   // Verbose output for debugging.
   fprintf (stderr, "Transcribed sequences:\n");
   transcript_sequences.Verbose(stderr);
@@ -1117,4 +1123,35 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
 //  transcript_sequences.WriteFASTA("test_transcript.fasta");
 
   return GenerateFromSequenceFile(transcript_sequences);
+}
+
+int IndexSpacedHashFast::MakeRegions_(const std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_exons,
+                 std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_regions) const {
+  for (auto& it: trans_id_to_exons) {
+    auto& tid = it.first;
+    auto& exons = it.second;
+    if (exons.size() == 0) { continue; }
+    int64_t start = exons[0].first;
+    int64_t end = exons[0].second;
+
+    trans_id_to_regions[tid] = std::vector<std::pair<int64_t, int64_t>>();
+//    std::vector<std::pair<int64_t, int64_t>> regions;
+    auto& regions = trans_id_to_regions[tid];
+
+    for (auto& exon: exons) {
+      if (exon.first <= end) {
+        end = std::max(end, exon.second);
+      } else {
+        regions.emplace_back(std::make_pair(start, end));
+        start = exon.first;
+        end = exon.second;
+      }
+    }
+
+    if (regions.size() == 0 || (regions.back().first != start || regions.back().second != end)) {
+      regions.emplace_back(std::make_pair(start, end));
+    }
+  }
+
+  return 0;
 }

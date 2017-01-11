@@ -110,6 +110,9 @@ class IndexSpacedHashFast : public Index {
   int FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, std::vector<int64_t *> &ret_hits, std::vector<uint64_t> &ret_num_hits) const;
 
   bool is_transcriptome() const;
+  const std::map<std::string, std::vector<std::pair<std::string, char> > >& get_genome_id_to_trans_id() const;
+  const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& get_trans_id_to_exons() const;
+  const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& get_trans_id_to_regions() const;
 
 //  int get_k() const;
 //  void set_k(int k);
@@ -137,6 +140,8 @@ class IndexSpacedHashFast : public Index {
   std::map<std::string, std::vector<std::pair<std::string, char>>> genome_id_to_trans_id_;
   // A map from transcript_id to a vector containing pairs of coordinates. Each pair of coordinates presents one exon which makes the transcriptome.
   std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> trans_id_to_exons_;
+  // A list of exons in such way that it combines overlapping exons into regions.
+  std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> trans_id_to_regions_;
 
   int CreateIndex_(int8_t *data, uint64_t data_length);
   int SerializeIndex_(FILE *fp_out);
@@ -150,13 +155,21 @@ class IndexSpacedHashFast : public Index {
 
   // Creates a transcriptome from a given reference sequence and a path to a file with gene annotations.
   // Parameters:
-  // @annotations_path Path to a GFF file (or another supported format) which contains the annotations of exonic regions.
-  // @references A SequenceFile object which contains reference sequences already loaded from disk.
-  // @transcripts A SequenceFile which will contain the generated transcriptomes.
+  // @param annotations_path Path to a GFF file (or another supported format) which contains the annotations of exonic regions.
+  // @param references A SequenceFile object which contains reference sequences already loaded from disk.
+  // @param transcripts A SequenceFile which will contain the generated transcriptomes.
   // @return 0 if everything went fine (C-style).
   int MakeTranscript_(const std::map<std::string, std::vector<std::pair<std::string, char>>> &genome_id_to_trans_id,
                       const std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_exons,
                       const SequenceFile &references, SequenceFile &transcripts) const;
+  /** Resolves lists of exons in such way that it combines overlapping exons into regions.
+   * Returns dict that maps transcript id to list of regions.
+   * @param trans_id_to_exons A map from transcriptome ID (name) to a vector of exons which make this transcriptome.
+   * @param trans_id_to_regions Generated return map from transcriptome ID (name) to a vector containing regions.
+   * @return 0 if everything went fine (C-style).
+   */
+  int MakeRegions_(const std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_exons,
+                   std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_regions) const;
   int ParseExons_(const std::string &annotations_path,
                   std::map<std::string, std::vector<std::pair<std::string, char>>> &genomeToTrans,
                   std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &transToExons) const;
