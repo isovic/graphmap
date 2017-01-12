@@ -332,17 +332,19 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
                 }
                 reverse(cigar->end() - numDigits, cigar->end());
                 // Write code of move to cigar string.
-                if (lastMove == 0) {
+                if (lastMove == EDLIB_M || lastMove == EDLIB_EQUAL) {
                     cigar->push_back('=');
 //                    cigar->push_back('M');
-               } else if (lastMove == 1) {
+               } else if (lastMove == EDLIB_I) {
                     cigar->push_back('I');
-                } else if (lastMove == 2) {
+                } else if (lastMove == EDLIB_D) {
                     cigar->push_back('D');
-                } else if (lastMove == 3) {
+                } else if (lastMove == EDLIB_X) {
                     cigar->push_back('X');
 //                    cigar->push_back('M');
-                } else if (lastMove == 4) {
+                } else if (lastMove == EDLIB_N) {
+                    cigar->push_back('N');
+                } else if (lastMove == EDLIB_S) {
                     cigar->push_back('S');
                 } else {
                     delete cigar;

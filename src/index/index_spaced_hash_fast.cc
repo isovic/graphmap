@@ -137,10 +137,10 @@ void IndexSpacedHashFast::Clear() {
   num_kmers_ = 0;
   all_kmers_size_ = 0;
 
-  genome_id_to_trans_id_.clear();
-  trans_id_to_exons_.clear();
-  trans_id_to_regions_.clear();
-  is_transcriptome_ = false;
+//  genome_id_to_trans_id_.clear();
+//  trans_id_to_exons_.clear();
+//  trans_id_to_regions_.clear();
+//  is_transcriptome_ = false;
 }
 
 int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const {
@@ -1088,6 +1088,11 @@ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path,
 
 int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path) {
   Clear();
+  genome_id_to_trans_id_.clear();
+  trans_id_to_exons_.clear();
+  trans_id_to_regions_.clear();
+  is_transcriptome_ = false;
+
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file, and creating a transcriptome index.\n"), "GenerateFromFile");
   SequenceFile sequences(sequence_file_path);
 
