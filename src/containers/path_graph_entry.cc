@@ -289,7 +289,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
 
   std::string qname = ((std::string) (read_->get_header()));
   std::string qname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(qname)) : (qname);
-  std::string rname = region_info_.rname;
+  std::string rname = alignment_info.ref_header; // region_info_.rname;
   std::string rname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(rname)) : (rname);
 
   uint32_t reverse = (alignment_info.is_reverse == false) ? 0 : SAM_THIS_SEG_REVERSED;

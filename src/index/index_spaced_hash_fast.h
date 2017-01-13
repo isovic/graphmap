@@ -113,6 +113,7 @@ class IndexSpacedHashFast : public Index {
   const std::map<std::string, std::vector<std::pair<std::string, char> > >& get_genome_id_to_trans_id() const;
   const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& get_trans_id_to_exons() const;
   const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& get_trans_id_to_regions() const;
+  const std::map<std::string, std::string>& get_trans_id_to_genome_id() const;
 
 //  int get_k() const;
 //  void set_k(int k);
@@ -138,6 +139,8 @@ class IndexSpacedHashFast : public Index {
   // A map from genome (chromosome) name (e.g. header split to first space) to a vector containing all transcriptomes which can be generated from that chromosome.
   // Each pair is a (transcript_id, strand), where strand is either '+' or '-';
   std::map<std::string, std::vector<std::pair<std::string, char>>> genome_id_to_trans_id_;
+  // Reverse map, to obtain the chromosome name when converting from transcriptome space back to genome space.
+  std::map<std::string, std::string> trans_id_to_genome_id_;
   // A map from transcript_id to a vector containing pairs of coordinates. Each pair of coordinates presents one exon which makes the transcriptome.
   std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> trans_id_to_exons_;
   // A list of exons in such way that it combines overlapping exons into regions.
@@ -172,6 +175,7 @@ class IndexSpacedHashFast : public Index {
                    std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_regions) const;
   int ParseExons_(const std::string &annotations_path,
                   std::map<std::string, std::vector<std::pair<std::string, char>>> &genomeToTrans,
+                  std::map<std::string, std::string> &transIdToGenomeId,
                   std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &transToExons) const;
   std::string trim(std::string s) const;
   std::vector<std::string> split(std::string s, char c) const;

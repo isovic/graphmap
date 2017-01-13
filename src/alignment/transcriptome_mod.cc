@@ -44,6 +44,9 @@ int ConvertFromTranscriptomeToGenomeAln(const IndexSpacedHashFast *index, Alignm
     region_genome_len = region_genome_end - region_genome_start;      // +1 because it's inclusive.
   }
 
+  // Recalculate the new position of the alignment (on the genome).
+  int64_t new_ref_start = (pos_on_ref - processed_len) + region_genome_start;
+
 //  printf ("\nreg_id = %ld, region_start = %ld, region_end = %ld, region_len = %ld, aln->ref_start = %ld, aln->ref_end = %ld, processed_len = %ld\n",
 //          reg_id, region_genome_start, region_genome_end, region_genome_len, aln->ref_start, aln->ref_end, processed_len);
 //  fflush(stdout);
@@ -105,12 +108,12 @@ int ConvertFromTranscriptomeToGenomeAln(const IndexSpacedHashFast *index, Alignm
 
   // Copy the new alignment.
   aln->alignment = alignment;
-//  printf ("Tu sam 1!\n");
-//  fflush(stdout);
 
-//  aln->ref_header = index->
-//  aln->ref_start =
-      // Trebam implementirati trans_id_to_genome_id, pa onda genome_headers za headere iz originalnog FASTA file-a, i onda izracunati poziciju za alignment.
+  std::string tid = aln->ref_header;
+  auto it_tid = index->get_trans_id_to_genome_id().find(tid);
+  if (it_tid == index->get_trans_id_to_genome_id().end()) { return 1; }
+  aln->ref_header = it_tid->second;
+  aln->ref_start = new_ref_start;
 
   return 0;
 }

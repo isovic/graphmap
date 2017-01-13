@@ -52,6 +52,7 @@ int IndexSpacedHashFast::MakeTranscript_(const std::map<std::string, std::vector
 
 int IndexSpacedHashFast::ParseExons_(const std::string &annotations_path,
                                      std::map<std::string, std::vector<std::pair<std::string, char>>> &genomeToTrans,
+                                     std::map<std::string, std::string> &transIdToGenomeId,
                                      std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &transToExons) const {
 	std::ifstream annotations(annotations_path);
 	if(!annotations.is_open()) {
@@ -67,7 +68,9 @@ int IndexSpacedHashFast::ParseExons_(const std::string &annotations_path,
 		std::string tid = getTID(fields[8]);  // Transcrip ID (name)
 		if(transToExons[tid].empty()) {
 		  // Field 6 (fields[6]) is the strand (either '+' or '-').
-			genomeToTrans[split(fields[0], ' ')[0]].push_back(std::make_pair(tid, fields[6][0]));
+		  std::string chr_name = split(fields[0], ' ')[0];
+			genomeToTrans[chr_name].push_back(std::make_pair(tid, fields[6][0]));
+	    transIdToGenomeId[tid] = chr_name;
 		}
 		int64_t left, right;
 	  std::stringstream ss(fields[3] + " " + fields[4]);
@@ -144,6 +147,10 @@ const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& IndexSp
 
 const std::map<std::string, std::vector<std::pair<int64_t, int64_t> > >& IndexSpacedHashFast::get_trans_id_to_regions() const {
   return trans_id_to_regions_;
+}
+
+const std::map<std::string, std::string>& IndexSpacedHashFast::get_trans_id_to_genome_id() const {
+  return trans_id_to_genome_id_;
 }
 
 void IndexSpacedHashFast::outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen) const {

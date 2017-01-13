@@ -375,12 +375,11 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
 int AlignmentToExtendedCigarArray(unsigned char* alignment, int alignmentLength, std::vector<CigarOp> &cigar) {
   cigar.clear();
 
-  unsigned char *alignment_with_clipping = alignment;
+  std::vector<unsigned char> alignment_with_clipping;
+  alignment_with_clipping.assign(alignment, alignment + alignmentLength);
+  alignment_with_clipping.push_back('\0');
 
   if (alignment[0] == EDLIB_I || alignment[alignmentLength-1] == EDLIB_I) {
-    alignment_with_clipping = (unsigned char *) malloc(sizeof(unsigned char) * (alignmentLength + 1));
-    memcpy(alignment_with_clipping, alignment, alignmentLength);
-    alignment_with_clipping[alignmentLength] = '\0';
 
     for (int64_t i=0; i<alignmentLength; i++) {
       if (alignment_with_clipping[i] == EDLIB_I)
@@ -416,9 +415,6 @@ int AlignmentToExtendedCigarArray(unsigned char* alignment, int alignmentLength,
       }
       numOfSameMoves++;
   }
-
-  if (alignment_with_clipping != alignment)
-    free(alignment_with_clipping);
 
   // Initialize reference and read positions.
   int64_t pos_on_ref = 0;
@@ -596,22 +592,41 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
   return 0;
 }
 
+/** MD is a string describing the alignment on the reference from the reference's point of view.
+ * It is composed only of match, mismatch and deletion CIGAR operations, other operations are
+ * ignored (including clipping).
+ * One needs to be careful to add-up matches/mismatches normally separated by I operations, e.g.
+ * for a CIGAR "5=2I3=" the MD would be "8".
+ */
 std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start) {
   std::vector<CigarOp> cigar_array;
   AlignmentToExtendedCigarArray(&alignment[0], alignment.size(), cigar_array);
+//  printf("\n");
+//  for (int32_t i=0; i<alignment.size(); i++) {
+//    printf ("%d", alignment[i]);
+//  }
+//  printf ("\n");
+//  fflush(stdout);
+
+  // This loop truncates the CIGAR operations to skip anything but M and D operations.
+  // It keeps track of an offset which points to the last index to where an op was copied.
+  // If the current operation is the same as a previous one, then the count are added-up.
   int32_t offset = 0;
   for (int32_t i=0; i<cigar_array.size(); i++) {
-    if (cigar_array[i].op != '=' && cigar_array[i].op != 'X' && cigar_array[i].op != 'M' && cigar_array[i].op != 'D') {
+    if (cigar_array[i].op == 'I' || cigar_array[i].op == 'S') {     // I and S should not be counted. Truncate them.
       offset += 1;
-      continue;
-    } else if (i > 0 && cigar_array[i].op == cigar_array[i-offset-1].op) {
+
+    } else if (i > 0 && (i-offset-1) > 0 && cigar_array[i].op == cigar_array[i-offset-1].op) {  // Handle same operations
+      // The "(i-offset-1) > 0" comes into play when there are leading insertions/soft clips. Prevents invalid reads of size 1.
       cigar_array[i-offset-1].count += cigar_array[i].count;
       offset += 1;
-      continue;
+
+    } else {      // Just truncate the current op.
+      cigar_array[i-offset] = cigar_array[i];
     }
-    cigar_array[i-offset] = cigar_array[i];
   }
 
+  // Offset is the last CIGAR operation that was updated.
   cigar_array.resize(cigar_array.size() - offset);
 
   std::stringstream md;

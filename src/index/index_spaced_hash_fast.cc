@@ -60,6 +60,7 @@ IndexSpacedHashFast::IndexSpacedHashFast() {
   kmer_counts_ = NULL;
   all_kmers_ = NULL;
   shape_index_ = NULL;
+  is_transcriptome_ = false;
 
   Clear();
 
@@ -95,6 +96,7 @@ IndexSpacedHashFast::IndexSpacedHashFast(uint32_t shape_type) {
   kmer_counts_ = NULL;
   all_kmers_ = NULL;
   shape_index_ = NULL;
+  is_transcriptome_ = false;
 
   Clear();
 
@@ -1089,6 +1091,7 @@ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path,
 int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path) {
   Clear();
   genome_id_to_trans_id_.clear();
+  trans_id_to_genome_id_.clear();
   trans_id_to_exons_.clear();
   trans_id_to_regions_.clear();
   is_transcriptome_ = false;
@@ -1102,9 +1105,7 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
   fflush(stderr);
 
   // Parse the GTF for exons.
-  genome_id_to_trans_id_.clear();
-  trans_id_to_exons_.clear();
-  ParseExons_(gtf_path, genome_id_to_trans_id_, trans_id_to_exons_);
+  ParseExons_(gtf_path, genome_id_to_trans_id_, trans_id_to_genome_id_, trans_id_to_exons_);
 
   // Construct transcriptome sequences
   SequenceFile transcript_sequences;
