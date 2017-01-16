@@ -61,16 +61,12 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     std::vector<int8_t> reversed_ref_front;
     int64_t reversed_ref_len = 0;
     if (clip_count_front*2  > (alignment_position_start - reference_start)) {
-//      reversed_ref_front = reverse_data(ref_data + 0, (alignment_position_start - reference_start));
-      reverse_data2(ref_data + 0, (alignment_position_start - reference_start), reversed_ref_front);
+      reverse_data2(ref_data + reference_start, (alignment_position_start - reference_start), reversed_ref_front);
       reversed_ref_len = alignment_position_start - reference_start;
     } else {
-//      reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
       reverse_data2(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2, reversed_ref_front);
       reversed_ref_len = clip_count_front*2;
     }
-
-//    if (clip_count_front == 0 || reversed_ref_len == 0) { return 1; }
 
     int64_t bandwidth = -1;
 //    bandwidth = 0.30f*read->get_sequence_length();
