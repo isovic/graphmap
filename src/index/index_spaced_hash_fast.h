@@ -79,8 +79,9 @@ class IndexSpacedHashFast : public Index {
   IndexSpacedHashFast(uint32_t shape_type);
 
   void Clear();
+  virtual int LoadOrGenerate(std::string reference_path, std::string out_index_path, bool verbose=false);
   int LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose);
-  int GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path);
+  int GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path, bool verbose=false);
 
   int FindAllRawPositionsOfSeed(int8_t *seed, uint64_t seed_length, uint64_t max_num_of_hits, int64_t **entire_sa, uint64_t *start_hit, uint64_t *num_hits) const;
   void Verbose(FILE *fp) const;
@@ -155,6 +156,9 @@ class IndexSpacedHashFast : public Index {
   int64_t CalcNumHashKeysFromShape(const char *shape, int64_t shape_length) const;
   void CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t shape_max_width, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const;
   void CalcPercentileHits_(int64_t *seed_counts, int64_t num_seeds, double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
+
+  // Parses exons and extracts regions from the given GTF file.
+  int LoadGTFInfo_(const std::string &gtf_path);
 
   // Creates a transcriptome from a given reference sequence and a path to a file with gene annotations.
   // Parameters:

@@ -534,6 +534,9 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 
 int IndexSpacedHashFast::SerializeIndex_(FILE* fp_out) {
   int64_t vector_length = 0;
+
+  fwrite(&is_transcriptome_, sizeof(bool), 1, fp_out);
+
   fwrite(&shape_index_length_, sizeof(int64_t), 1, fp_out);
   fwrite(shape_index_, sizeof(char), shape_index_length_, fp_out);
 
@@ -594,6 +597,12 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
   kmer_counts_ = NULL;
 
   int64_t vector_length = 0;
+
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- is_transcriptome_...\n"), "DeserializeIndex_");
+  if (fread(&is_transcriptome_, sizeof(bool), 1, fp_in) != 1) {
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable is_transcriptome_."));
+    return 1;
+  }
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
   if (fread(&shape_index_length_, sizeof(int64_t), 1, fp_in) != 1) {
@@ -1046,85 +1055,124 @@ bool IndexSpacedHashFast::is_transcriptome() const {
   return is_transcriptome_;
 }
 
-// TODO: This needs to be fixed! Transcriptome is loaded from the given index, but the GTF needs to be parsed as well.
-// Next, currently whatever happens (whether the index exists or not) everything will also be re-generated (the call to GenerateTranscriptomeFromFile)!
-int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose) {
+int IndexSpacedHashFast::LoadOrGenerate(std::string reference_path, std::string out_index_path, bool verbose) {
   FILE *fp=NULL;
   fp = fopen(out_index_path.c_str(), "r");
   if (fp != NULL) {
     fclose(fp);
-    int ret_load_from_file = LoadFromFile(out_index_path);
-    is_transcriptome_ = true;
+    int ret_load_from_file = this->LoadFromFile(out_index_path);
 
-    if (ret_load_from_file == 0) {
-      return 0;
+    if (ret_load_from_file != 0 || is_transcriptome_ == true) {
+      if (ret_load_from_file != 0 && verbose == true) {
+        LOG_ALL("Index needs to be rebuilt. It was generated using an older version.\n");
+        LOG_DEBUG("ret_load_from_file = %d\n", ret_load_from_file);
+      }
+      if (is_transcriptome_ == true && verbose == true) {
+        LOG_ALL("Existing index is a transcriptome, and you are trying to map to a genome. Index needs to be rebuilt.\n");
+      }
+
+      is_transcriptome_ = false;
+      GenerateFromFile(reference_path);
+
+      if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+      StoreToFile(out_index_path);
+      if (verbose == true) { LOG_ALL("New index stored.\n"); }
+
     }
+  } else {
+    if (verbose == true) { LOG_ALL("Started generating new index from file '%s'...\n", reference_path.c_str()); }
 
-    if (verbose == true) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index needs to be rebuilt. It was generated using an older version.\n"), "LoadOrGenerate");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("ret_load_from_file = %d\n", ret_load_from_file), "LoadOrGenerate");
-      fflush(stderr);
-    }
-  }
+    is_transcriptome_ = false;
+    GenerateFromFile(reference_path);
 
-  if (verbose == true) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Started generating new index from file '%s'...\n", reference_path.c_str()), "LoadOrGenerate");
-    fflush(stderr);
-  }
-
-  GenerateTranscriptomeFromFile(reference_path, gtf_path);
-  is_transcriptome_ = true;
-
-  if (verbose == true) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Storing new index to file '%s'...\n", out_index_path.c_str()), "LoadOrGenerate");
-  }
-
-  StoreToFile(out_index_path);
-
-  if (verbose == true) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("New index stored.\n"), "LoadOrGenerate");
+    if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+    StoreToFile(out_index_path);
+    if (verbose == true) { LOG_ALL("New index stored.\n"); }
   }
 
   return 0;
 }
 
-int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path) {
-  Clear();
+ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose) {
+  FILE *fp=NULL;
+  fp = fopen(out_index_path.c_str(), "r");
+  if (fp != NULL) {
+    fclose(fp);
+
+    LoadGTFInfo_(gtf_path);
+
+    int ret_load_from_file = LoadFromFile(out_index_path);
+
+    if (ret_load_from_file != 0 || is_transcriptome_ == false) {
+      if (ret_load_from_file != 0 && verbose == true) {
+        LOG_ALL("Index needs to be rebuilt. It was generated using an older version.\n");
+        LOG_DEBUG("ret_load_from_file = %d\n", ret_load_from_file);
+      }
+      if (is_transcriptome_ == false && verbose == true) {
+        LOG_ALL("Existing index is a genome, and you are trying to map to a transcriptome. Index needs to be rebuilt.\n");
+      }
+
+      GenerateTranscriptomeFromFile(reference_path, gtf_path);
+
+      if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+      StoreToFile(out_index_path);
+      if (verbose == true) { LOG_ALL("New index stored.\n"); }
+    }
+  } else {
+    if (verbose == true) { LOG_ALL("Started generating new index from file '%s'...\n", reference_path.c_str()); }
+
+    GenerateTranscriptomeFromFile(reference_path, gtf_path);
+
+    if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+    StoreToFile(out_index_path);
+    if (verbose == true) { LOG_ALL("New index stored.\n"); }
+  }
+
+  return 0;
+}
+
+int IndexSpacedHashFast::LoadGTFInfo_(const std::string &gtf_path) {
   genome_id_to_trans_id_.clear();
   trans_id_to_genome_id_.clear();
   trans_id_to_exons_.clear();
   trans_id_to_regions_.clear();
   is_transcriptome_ = false;
 
+  // Parse the GTF for exons.
+  ParseExons_(gtf_path, genome_id_to_trans_id_, trans_id_to_genome_id_, trans_id_to_exons_);
+
+  trans_id_to_regions_.clear();
+  MakeRegions_(trans_id_to_exons_, trans_id_to_regions_);
+
+  return 0;
+}
+
+int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path, bool verbose) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file, and creating a transcriptome index.\n"), "GenerateFromFile");
-  SequenceFile sequences(sequence_file_path);
+
+  LoadGTFInfo_(gtf_path);
 
   // Verbose output for debugging.
   fprintf (stderr, "Sequence file before transcriptome generation:\n");
+  SequenceFile sequences(sequence_file_path);
   sequences.Verbose(stderr);
   fflush(stderr);
-
-  // Parse the GTF for exons.
-  ParseExons_(gtf_path, genome_id_to_trans_id_, trans_id_to_genome_id_, trans_id_to_exons_);
 
   // Construct transcriptome sequences
   SequenceFile transcript_sequences;
   MakeTranscript_(genome_id_to_trans_id_, trans_id_to_exons_, sequences, transcript_sequences);
-
-  trans_id_to_regions_.clear();
-  MakeRegions_(trans_id_to_exons_, trans_id_to_regions_);
 
   // Verbose output for debugging.
   fprintf (stderr, "Transcribed sequences:\n");
   transcript_sequences.Verbose(stderr);
   fflush(stderr);
 
-  is_transcriptome_ = true;
-
   // Sanity check.
   if (transcript_sequences.get_sequences().size() == 0) {
     return 1;
   }
+
+  is_transcriptome_ = true;
 
 //  transcript_sequences.WriteFASTA("test_transcript.fasta");
 

@@ -19,7 +19,9 @@
 
 
 
-#define INDEX_VERSION     ((int64_t) 8)
+// #define INDEX_VERSION     ((int64_t) 8)
+// Version 9: Added is_transcriptome_ value.
+#define INDEX_VERSION     ((int64_t) 9)
 
 #define SHAPE_TYPE_444  0
 #define SHAPE_TYPE_66    1
