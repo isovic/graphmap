@@ -269,6 +269,8 @@ int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength,
                 } else if (lastMove == 3) {
                     cigar->push_back('X');
 //                    cigar->push_back('M');
+                } else if (lastMove == EDLIB_N) {
+                    cigar->push_back('N');
                 } else if (lastMove == 4) {
                     cigar->push_back('S');
                 } else {
