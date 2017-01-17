@@ -184,7 +184,7 @@ class IndexSpacedHashFast : public Index {
   std::string trim(std::string s) const;
   std::vector<std::string> split(std::string s, char c) const;
   std::string getSequenceName(const SingleSequence &seq) const;
-  std::string getTID(std::string s) const;
+  std::string getTID(const std::string &chr_name, const std::string &attributes) const;
   void outputSeq(char *header, size_t headerLen, const int8_t *seq, size_t seqLen) const;
 };
 

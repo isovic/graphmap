@@ -65,7 +65,10 @@ int IndexSpacedHashFast::ParseExons_(const std::string &annotations_path,
 		if(fields.size() < 9 || fields[2] != "exon") {
 			continue;
 		}
-		std::string tid = getTID(fields[8]);  // Transcrip ID (name)
+		// tid will internally have the chromosome name appended to the back (format: "tid_chr").
+		// This is to handle a special case when GTF file is faulty and there are multiple same TIDs
+		// on several different chromosomes, which shouldn't be possible.
+		std::string tid = getTID(fields[0], fields[8]);  // Transcrip ID (name)
 		if(transToExons[tid].empty()) {
 		  // Field 6 (fields[6]) is the strand (either '+' or '-').
 		  std::string chr_name = split(fields[0], ' ')[0];
@@ -86,12 +89,12 @@ int IndexSpacedHashFast::ParseExons_(const std::string &annotations_path,
 	return 0;
 }
 
-std::string IndexSpacedHashFast::getTID(std::string attributes) const {
+std::string IndexSpacedHashFast::getTID(const std::string &chr_name, const std::string &attributes) const {
 	for(auto s : split(attributes, ';')) {
 		s = trim(s);
 		auto keyValue = split(s, ' ');
 		if(keyValue[0] == "transcript_id") {
-			return split(keyValue[1], '"')[1];
+			return (split(keyValue[1], '"')[1] + std::string("_") + chr_name);
 		}
 	}
 	return "";
