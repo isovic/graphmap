@@ -68,10 +68,10 @@ int IndexSpacedHashFast::ParseExons_(const std::string &annotations_path,
 		// tid will internally have the chromosome name appended to the back (format: "tid_chr").
 		// This is to handle a special case when GTF file is faulty and there are multiple same TIDs
 		// on several different chromosomes, which shouldn't be possible.
-		std::string tid = getTID(fields[0], fields[8]);  // Transcrip ID (name)
+    std::string chr_name = split(fields[0], ' ')[0];
+		std::string tid = getTID(chr_name, fields[8]);  // Transcrip ID (name)
 		if(transToExons[tid].empty()) {
 		  // Field 6 (fields[6]) is the strand (either '+' or '-').
-		  std::string chr_name = split(fields[0], ' ')[0];
 			genomeToTrans[chr_name].push_back(std::make_pair(tid, fields[6][0]));
 	    transIdToGenomeId[tid] = chr_name;
 		}
