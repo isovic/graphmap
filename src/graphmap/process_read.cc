@@ -642,9 +642,15 @@ std::string GraphMap::GenerateUnmappedSamLine_(MappingData *mapping_data, int64_
   ss << SAM_DEFAULT_RNEXT << "\t";
   ss << SAM_DEFAULT_PNEXT << "\t";
   ss << SAM_DEFAULT_TLEN << "\t";
-  ss << read->get_data() << "\t";
 
-  if (verbose_sam_output < 5 && read->get_quality_length() > 0 && read->get_quality() != NULL) {
+  if (read->get_data_length() > 0) {
+    ss << read->get_data() << "\t";
+  } else {
+    ss << "*\t";
+  }
+
+  if (verbose_sam_output < 5 && read->get_quality_length() > 0 &&
+      read->get_quality() != NULL) {
     ss << read->get_quality() << "\t";
   } else {
     ss << "*" << "\t";

@@ -312,18 +312,28 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << tlen << "\t";
 
   if (alignment_info.is_reverse == false) {
-    ss << read_->get_data() << "\t";
+    if (read_->get_data_length() > 0) {
+      ss << read_->get_data() << "\t";
+    } else {
+      ss << "*\t";
+    }
 
-    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 && read_->get_quality() != NULL) {
+    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 &&
+        read_->get_quality() != NULL) {
       ss << read_->get_quality() << "\t";
     } else {
       ss << "*" << "\t";
     }
 
   } else {
-    ss << read_->GetReverseComplementAsString() << "\t";
+    if (read_->get_data_length() > 0) {
+      ss << read_->GetReverseComplementAsString() << "\t";
+    } else {
+      ss << "*\t";
+    }
 
-    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 && read_->get_quality() != NULL) {
+    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 &&
+        read_->get_quality() != NULL) {
       ss << read_->GetReverseQualityAsString() << "\t";
     } else {
       ss << "*" << "\t";
