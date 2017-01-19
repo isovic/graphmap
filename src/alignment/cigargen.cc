@@ -711,19 +711,11 @@ int GetAlignmentPatterns(const unsigned char* query, const int64_t queryLength,
  * then they can be removed provided that the start and end reference coordinates of the alignment are moved.
  */
 void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_t *ref_start, int64_t *ref_end) {
-//  return;
-
-//  for (int64_t i=0; i<alignment.size(); i++) {
-//    printf("%d", alignment[i]);
-//  }
-//  printf("\n\n");
-
   // Find the D stretch at the front, if any.
   int64_t front_start = 0;
   int64_t front_end = 0;
   int32_t front_state = alignment[0];
   for (int64_t i=0; i<alignment.size(); i++) {
-//    printf("[i = %ld] front_state = %d, alignment[i] = %d\n", i, front_state, alignment[i]);
     if (front_state == EDLIB_I) {
       if (alignment[i] == EDLIB_I) {
         // Pass.
@@ -752,7 +744,6 @@ void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_
   int64_t back_end = alignment.size();
   int32_t back_state = alignment.back();
   for (int64_t i=(alignment.size()-1); i>=0; i--) {
-//    printf("[i = %ld] back_state = %d, alignment[i] = %d\n", i, back_state, alignment[i]);
     if (back_state == EDLIB_I) {
       if (alignment[i] == EDLIB_I) {
         // Pass.
@@ -776,10 +767,6 @@ void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_
     }
   }
 
-  printf ("front_start = %ld, front_end = %ld\n", front_start, front_end);
-  printf ("back_start = %ld, back_end = %ld\n", back_start, back_end);
-  fflush(stdout);
-
   // Otherwise, no changes should be made.
   if (front_end > front_start || back_start < back_end) {
     std::vector<unsigned char> new_alignment;
@@ -796,34 +783,4 @@ void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_
     *ref_start += (front_end - front_start);
     *ref_end -= (back_end - back_start);
   }
-
-
-
-//  // Find the deletion stretch.
-//  for (int64_t i=0; i<alignment.size(); i++) {
-//    if (alignment[i] != EDLIB_I && alignment[i] != EDLIB_S && alignment[i] != EDLIB_D) {
-//      front_D_end = i;
-//      break;
-//    } else if (alignment[i] == EDLIB_D) {
-//      if (i == 0 || (i > 0 && alignment[i-1] == EDLIB_I)) {
-//        front_D_start = i;
-//      }
-//    }
-//  }
-//
-//  int64_t back_shift_start = -1;
-//  int64_t back_shift_end = -1;
-//
-//  // Find the deletion stretch.
-//  for (int64_t i=(alignment.size()-1); i>=0; i--) {
-//    if (alignment[i] != EDLIB_I && alignment[i] != EDLIB_S && alignment[i] != EDLIB_D) {
-//      back_shift_start = i + 1;
-//      break;
-//    } else if (alignment[i] == EDLIB_D) {
-//      if ((i+1) == alignment.size() || ((i+1) < alignment.size() && alignment[i+1] == EDLIB_I)) {
-//        back_shift_end = i;
-//      }
-//    }
-//  }
-
 }
