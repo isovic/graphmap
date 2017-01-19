@@ -11,6 +11,7 @@
 #include "index/index.h"
 #include "index/index_spaced_hash_fast.h"
 #include "containers/results.h"
+#include <tuple>
 
 int ConvertFromTranscriptomeToGenomeAln(const IndexSpacedHashFast *index, AlignmentResults *aln);
 

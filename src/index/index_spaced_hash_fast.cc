@@ -1172,6 +1172,9 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
     return 1;
   }
 
+  genome_id_to_len_.clear();
+  HashGenomeLengths_(sequences, genome_id_to_len_);
+
   is_transcriptome_ = true;
 
 //  transcript_sequences.WriteFASTA("test_transcript.fasta");
