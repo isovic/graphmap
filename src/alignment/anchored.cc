@@ -825,6 +825,8 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
     curr_aln->ref_end = final_aln_pos_end; // % ref_data_len;
 
+    FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
+
     if (((IndexSpacedHashFast *) index)->is_transcriptome()) {
       LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
       ConvertFromTranscriptomeToGenomeAln((IndexSpacedHashFast *) index, curr_aln);

@@ -80,4 +80,6 @@ int GetAlignmentPatterns(const unsigned char* query, const int64_t queryLength,
                          const unsigned char* alignment, const int64_t alignmentLength,
                          std::string &ret_query, std::string &ret_target, std::string &ret_match_pattern);
 
+void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_t *ref_start, int64_t *ref_end);
+
 #endif /* CIGARGEN_H_ */
