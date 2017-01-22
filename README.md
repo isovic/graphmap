@@ -9,6 +9,8 @@ To use the new transcriptome mapping option simply specify a GTF file using the 
 ```graphmap align -r reference.fa --gtf reference.gtf -d reads.fastq -o out.sam```  
 
 **Important**  
+If you are using versions 0.3.x please update to the most recent commit. There were several important memory access issues which are now resolved.  
+
 GraphMap's command line has changed significantly between version 0.3.x and 0.2x - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
 The first parameter is now mandatory, and specifies whether the **mapping/alignment** (```./graphmap align```) or **overlapping** (```./graphmap owler```) should be used.  
 
