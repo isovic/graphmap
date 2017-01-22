@@ -138,11 +138,23 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
     curr_aln->ref_end = final_aln_pos_end; // % ref_len;
 
+    FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
+
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
     LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), ref_id, curr_aln->ref_start + ref_start + index->get_reference_starting_pos()[ref_id]);
+//    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), ref_id, curr_aln->ref_start + ref_start + index->get_reference_starting_pos()[ref_id]);
+//    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), abs_ref_id, final_aln_pos_start);
+//    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data() + index->get_reference_starting_pos()[ref_id], abs_ref_id,  curr_aln->raw_pos_start);
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, index->get_data() + index->get_reference_starting_pos()[ref_id], final_aln_pos_start);
+//    printf ("final_aln_pos_start = %ld\n", final_aln_pos_start);
+//    printf ("Query:\n%s\n", GetSubstring((char *) read->get_data(), read->get_data_length()).c_str());
+//    printf ("Target:\n%s\n", GetSubstring((char *) index->get_data() + final_aln_pos_start, read->get_data_length()).c_str());
+//    printf ("Target2:\n%s\n", GetSubstring((char *) index->get_data() + curr_aln->ref_start + ref_start + index->get_reference_starting_pos()[ref_id], read->get_data_length()).c_str());
+//    printf ("Target3:\n%s\n", GetSubstring((char *) index->get_data() + curr_aln->ref_start + index->get_reference_starting_pos()[ref_id], read->get_data_length()).c_str());
+//    printf ("Target3:\n%s\n", GetSubstring((char *) index->get_data() + index->get_reference_starting_pos()[ref_id] + final_aln_pos_start, curr_aln->ref_end - curr_aln->ref_start + 1).c_str());
+//    fflush(stdout);
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
     CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), reg_data, ref_id, curr_aln->reg_pos_start, orientation,

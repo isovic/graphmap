@@ -24,7 +24,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->gtf_path, VALUE_TYPE_STRING, "", "gtf", "", "Path to a General Transfer Format file. If specified, a transcriptome will be built from the reference sequence and used for mapping.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->gtf_path, VALUE_TYPE_STRING, "", "gtf", "", "Path to a General Transfer Format file. If specified, a transcriptome will be built from the reference sequence and used for mapping. Output SAM alignments will be in genome space (not transcriptome).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "in-fmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
 //  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
   argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.", 0, "Input/Output options");
@@ -189,6 +189,12 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   if (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh" &&
       parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex") {
     fprintf (stderr, "Unknown alignment algorithm '%s'!\n\n", parameters->alignment_algorithm.c_str());
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
+  if (parameters->gtf_path.size() > 0 &&
+      (parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex")) {
+    fprintf (stderr, "Transcriptome mapping currently available only in anchored alignment mode.\n\n", parameters->alignment_algorithm.c_str());
     VerboseShortHelpAndExit(argc, argv);
   }
 

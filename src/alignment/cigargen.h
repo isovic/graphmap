@@ -52,7 +52,7 @@ std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength, bool
 int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength, char** cigar_);
 int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char** cigar_);
 int AlignmentToExtendedCigarArray(unsigned char* alignment, int alignmentLength, std::vector<CigarOp> &cigar);
-std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start);
+std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *ref_data, int64_t alignment_position_start);
 
 /// Searches for consecutive EDLIB_I and EDLIB_D (or vice versa) operations, and replaces the overlap with EDLIB_X.
 std::vector<unsigned char> FixAlignment(unsigned char* alignment, int alignmentLength);
