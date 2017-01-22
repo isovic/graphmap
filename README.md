@@ -1,6 +1,12 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.3.2__**  
-Release date: 19 December 2016  
+**__Current Version: 0.4.0__**  
+Release date: 22 January 2017  
+
+**\*new\* - Mapping to transcriptomes**  
+GraphMap can now accept a GTF file to internally construct a transcriptome sequence from a given reference genome, and map RNA-seq data to it. The final alignments are converted back to genome space by placing ```N``` operations in the CIGAR strings.  
+
+To use the new transcriptome mapping option simply specify a GTF file using the ```--gtf``` option:  
+```graphmap align -r reference.fa --gtf reference.gtf -d reads.fastq -o out.sam```  
 
 **Important**  
 GraphMap's command line has changed significantly between version 0.3.x and 0.2x - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
@@ -69,7 +75,9 @@ make modules	# This pulls the latest version of all required submodules
 make
 ```  
 
-You will need a recent GCC/G++ version (>=4.7).
+You will need a recent GCC/G++ version (>=4.7).  
+
+Run ```sudo make install``` to install the graphmap binary to ```/usr/bin```.  
 
 More installation instructions can be found in the [INSTALL.md](INSTALL.md) file.
 
@@ -82,6 +90,12 @@ More installation instructions can be found in the [INSTALL.md](INSTALL.md) file
 # **Overlap** all reads from a given FASTA/FASTQ file and report overlaps in MHAP format (fast):  
 ./graphmap owler -r reads.fa -d reads.fa -o overlaps.mhap  
 
+# **Align** all reads to a transcriptome sequence:  
+./graphmap align -r scerevisiae.fa --gtf scerevisiae.gtf -d reads.fastq -o alignments.sam  
+
+
+# Align all reads and report alignments using the extended CIGAR format.  
+./graphmap align -r escherichia_coli.fa -d reads.fastq -o alignments.sam --extcigar  
 
 # Align all reads from a given FASTA/FASTQ file with default number of threads using semiglobal bit-vector alignment:  
 ./graphmap align -a sg -r escherichia_coli.fa -d reads.fastq -o alignments.sam  

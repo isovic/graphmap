@@ -1,5 +1,13 @@
 ## GraphMap - ChangeLog
 
+**__Version 0.3.2 -> 0.4.0__**  
+Release date: 22 January 2017  
+- GraphMap can now accept a GTF file for mapping to a transcriptome. Transcriptome is internally generated using the reference file and the GTF file, and index built from the transcriptome. Reads are then mapped to the transcriptome, and final alignments converted back to the genome coordinate space by introducing 'N' operations at splice sites.  
+- Transcriptome mapping is only available in anchored alignment modes.  
+- Updated Edlib to the newest version. Previous version had a bug in the traceback.  
+- Recent changes in Edlib produced leading and trailing deletions in some cases. This is now handled by removing the deletions and shifting the alignment start position.  
+- Fixed several (possible) memory leaks and invalid reads/writes. Generating the MD tag in SAM files had an invalid read which for some reason caused strange artifacts in CIGAR strings.  
+
 **__Version 0.3.1 -> 0.3.2__**  
 Release date: 19 December 2016  
 - There were segfaults caused by recently-introduced bugs to Edlib. It has since been updated, and this version of GraphMap now includes the fixed version of Edlib.
