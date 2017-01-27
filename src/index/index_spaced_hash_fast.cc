@@ -1103,7 +1103,14 @@ int IndexSpacedHashFast::LoadOrGenerate(std::string reference_path, std::string 
 
     int ret_load_from_file = LoadFromFile(out_index_path);
 
-    if (ret_load_from_file != 0 || is_transcriptome_ == false) {
+    if (ret_load_from_file == 0 && is_transcriptome_ == true) {  // Everything went fine. Prepare headers for SAM output.
+      // Verbose output for debugging.
+      LOG_ALL("Loading the genomic sequences.\n");
+      SequenceFile sequences(reference_path);
+      genome_id_to_len_.clear();
+      HashGenomeLengths_(sequences, genome_id_to_len_);
+
+    } else {  // Something went wrong, generate the transcriptome again. This will prepare the headers as well.
       if (ret_load_from_file != 0 && verbose == true) {
         LOG_ALL("Index needs to be rebuilt. It was generated using an older version.\n");
         LOG_DEBUG("ret_load_from_file = %d\n", ret_load_from_file);
@@ -1152,20 +1159,14 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
 
   LoadGTFInfo_(gtf_path);
 
-  // Verbose output for debugging.
-  fprintf (stderr, "Sequence file before transcriptome generation:\n");
+  LOG_ALL("Loading the genomic sequences.\n");
   SequenceFile sequences(sequence_file_path);
-  sequences.Verbose(stderr);
-  fflush(stderr);
 
   // Construct transcriptome sequences
+  LOG_ALL("Constructing the transcriptome sequences.\n");
   SequenceFile transcript_sequences;
   MakeTranscript_(genome_id_to_trans_id_, trans_id_to_exons_, sequences, transcript_sequences);
-
-  // Verbose output for debugging.
-  fprintf (stderr, "Transcribed sequences:\n");
-  transcript_sequences.Verbose(stderr);
-  fflush(stderr);
+  LOG_ALL("In total, there are %ld transcripts.\n", transcript_sequences.get_sequences().size());
 
   // Sanity check.
   if (transcript_sequences.get_sequences().size() == 0) {
@@ -1180,6 +1181,25 @@ int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequen
 //  transcript_sequences.WriteFASTA("test_transcript.fasta");
 
   return GenerateFromSequenceFile(transcript_sequences);
+}
+
+std::string IndexSpacedHashFast::GenerateSAMHeaders() {
+  std::stringstream ss;
+
+  if (is_transcriptome_ == false) {
+    for (int64_t reference_id=0; reference_id<((int64_t) get_num_sequences_forward()); reference_id++) {
+      std::string reference_header = TrimToFirstSpace(std::string(get_headers()[reference_id]));
+      uint64_t reference_length = (uint64_t) get_reference_lengths()[reference_id];
+      ss << "@SQ\t" << "SN:" << reference_header << "\t" << "LN:" << reference_length << "\n";
+    }
+
+  } else {
+    for (auto& g: genome_id_to_len_) {
+      ss << "@SQ\t" << "SN:" << TrimToFirstSpace(g.first) << "\t" << "LN:" << g.second << "\n";
+    }
+  }
+
+  return ss.str();
 }
 
 int IndexSpacedHashFast::MakeRegions_(const std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_exons,

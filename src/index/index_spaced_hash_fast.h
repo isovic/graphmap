@@ -91,6 +91,8 @@ class IndexSpacedHashFast : public Index {
   int InitShapes(std::string shape_for_indexing, std::vector<std::string> &shapes_for_search);
   int FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const;
 
+  std::string GenerateSAMHeaders();
+
   char* get_shape_index() const;
   void set_shape_index(char* shapeIndex);
   int64_t get_shape_index_length() const;

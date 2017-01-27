@@ -478,25 +478,27 @@ std::string GraphMap::GenerateSAMHeader_(ProgramParameters &parameters, Index *i
                "SO:unknown" <<
                "\n";
 
-  for (int64_t reference_id=0; reference_id<((int64_t) index->get_num_sequences_forward()); reference_id++) {
-    std::string reference_header = index->get_headers()[reference_id];
-    uint64_t reference_length = (uint64_t) index->get_reference_lengths()[reference_id];
+  ss_header << ((IndexSpacedHashFast *) index)->GenerateSAMHeaders();
 
-    // If the output is not supposed to be verbose, reference header needs to be trimmed to the ID part (up to the first space).
-    if (parameters.verbose_sam_output < 4) {
-      std::string::size_type loc = reference_header.find(" ", 0);
-      if (loc != std::string::npos) {
-        reference_header = reference_header.substr(0, loc);
-      } else {
-        // There is no spaces in the reference header, do nothing and just report it as is.
-      }
-    }
-
-    ss_header << "@SQ\t" <<
-                "SN:" << reference_header << "\t" <<
-                "LN:" << reference_length << "" <<
-                "\n";
-  }
+//  for (int64_t reference_id=0; reference_id<((int64_t) index->get_num_sequences_forward()); reference_id++) {
+//    std::string reference_header = index->get_headers()[reference_id];
+//    uint64_t reference_length = (uint64_t) index->get_reference_lengths()[reference_id];
+//
+//    // If the output is not supposed to be verbose, reference header needs to be trimmed to the ID part (up to the first space).
+//    if (parameters.verbose_sam_output < 4) {
+//      std::string::size_type loc = reference_header.find(" ", 0);
+//      if (loc != std::string::npos) {
+//        reference_header = reference_header.substr(0, loc);
+//      } else {
+//        // There is no spaces in the reference header, do nothing and just report it as is.
+//      }
+//    }
+//
+//    ss_header << "@SQ\t" <<
+//                "SN:" << reference_header << "\t" <<
+//                "LN:" << reference_length << "" <<
+//                "\n";
+//  }
 
   // If verbose_sam_output == 1, then print out a special version of the PG line. This was used for the web server
   // to omit paths from the output (not to share server sensitive information with users).
