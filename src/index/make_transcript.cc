@@ -32,15 +32,16 @@ int IndexSpacedHashFast::MakeTranscript_(const std::map<std::string, std::vector
 			if(transSeq == "") continue;
 			SingleSequence *s = new SingleSequence;
 
-			auto seqLen = transSeq.size();
-			int8_t *seq = new int8_t[seqLen];
-			std::copy(transSeq.begin(), transSeq.end(), seq);
+//			auto seqLen = transSeq.size();
+//			int8_t *seq = new int8_t[seqLen];
+//			std::vector<int8_t> seq(seqLen);
+//			std::copy(transSeq.begin(), transSeq.end(), &seq[0]);
 
-			auto headerLen = trans.first.size();
-			char *header = new char[headerLen];
-			std::copy(trans.first.begin(), trans.first.end(), header);
+//			auto headerLen = trans.first.size();
+//			char *header = new char[headerLen];
+//			std::copy(trans.first.begin(), trans.first.end(), header);
 
-			s->InitHeaderAndDataFromAscii(header, headerLen, seq, seqLen, id++);
+			s->InitHeaderAndDataFromAscii((char *) &trans.first[0], trans.first.size(), (int8_t *) &transSeq[0], transSeq.length(), id++);
 			if(trans.second == '-') {
 				s->ReverseComplement();
 			}

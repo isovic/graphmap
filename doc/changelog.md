@@ -1,5 +1,9 @@
 ## GraphMap - ChangeLog
 
+**__Version 0.4.0 -> 0.4.1__**  
+Release date: 28 January 2017  
+- Fixed the SAM headers for transcriptome mapping. In the last version, the headers corresponded to the transcriptome headers, although the alignments are in the genome space.
+
 **__Version 0.3.2 -> 0.4.0__**  
 Release date: 22 January 2017  
 - GraphMap can now accept a GTF file for mapping to a transcriptome. Transcriptome is internally generated using the reference file and the GTF file, and index built from the transcriptome. Reads are then mapped to the transcriptome, and final alignments converted back to the genome coordinate space by introducing 'N' operations at splice sites.  

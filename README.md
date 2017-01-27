@@ -1,6 +1,6 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.4.0__**  
-Release date: 22 January 2017  
+**__Current Version: 0.4.1__**  
+Release date: 28 January 2017  
 
 **\*new\* - Mapping to transcriptomes**  
 GraphMap can now accept a GTF file to internally construct a transcriptome sequence from a given reference genome, and map RNA-seq data to it. The final alignments are converted back to genome space by placing ```N``` operations in the CIGAR strings.  
