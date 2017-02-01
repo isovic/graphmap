@@ -488,7 +488,6 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   uint64_t current_ref_id = 0;
 
   /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
-//  int64_t k = shape_index_length_; // shape_max_width_;
   int64_t k = shape_max_width_;
 
   for (uint64_t i = 0; i < (data_length_ - k + 1); i++) {
@@ -501,22 +500,20 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
     if (hash_key < 0)
       continue;
 
-//    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
-//    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
-//    int64_t coded_position = (int64_t) (local_pos << 32) | ref_id;
-//    int64_t reference_index = RawPositionToReferenceIndexWithReverse(i);
     int64_t local_i = ((int64_t) i) - ((int64_t) reference_starting_pos_[current_ref_id]);
     uint64_t local_pos = ((uint64_t) local_i) & ((uint64_t) 0x00000000FFFFFFFF);
     uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
-//    printf ("%ld\t%ld\t\tcurrent_ref_id = %ld, reference_index = %ld, i = %ld, reference_starting_pos_[reference_index] = %ld\n", ref_id, local_pos, current_ref_id, reference_index, i, reference_starting_pos_[reference_index]);
-//    fflush(stdout);
-
-//    uint64_t local_pos = ((uint64_t) (i - reference_starting_pos_[current_ref_id])) & ((uint64_t) 0x00000000FFFFFFFF);
-//    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
     int64_t coded_position = (int64_t) ((ref_id << 32) | local_pos);
 
 //    LOG_DEBUG("%s = %ld = %X, local_pos = %lu\n", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key, local_pos);
-
+    if (hash_key >= num_kmers) {
+      LOG_ALL("ERROR: hash_key >= num_kmers! hash_key = %ld, num_kmers = %ld\n", hash_key, num_kmers);
+      LOG_ALL("  %s = %ld = %X, local_pos = %lu, coded_position = %ld\n", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key, local_pos, coded_position);
+    }
+    if (kmer_countdown[hash_key] < 0 ||  kmer_countdown[hash_key] >= kmer_counts_[hash_key]) {
+      LOG_ALL("ERROR: kmer_countdown[hash_key] is wrong! kmer_countdown[hash_key] = %ld, kmer_counts_[hash_key] = %ld\n", kmer_countdown[hash_key], kmer_counts_[hash_key]);
+      LOG_ALL("  %s = %ld = %X, local_pos = %lu, coded_position = %ld\n", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key, local_pos, coded_position);
+    }
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
     kmer_countdown[hash_key] += 1;
   }
