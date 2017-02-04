@@ -88,6 +88,19 @@ class IndexSpacedHashFast : public Index {
   std::string VerboseToString() const;
   int IsManualCleanupRequired(std::string function_name) const;
 
+  /**
+   * Example usage:
+   * std::string shape_for_indexing_66 = "1111110111111";
+   * std::vector<std::string> shapes_for_search_66 = {"111111111111", "1111110111111", "11111100111111"};
+   *
+   * std::string shape_for_indexing_444 = "11110111101111";
+   * std::vector<std::string> shapes_for_search_444 = {"111111111111",   "1111111101111",    "11111111001111",
+   *                                                   "1111011111111",  "11110111101111",   "111101111001111",
+   *                                                   "11110011111111", "111100111101111",  "1111001111001111"};
+   *
+   * index66.InitShapes(shape_for_indexing_66, shapes_for_search_66);
+   * index444.InitShapes(shape_for_indexing_444, shapes_for_search_444);
+   */
   int InitShapes(std::string shape_for_indexing, std::vector<std::string> &shapes_for_search);
   int FindAllRawPositionsOfSeedKey(int64_t hash_key, int64_t seed_length, uint64_t max_num_of_hits, int64_t **ret_hits, uint64_t *ret_start_hit, uint64_t *ret_num_hits) const;
 
@@ -105,8 +118,6 @@ class IndexSpacedHashFast : public Index {
 //  int64_t RawPositionConverter(int64_t raw_position, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
   int64_t RawPositionConverter2(int64_t raw_position, int64_t query_length, int64_t *ret_absolute_position=NULL, int64_t *ret_relative_position=NULL, SeqOrientation *ret_orientation=NULL, int64_t *ret_reference_index_with_reverse=NULL) const;
 
-  int CalcAllKeysFromSequence(const SingleSequence *read, int64_t kmer_step, std::vector<int64_t> &ret_hash_keys, std::vector<int64_t> &ret_key_counts);
-  int LookUpHashKeys(int64_t bin_size, const SingleSequence *read, const std::vector<int64_t> &hash_keys, const std::vector<int64_t> &key_counts, std::vector<SeedHit3> &ret_hits);
   void CalcPercentileHits(double percentile, int64_t *ret_count, int64_t *ret_max_seed_count=NULL);
 
   // Experimental function, does not copy the hits but only returns the pointers to the buckets.
