@@ -446,6 +446,17 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
       LOG_ALL("ERROR: kmer_countdown[hash_key] is wrong! kmer_countdown[hash_key] = %ld, kmer_counts_[hash_key] = %ld\n", kmer_countdown[hash_key], kmer_counts_[hash_key]);
       LOG_ALL("  %s = %ld = %X, local_pos = %lu, coded_position = %ld\n", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key, local_pos, coded_position);
     }
+
+    if (i % 100000 == 0) {
+      LOG_ALL("[ref_id = %ld, i = %ld / %ld (%.2f%%)] local_i = %ld, local_pos = %lu, ref_id = %lu, coded_position = %ld, num_kmers = %ld\n",
+              current_ref_id, i, (data_length_ - k + 1), ((float) i) / ((float) (data_length_ - k + 1)) * 100.0f, local_i, local_pos, ref_id, coded_position, num_kmers);
+      LOG_NOHEADER("ref_header = %s\n", headers_[current_ref_id % num_sequences_forward_].c_str());
+      LOG_NOHEADER("hash_key: %s = %ld = %X", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key);
+      LOG_NOHEADER(", kmer_counts_[hash_key] = %ld", kmer_counts_[hash_key]);
+      LOG_NOHEADER(", kmer_countdown[hash_key] = %ld", kmer_countdown[hash_key]);
+      LOG_NOHEADER(", kmer_hash_array_[hash_key] = %lu\n\n", ((uint64_t *) kmer_hash_array_[hash_key]));
+    }
+
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
     kmer_countdown[hash_key] += 1;
   }
