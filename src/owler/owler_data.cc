@@ -6,6 +6,7 @@
  */
 
 #include "owler_data.h"
+#include "index/index_spaced_hash_fast.h"
 
 PairwiseOverlapData::PairwiseOverlapData() {
   Init(0, 0, 0, 0);
@@ -92,7 +93,7 @@ void OwlerData::Init(SingleSequence *read, std::vector<Index*> &indexes) {
 //  }
   seed_types.clear();
   for (int64_t i = 0; i < indexes.size(); i++) {
-    seed_types.push_back(((IndexSpacedHash *) indexes[i])->get_shape_index());
+    seed_types.push_back(((IndexSpacedHashFast *) indexes[i])->get_shape_index());
   }
 }
 

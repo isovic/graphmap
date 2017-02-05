@@ -269,6 +269,8 @@ int AlignmentToBasicCigar(unsigned char* alignment, int alignmentLength,
                 } else if (lastMove == 3) {
                     cigar->push_back('X');
 //                    cigar->push_back('M');
+                } else if (lastMove == EDLIB_N) {
+                    cigar->push_back('N');
                 } else if (lastMove == 4) {
                     cigar->push_back('S');
                 } else {
@@ -332,17 +334,19 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
                 }
                 reverse(cigar->end() - numDigits, cigar->end());
                 // Write code of move to cigar string.
-                if (lastMove == 0) {
+                if (lastMove == EDLIB_M || lastMove == EDLIB_EQUAL) {
                     cigar->push_back('=');
 //                    cigar->push_back('M');
-               } else if (lastMove == 1) {
+               } else if (lastMove == EDLIB_I) {
                     cigar->push_back('I');
-                } else if (lastMove == 2) {
+                } else if (lastMove == EDLIB_D) {
                     cigar->push_back('D');
-                } else if (lastMove == 3) {
+                } else if (lastMove == EDLIB_X) {
                     cigar->push_back('X');
 //                    cigar->push_back('M');
-                } else if (lastMove == 4) {
+                } else if (lastMove == EDLIB_N) {
+                    cigar->push_back('N');
+                } else if (lastMove == EDLIB_S) {
                     cigar->push_back('S');
                 } else {
                     delete cigar;
@@ -367,6 +371,71 @@ int AlignmentToExtendedCigar(unsigned char* alignment, int alignmentLength, char
       free(alignment_with_clipping);
 
     return EDLIB_STATUS_OK;
+}
+
+// Converts the alignment array to a more compact CIGAR form, where each CIGAR operation is a std::pair of single-letter operation name and count.
+int AlignmentToExtendedCigarArray(unsigned char* alignment, int alignmentLength, std::vector<CigarOp> &cigar) {
+  cigar.clear();
+
+  std::vector<unsigned char> alignment_with_clipping;
+  alignment_with_clipping.assign(alignment, alignment + alignmentLength);
+  alignment_with_clipping.push_back('\0');
+
+  if (alignment[0] == EDLIB_I || alignment[alignmentLength-1] == EDLIB_I) {
+
+    for (int64_t i=0; i<alignmentLength; i++) {
+      if (alignment_with_clipping[i] == EDLIB_I)
+        alignment_with_clipping[i] = EDLIB_S;
+      else break;
+    }
+    for (int64_t i=(((int64_t) alignmentLength) - 1); i>=0; i--) {
+      if (alignment_with_clipping[i] == EDLIB_I)
+        alignment_with_clipping[i] = EDLIB_S;
+      else break;
+    }
+  }
+
+  unsigned char lastMove = -1;  // Code of last move.
+  int numOfSameMoves = 0;
+  for (int i = 0; i <= alignmentLength; i++) {
+      // if new sequence of same moves started
+      if (i == alignmentLength || alignment_with_clipping[i] != lastMove) {
+          if (i > 0) {  // if previous sequence of same moves ended
+              // Write number of moves to cigar string.
+              char move_op = EdlibOpToCharExtended(lastMove);
+              if (move_op == 0) {
+                return EDLIB_STATUS_ERROR;
+              }
+              CigarOp cigar_op(move_op, numOfSameMoves, 0, 0);
+//              cigar.push_back(std::make_pair(move_op, numOfSameMoves));
+              cigar.push_back(cigar_op);
+          }
+          if (i < alignmentLength) {
+              numOfSameMoves = 0;
+              lastMove = alignment_with_clipping[i];
+          }
+      }
+      numOfSameMoves++;
+  }
+
+  // Initialize reference and read positions.
+  int64_t pos_on_ref = 0;
+  int64_t pos_on_read = 0;
+  for (int64_t i=0; i<cigar.size(); i++) {
+    cigar[i].pos_query = pos_on_read;
+    cigar[i].pos_ref = pos_on_ref;
+
+    if (cigar[i].op == 'M' || cigar[i].op == '=' || cigar[i].op == 'X') {
+      pos_on_read += cigar[i].count;
+      pos_on_ref += cigar[i].count;
+    } else if (cigar[i].op == 'I' || cigar[i].op == 'S') {
+      pos_on_read += cigar[i].count;
+    } else if (cigar[i].op == 'D') {
+      pos_on_ref += cigar[i].count;
+    }
+  }
+
+  return EDLIB_STATUS_OK;
 }
 
 int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLength) {
@@ -525,58 +594,89 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
   return 0;
 }
 
-std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start) {
-  int64_t num_same_moves = 0;
-  int64_t read_position = 0;
-  int64_t ref_position = 0;
+/** MD is a string describing the alignment on the reference from the reference's point of view.
+ * It is composed only of match, mismatch and deletion CIGAR operations, other operations are
+ * ignored (including clipping).
+ * One needs to be careful to add-up matches/mismatches normally separated by I operations, e.g.
+ * for a CIGAR "5=2I3=" the MD would be "8".
+ */
+std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *ref_data, int64_t alignment_position_start) {
+  std::vector<CigarOp> cigar_array;
+  AlignmentToExtendedCigarArray(&alignment[0], alignment.size(), cigar_array);
+//  printf("\n");
+//  for (int32_t i=0; i<alignment.size(); i++) {
+//    printf ("%d", alignment[i]);
+//  }
+//  printf ("\n");
+//  fflush(stdout);
+//  for (int32_t i=0; i<cigar_array.size(); i++) {
+//    printf ("%d%c", cigar_array[i].count, cigar_array[i].op);
+//  }
+//  printf ("\n");
+//  fflush(stdout);
 
-  int64_t num_eq = 0;
-  int64_t num_d = 0;
+  // This loop truncates the CIGAR operations to skip anything but M and D operations.
+  // It keeps track of an offset which points to the last index to where an op was copied.
+  // If the current operation is the same as a previous one, then the count are added-up.
+  int32_t offset = 0;
+  for (int32_t i=0; i<cigar_array.size(); i++) {
+    if (cigar_array[i].op == 'I' || cigar_array[i].op == 'S') {     // I and S should not be counted. Truncate them.
+      offset += 1;
+//      printf ("(if) %d%c, i = %d, offset = %d\n", cigar_array[i].count, cigar_array[i].op, i, offset);
 
-  std::stringstream md;
+    } else if (i > 0 && (i-offset-1) >= 0 && cigar_array[i].op == cigar_array[i-offset-1].op) {  // Handle same operations
+      // The "(i-offset-1) > 0" comes into play when there are leading insertions/soft clips. Prevents invalid reads of size 1.
+      cigar_array[i-offset-1].count += cigar_array[i].count;
+      offset += 1;
+//      printf ("(else if) %d%c, i = %d, offset = %d\n", cigar_array[i].count, cigar_array[i].op, i, offset);
 
-  for (int i = 0; i < alignment.size(); i++) {
-    char align_op = alignment[i];
-
-    if (align_op == EDLIB_S) {
-      num_eq = 0;
-      num_d = 0;
-      continue;
-    }
-
-    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL) {
-      num_eq += 1;
-      num_d = 0;
-      ref_position += 1;
-
-    } else if (align_op == EDLIB_I) {
-      continue;
-
-    } else {
-//      if (num_eq > 0) {
-        md << num_eq; num_eq = 0;
-//      }
-      if (align_op == EDLIB_X) {
-        md << ((char) ref_data[alignment_position_start + ref_position]);
-        num_eq = 0;
-        num_d = 0;
-        ref_position += 1;
-      } else if (align_op == EDLIB_D) {
-        if (num_d == 0) { md << "^"; }
-        md << ((char) ref_data[alignment_position_start + ref_position]);
-        num_eq = 0;
-        num_d += 1;
-        ref_position += 1;
-      } else if (align_op == EDLIB_I) {
-        num_d = 0;
-        num_eq = 0;
-      }
+    } else {      // Just truncate the current op.
+      cigar_array[i-offset] = cigar_array[i];
+//      printf ("(else) %d%c, i = %d, offset = %d\n", cigar_array[i].count, cigar_array[i].op, i, offset);
     }
   }
 
-  if (num_eq > 0) {
-    md << num_eq; num_eq = 0;
-    num_eq = 0;
+  // Offset is the last CIGAR operation that was updated.
+  cigar_array.resize(cigar_array.size() - offset);
+
+//  printf ("cigar_array after trunkating:\n");
+//  for (int32_t i=0; i<cigar_array.size(); i++) {
+//    printf ("%d%c", cigar_array[i].count, cigar_array[i].op);
+//  }
+//  printf ("\n");
+//  fflush(stdout);
+
+  std::stringstream md;
+
+  for (int32_t i=0; i<cigar_array.size(); i++) {
+    int64_t ref_position = cigar_array[i].pos_ref + alignment_position_start;
+//    printf ("[i = %d] cigar_array[i].op = '%c', cigar_array[i].count = %d, cigar_array[i].pos_ref = %d, alignment_position_start = %ld\n", i, cigar_array[i].op, cigar_array[i].count, cigar_array[i].pos_ref, alignment_position_start);
+//    fflush(stdout);
+
+    if (cigar_array[i].op == '=') {
+      md << cigar_array[i].count;
+//      md << "_";
+    } else if (cigar_array[i].op == 'X') {
+//      printf ("  cigar_array[i].op = '%c', cigar_array[i].count = %ld\n", cigar_array[i].op, cigar_array[i].count);
+//      fflush(stdout);
+      for (int32_t j=0; j<cigar_array[i].count; j++) {
+//        printf ("j = %ld, ref_position = %ld, sum = %ld\n", j, ref_position, (ref_position+j));
+//        fflush(stdout);
+        md << ref_data[ref_position + j];
+        if ((j + 1) < cigar_array[i].count) {
+          md << '0';
+        }
+      }
+    } else if (cigar_array[i].op == 'D') {
+      md << '^';
+      for (int32_t j=0; j<cigar_array[i].count; j++) {
+        md << ref_data[ref_position + j];
+      }
+    }
+
+    if ((i + 1) < cigar_array.size() && cigar_array[i].op != '=' && cigar_array[i+1].op != '=') {
+      md << '0';
+    }
   }
 
   return md.str();
@@ -625,4 +725,83 @@ int GetAlignmentPatterns(const unsigned char* query, const int64_t queryLength,
   ret_match_pattern = ss_pattern.str();
 
   return 0;
+}
+
+/* Sometimes the aligner (Edlib) can produce deletions right after/before clipping (insertion operations).
+ * Normally, a combination of I and D would be an M, but if D's follow I's right at the beginning of the read
+ * then they can be removed provided that the start and end reference coordinates of the alignment are moved.
+ */
+void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_t *ref_start, int64_t *ref_end) {
+  // Find the D stretch at the front, if any.
+  int64_t front_start = 0;
+  int64_t front_end = 0;
+  int32_t front_state = alignment[0];
+  for (int64_t i=0; i<alignment.size(); i++) {
+    if (front_state == EDLIB_I) {
+      if (alignment[i] == EDLIB_I) {
+        // Pass.
+      } else if (alignment[i] == EDLIB_S) {
+        // Pass.
+      } else if (alignment[i] == EDLIB_D) {
+        front_start = i;
+        front_end = i + 1;
+        front_state = EDLIB_D;
+      } else {
+        break;
+      }
+    } else if (front_state == EDLIB_D) {
+      if (alignment[i] == EDLIB_D) {
+        front_end = i + 1;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  // Find the D stretch at the front, if any.
+  int64_t back_start = alignment.size();
+  int64_t back_end = alignment.size();
+  int32_t back_state = alignment.back();
+  for (int64_t i=(alignment.size()-1); i>=0; i--) {
+    if (back_state == EDLIB_I) {
+      if (alignment[i] == EDLIB_I) {
+        // Pass.
+      } else if (alignment[i] == EDLIB_S) {
+        // Pass.
+      } else if (alignment[i] == EDLIB_D) {
+        back_end = i + 1;
+        back_start = i;
+        back_state = EDLIB_D;
+      } else {
+        break;
+      }
+    } else if (back_state == EDLIB_D) {
+      if (alignment[i] == EDLIB_D) {
+        back_start = i;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  // Otherwise, no changes should be made.
+  if (front_end > front_start || back_start < back_end) {
+    std::vector<unsigned char> new_alignment;
+
+    if (front_start > 0) {
+      new_alignment.insert(new_alignment.end(), alignment.begin(), (alignment.begin()+front_start));
+    }
+    new_alignment.insert(new_alignment.end(), (alignment.begin() + front_end), (alignment.begin() + back_start));
+    if (back_end < alignment.size()) {
+      new_alignment.insert(new_alignment.end(), (alignment.begin() + back_end), alignment.end());
+    }
+
+    alignment = new_alignment;
+    *ref_start += (front_end - front_start);
+    *ref_end -= (back_end - back_start);
+  }
 }

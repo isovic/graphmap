@@ -1,9 +1,17 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.3.0__**  
-Release date: 15 April 2016  
+**__Current Version: 0.4.1__**  
+Release date: 28 January 2017  
+
+**\*new\* - Mapping to transcriptomes**  
+GraphMap can now accept a GTF file to internally construct a transcriptome sequence from a given reference genome, and map RNA-seq data to it. The final alignments are converted back to genome space by placing ```N``` operations in the CIGAR strings.  
+
+To use the new transcriptome mapping option simply specify a GTF file using the ```--gtf``` option:  
+```graphmap align -r reference.fa --gtf reference.gtf -d reads.fastq -o out.sam```  
 
 **Important**  
-GraphMap's command line has changed significantly - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
+If you are using versions 0.3.x please update to the most recent commit. There were several important memory access issues which are now resolved.  
+
+GraphMap's command line has changed significantly between version 0.3.x and 0.2x - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
 The first parameter is now mandatory, and specifies whether the **mapping/alignment** (```./graphmap align```) or **overlapping** (```./graphmap owler```) should be used.  
 
 For a detailed change log from the previous release, take a look at [doc/changelog.md](doc/changelog.md).  
@@ -32,7 +40,7 @@ git clone https://github.com/isovic/graphmap.git
 cd graphmap  
 make modules  
 make  
-  
+
 # To align:  
 ./bin/Linux-x64/graphmap align -r reference.fa -d reads.fasta -o output.sam  
 
@@ -69,7 +77,9 @@ make modules	# This pulls the latest version of all required submodules
 make
 ```  
 
-You will need a recent GCC/G++ version (>=4.7).
+You will need a recent GCC/G++ version (>=4.7).  
+
+Run ```sudo make install``` to install the graphmap binary to ```/usr/bin```.  
 
 More installation instructions can be found in the [INSTALL.md](INSTALL.md) file.
 
@@ -82,6 +92,12 @@ More installation instructions can be found in the [INSTALL.md](INSTALL.md) file
 # **Overlap** all reads from a given FASTA/FASTQ file and report overlaps in MHAP format (fast):  
 ./graphmap owler -r reads.fa -d reads.fa -o overlaps.mhap  
 
+# **Align** all reads to a transcriptome sequence:  
+./graphmap align -r scerevisiae.fa --gtf scerevisiae.gtf -d reads.fastq -o alignments.sam  
+
+
+# Align all reads and report alignments using the extended CIGAR format.  
+./graphmap align -r escherichia_coli.fa -d reads.fastq -o alignments.sam --extcigar  
 
 # Align all reads from a given FASTA/FASTQ file with default number of threads using semiglobal bit-vector alignment:  
 ./graphmap align -a sg -r escherichia_coli.fa -d reads.fastq -o alignments.sam  
@@ -134,3 +150,5 @@ ivan.sovic@irb.hr, mile.sikic@fer.hr, nagarajann@gis.a-star.edu.sg
 
 ### Acknowledgement  
 This work was supported by the IMaGIN platform (project No. 102 101 0025), through a grant from the Science and Engineering Research Council, funding to the Genome Institute of Singapore from the Agency for Science, Technology and Research (A*STAR), Singapore, and funding from the Croatian Science Foundation (Project no. UIP-11-2013-7353 - Algorithms for Genome Sequence Analysis).  
+
+We would like to acknowledge the contribution of [Ivan Krpelnik](https://github.com/Krpa) for his help and involvement in development of the transcriptome mapping option.

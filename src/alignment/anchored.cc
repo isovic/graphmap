@@ -8,6 +8,8 @@
 #include <alignment/alignment_wrappers.h>
 #include "alignment/alignment.h"
 
+#include "alignment/transcriptome_mod.h"
+
 enum ClusterAlnType {
   kAlnBeginning = 0,
   kAlnCluster = 1,
@@ -51,26 +53,28 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     LOG_DEBUG_SPEC("Performing the alignment.\n");
 
     /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
-    int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
-    int8_t *reversed_ref_front = NULL;
+//    int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
+    std::vector<int8_t> reversed_query_front;
+    reverse_data2(read->get_data(), clip_count_front, reversed_query_front);
+
+//    int8_t *reversed_ref_front = NULL;
+    std::vector<int8_t> reversed_ref_front;
     int64_t reversed_ref_len = 0;
     if (clip_count_front*2  > (alignment_position_start - reference_start)) {
-      reversed_ref_front = reverse_data(ref_data + 0, (alignment_position_start - reference_start));
+      reverse_data2(ref_data + reference_start, (alignment_position_start - reference_start), reversed_ref_front);
       reversed_ref_len = alignment_position_start - reference_start;
     } else {
-      reversed_ref_front = reverse_data(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2);
+      reverse_data2(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2, reversed_ref_front);
       reversed_ref_len = clip_count_front*2;
     }
-
-//    if (clip_count_front == 0 || reversed_ref_len == 0) { return 1; }
 
     int64_t bandwidth = -1;
 //    bandwidth = 0.30f*read->get_sequence_length();
 
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
     std::vector<unsigned char> leftover_left_alignment;
-    int ret_code_right = AlignmentFunctionSHW(reversed_query_front, (clip_count_front),
-                                              (int8_t *) (reversed_ref_front), reversed_ref_len,
+    int ret_code_right = AlignmentFunctionSHW(&reversed_query_front[0], (clip_count_front),
+                                              (int8_t *) (&reversed_ref_front[0]), reversed_ref_len,
                                               bandwidth, parameters->match_score, parameters->mex_score, -parameters->mismatch_penalty, -parameters->gap_open_penalty, -parameters->gap_extend_penalty,
                                               &leftover_left_start, &leftover_left_end,
                                               &leftover_left_edit_distance, leftover_left_alignment);
@@ -80,8 +84,8 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
         std::string alignment_as_string = "";
 
         LOG_DEBUG_SPEC("End of the beginning part of the read: %ld\n", (alignment_position_start - 1) - (clip_count_front*2 - 1));
-        alignment_as_string = PrintAlignmentToString((const unsigned char *) reversed_query_front, clip_count_front,
-                                                     (const unsigned char *) (reversed_ref_front), reversed_ref_len,
+        alignment_as_string = PrintAlignmentToString((const unsigned char *) &reversed_query_front[0], clip_count_front,
+                                                     (const unsigned char *) (&reversed_ref_front[0]), reversed_ref_len,
                                                      (unsigned char *) &(leftover_left_alignment[0]), leftover_left_alignment.size(),
                                                      (0), EDLIB_MODE_SHW);
         LOG_DEBUG_SPEC("Aligning the beginning of the read:\n%s\n", alignment_as_string.c_str());
@@ -130,10 +134,10 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
           free(reversed_alignment);
       }
 
-      if (reversed_query_front)
-        free(reversed_query_front);
-      if (reversed_ref_front)
-        free(reversed_ref_front);
+//      if (reversed_query_front)
+//        free(reversed_query_front);
+//      if (reversed_ref_front)
+//        free(reversed_ref_front);
     }
   }
 
@@ -821,11 +825,22 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
     curr_aln->ref_end = final_aln_pos_end; // % ref_data_len;
 
+    FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
+
+    if (((IndexSpacedHashFast *) index)->is_transcriptome()) {
+      LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
+      ConvertFromTranscriptomeToGenomeAln((IndexSpacedHashFast *) index, curr_aln);
+    }
+
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
     LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->raw_pos_start);
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, index->get_data(), final_aln_pos_start);
+
+//    printf ("final_aln_pos_start = %ld\n", final_aln_pos_start);
+//    printf ("Query:\n%s\nTarget:\n%s\n", GetSubstring((char *) read->get_data(), read->get_data_length()).c_str(), GetSubstring((char *) index->get_data() + final_aln_pos_start, read->get_data_length()).c_str());
+//    fflush(stdout);
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
     CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->raw_pos_start, orientation,
@@ -842,6 +857,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
       LOG_DEBUG_SPEC("Alignment is ok!\n");
     }
 
+    LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
     double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
     double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
     if (error_rate > parameters->max_error_rate) {

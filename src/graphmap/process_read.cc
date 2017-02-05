@@ -541,7 +541,7 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
       num_unmapped_alignments += 1;
       continue;
     }
-    if (ss.str().size() > 0)
+    if (ss.tellp() > 0)
       ss << "\n";
 
     if (parameters->outfmt == "sam") {
@@ -550,6 +550,8 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAFG();
     } else if (parameters->outfmt == "m5") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateM5((num_mapped_alignments == 0), parameters->verbose_sam_output);
+    } else if (parameters->outfmt == "mhap") {
+      ss << mapping_data->final_mapping_ptrs.at(i)->GenerateMHAP((num_mapped_alignments == 0), parameters->verbose_sam_output);
     } else {  // Default to SAM output if the specified format is unknown.
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);
     }
@@ -662,9 +664,15 @@ std::string GraphMap::GenerateUnmappedSamLine_(MappingData *mapping_data, int64_
   ss << SAM_DEFAULT_RNEXT << "\t";
   ss << SAM_DEFAULT_PNEXT << "\t";
   ss << SAM_DEFAULT_TLEN << "\t";
-  ss << read->get_data() << "\t";
 
-  if (verbose_sam_output < 5 && read->get_quality_length() > 0 && read->get_quality() != NULL) {
+  if (read->get_data_length() > 0) {
+    ss << read->get_data() << "\t";
+  } else {
+    ss << "*\t";
+  }
+
+  if (verbose_sam_output < 5 && read->get_quality_length() > 0 &&
+      read->get_quality() != NULL) {
     ss << read->get_quality() << "\t";
   } else {
     ss << "*" << "\t";

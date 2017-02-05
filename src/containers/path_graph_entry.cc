@@ -297,7 +297,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
 
   std::string qname = ((std::string) (read_->get_header()));
   std::string qname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(qname)) : (qname);
-  std::string rname = region_info_.rname;
+  std::string rname = alignment_info.ref_header; // region_info_.rname;
   std::string rname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(rname)) : (rname);
 
   uint32_t reverse = (alignment_info.is_reverse == false) ? 0 : SAM_THIS_SEG_REVERSED;
@@ -320,18 +320,28 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << tlen << "\t";
 
   if (alignment_info.is_reverse == false) {
-    ss << read_->get_data() << "\t";
+    if (read_->get_data_length() > 0) {
+      ss << read_->get_data() << "\t";
+    } else {
+      ss << "*\t";
+    }
 
-    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 && read_->get_quality() != NULL) {
+    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 &&
+        read_->get_quality() != NULL) {
       ss << read_->get_quality() << "\t";
     } else {
       ss << "*" << "\t";
     }
 
   } else {
-    ss << read_->GetReverseComplementAsString() << "\t";
+    if (read_->get_data_length() > 0) {
+      ss << read_->GetReverseComplementAsString() << "\t";
+    } else {
+      ss << "*\t";
+    }
 
-    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 && read_->get_quality() != NULL) {
+    if (verbose_sam_output < 5 && read_->get_quality_length() > 0 &&
+        read_->get_quality() != NULL) {
       ss << read_->GetReverseQualityAsString() << "\t";
     } else {
       ss << "*" << "\t";
@@ -521,7 +531,7 @@ std::string PathGraphEntry::GenerateM5FromInfoAlignment_(const AlignmentResults 
   ss << qname_for_out << " ";
   ss << qlen << " ";
   ss << alignment_info.query_start << " ";
-  ss << alignment_info.query_end << " ";
+  ss << alignment_info.query_end  << " ";
   ss << ((alignment_info.orientation == kForward) ? "+" : "-") << " ";
 
   ss << rname_for_out << " ";
@@ -539,6 +549,65 @@ std::string PathGraphEntry::GenerateM5FromInfoAlignment_(const AlignmentResults 
   ss << aligned_q << " ";
   ss << match_pattern << " ";
   ss << aligned_t;
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateMHAP(bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  for (int64_t i=0; i<alignments_.size(); i++) {
+    if (alignments_[i].is_aligned == true) {
+      if (i > 0) { ss << "\n"; }
+      ss << GenerateMHAPFromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
+    }
+  }
+
+  return ss.str();
+}
+
+std::string PathGraphEntry::GenerateMHAPFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
+  std::stringstream ss;
+
+  float jaccard_score = ((float) alignment_info.nonclipped_length) / ((float) alignment_info.num_eq_ops);
+  int64_t shared_minmers = alignment_info.num_eq_ops;
+
+  ss << (read_->get_sequence_absolute_id() + 1) << " ";
+  ss << (alignment_info.ref_id + 1) << " ";
+  ss << jaccard_score << " ";
+  ss << shared_minmers << " ";
+
+  if (alignment_info.orientation == kForward) {
+    ss << 0 << " ";
+    ss << alignment_info.query_start << " ";
+    ss << alignment_info.query_end << " ";
+    ss << alignment_info.query_len << " ";
+
+    ss << 0 << " ";
+    ss << alignment_info.ref_start << " ";
+    ss << alignment_info.ref_end << " ";
+    ss << alignment_info.ref_len;
+  } else {
+    ss << 0 << " ";
+    ss << (alignment_info.query_len - alignment_info.query_end - 1) << " ";
+    ss << (alignment_info.query_len - alignment_info.query_start - 1) << " ";
+    ss << alignment_info.query_len << " ";
+
+    ss << 1 << " ";
+    ss << alignment_info.ref_start << " ";
+    ss << alignment_info.ref_end << " ";
+    ss << alignment_info.ref_len;
+  }
+
+//  ss << ((alignment_info.orientation == kForward) ? 0 : 1) << " ";  /// A is reverse
+//  ss << alignment_info.query_start << " ";
+//  ss << alignment_info.query_end << " ";
+//  ss << alignment_info.query_len << " ";
+//
+//  ss << 0 << " ";
+//  ss << alignment_info.ref_start << " ";
+//  ss << alignment_info.ref_end << " ";
+//  ss << alignment_info.ref_len;
 
   return ss.str();
 }

@@ -15,7 +15,8 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   ArgumentParser argparser;
 
-  argparser.AddCompositeArgument("illumina", "-a gotoh -w normal -M 5 -X 4 -G 8 -E 6");
+  argparser.AddCompositeArgument("illumina", "-a anchorgotoh -w normal -M 5 -X 4 -G 8 -E 6");
+//  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
   argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 #ifndef RELEASE_VERSION
   argparser.AddCompositeArgument("rnaseq", "--ambiguity 0.5 --secondary --min-bin-perc 0.01 --bin-step 0.99 --max-regions 20 --mapq -1 --spliced");
@@ -28,6 +29,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->reads_path, VALUE_TYPE_STRING, "d", "reads", "", "Path to the reads file.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->out_sam_path, VALUE_TYPE_STRING, "o", "out", "", "Path to the output file that will be generated.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->gtf_path, VALUE_TYPE_STRING, "", "gtf", "", "Path to a General Transfer Format file. If specified, a transcriptome will be built from the reference sequence and used for mapping. Output SAM alignments will be in genome space (not transcriptome).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->infmt, VALUE_TYPE_STRING, "K", "in-fmt", "auto", "Format in which to input reads. Options are:\n auto  - Determines the format automatically from file extension.\n fastq - Loads FASTQ or FASTA files.\n fasta - Loads FASTQ or FASTA files.\n gfa   - Graphical Fragment Assembly format.\n sam   - Sequence Alignment/Mapping format.", 0, "Input/Output options");
 //  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
   argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.", 0, "Input/Output options");
@@ -46,9 +48,9 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n sg       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n sggotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with Gotoh.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
-#ifndef RELEASE_VERSION
-  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "approach", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n spliced            - Spliced alignment. Every cluster of anchors is aligned independently.\n (Currently no other options are provided. This is a placeholder for future features, such as cDNA mapping)", 0, "Alignment options");
-#endif
+//#ifndef RELEASE_VERSION
+  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "approach", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n (Currently no other options are provided. This is a placeholder for future features, such as cDNA mapping)", 0, "Alignment options");
+//#endif
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "normal", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n normal         - Normal alignment of reads to the reference.\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.", 0, "Alignment options");
   argparser.AddArgument(&parameters->overlapper, VALUE_TYPE_BOOL, "", "overlapper", "0", "Perform overlapping instead of mapping. Skips self-hits if reads and reference files contain same sequences, and outputs lenient secondary alignments.", 0, "Alignment options");
   argparser.AddArgument(&parameters->no_self_hits, VALUE_TYPE_BOOL, "", "no-self-hits", "0", "Similar to overlapper, but skips mapping of sequences with same headers. Same sequences can be located on different paths, and their overlap still skipped.", 0, "Alignment options");
@@ -115,7 +117,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
     std::stringstream ss;
-    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n", SOFTWARE_NAME;
+    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n" << SOFTWARE_NAME << " ";
     ss << "Version: " <<  GRAPHMAP_CURRENT_VERSION << "\n";
     ss << "Build date: " <<  std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE).c_str() << "\n";
     ss << "\n";
@@ -169,7 +171,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
     fprintf (stderr, "\n");
     VerboseShortHelpAndExit(argc, argv);
   }
-  if (!fileExists(parameters->reads_path.c_str())) {
+  if (parameters->calc_only_index == false && !fileExists(parameters->reads_path.c_str())) {
     fprintf (stderr, "Reads file does not exist: '%s'\n\n", parameters->reads_path.c_str());
     VerboseShortHelpAndExit(argc, argv);
   }
@@ -196,6 +198,12 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   if (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh" &&
       parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex") {
     fprintf (stderr, "Unknown alignment algorithm '%s'!\n\n", parameters->alignment_algorithm.c_str());
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
+  if (parameters->gtf_path.size() > 0 &&
+      (parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex")) {
+    fprintf (stderr, "Transcriptome mapping currently available only in anchored alignment mode.\n\n", parameters->alignment_algorithm.c_str());
     VerboseShortHelpAndExit(argc, argv);
   }
 
@@ -262,7 +270,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   /// Check if help was triggered.
   if (argparser.GetArgumentByLongName("help")->is_set == true) {
     std::stringstream ss;
-    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n", SOFTWARE_NAME;
+    ss << SOFTWARE_NAME << " - A very accurate and sensitive long-read, high error-rate sequence mapper\n" << SOFTWARE_NAME << " ";
     ss << "Version: " <<  GRAPHMAP_CURRENT_VERSION << "\n";
     ss << "Build date: " <<  std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE).c_str() << "\n";
     ss << "\n";

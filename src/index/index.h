@@ -12,82 +12,19 @@
 #include <stdlib.h>
 #include <string>
 #include <iostream>
+#include <cmath>
 #include "sequences/sequence_file.h"
 #include "utility/utility_general.h"
 #include "utility/utility_conversion-inl.h"
 
 
 
-#define INDEX_VERSION     ((int64_t) 8)
+// #define INDEX_VERSION     ((int64_t) 8)
+// Version 9: Added is_transcriptome_ value.
+#define INDEX_VERSION     ((int64_t) 9)
 
 #define SHAPE_TYPE_444  0
 #define SHAPE_TYPE_66    1
-
-
-
-//class IndexChunk {
-// public:
-//  std::string designator;
-//  int64_t dlen;
-//  int8_t *chunk_data;
-//
-//  IndexChunk() {
-//    designator = std::string("");
-//    dlen = 0;
-//    chunk_data = NULL;
-//  }
-//
-//  ~IndexChunk() {
-//    if (chunk_data)
-//      free(chunk_data);
-//    chunk_data = NULL;
-//  }
-//
-//  void Clear() {
-//    designator = std::string("");
-//    dlen = 0;
-//    if (chunk_data)
-//      free(chunk_data);
-//    chunk_data = NULL;
-//  }
-//
-//  static int GetChunk(FILE *fp_in, IndexChunk &ret_chunk) {
-//    ret_chunk.Clear();
-//
-//    char chunk_designator[9];
-//    if (fread(chunk_designator, sizeof(char), 8, fp_in) != 8) {
-//      return 1;
-//    }
-//    chunk_designator[8] = '\0';
-//    ret_chunk.designator = std::string(chunk_designator);
-//
-//    if (fread(&ret_chunk.dlen, sizeof(ret_chunk.dlen), 1, fp_in) != 1) {
-//      return 2;
-//    }
-//
-//    ret_chunk.chunk_data = (int8_t *) calloc(ret_chunk.dlen, sizeof(int8_t));
-//    if (fread(&ret_chunk.chunk_data, sizeof(int8_t), ret_chunk.dlen, fp_in) != 1) {
-//      return 3;
-//    }
-//
-//    return 0;
-//  }
-//
-//  static int WriteChunk(FILE *fp_out, std::string out_designator, int64_t out_dlen, int8_t *out_data) {
-//    if (out_designator.size() > 8) {
-//      out_designator = out_designator.substr(0, 8);
-//    } else if (out_designator.size() < 8) {
-//      int num_empty_chars = 8 - out_designator.size();
-//      out_designator += std::string(num_empty_chars, ' ');
-//    }
-//
-//    fwrite(((int8_t *) out_designator.c_str()), sizeof(int8_t), 8, fp_out);
-//    fwrite(&out_dlen, sizeof(out_dlen), 1, fp_out);
-//    fwrite(out_data, sizeof(out_data), out_dlen, fp_out);
-//
-//    return 0;
-//  }
-//};
 
 class Index {
  public:

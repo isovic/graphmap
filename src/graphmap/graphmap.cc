@@ -189,16 +189,32 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     if (fp == NULL) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
     } else {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index already exists. Loading from file.\n"), "Index");
       fclose (fp);
+      if (parameters.rebuild_index == false) {
+        LOG_ALL("Index already exists. Loading from file.\n");
+      } else {
+        LOG_ALL("Index already exists, but will be rebuilt.\n");
+      }
     }
 
     // Check whether the index needs to be rebuilt, or if it can only be loaded.
     if (parameters.rebuild_index == false) {
-      int prim_index_loaded = index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
+      int prim_index_loaded = 0;
+      if (parameters.gtf_path == "") {
+        index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
+      } else {
+        index_prim->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file, (parameters.verbose_level > 0));
+      }
+
       if (prim_index_loaded) { return 1; }
     } else {
-      int prim_index_generated = index_prim->GenerateFromFile(parameters.reference_path);
+      int prim_index_generated = 0;
+      if (parameters.gtf_path == "") {
+        index_prim->GenerateFromFile(parameters.reference_path);
+      } else {
+        index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+      }
+
       int prim_index_stored = index_prim->StoreToFile(parameters.index_file);
       if (prim_index_generated || prim_index_stored) { return 1; }
     }
@@ -213,10 +229,20 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
       }
 
       if (parameters.rebuild_index == false) {
-        int sec_index_loaded = index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+        int sec_index_loaded = 0;
+        if (parameters.gtf_path == "") {
+          index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+        } else {
+          index_sec->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+        }
         if (sec_index_loaded) { return 1; }
       } else {
-        int sec_index_generated = index_sec->GenerateFromFile(parameters.reference_path);
+        int sec_index_generated = 0;
+        if (parameters.gtf_path == "") {
+          index_sec->GenerateFromFile(parameters.reference_path);
+        } else {
+          index_sec->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+        }
         int sec_index_stored = index_sec->StoreToFile(parameters.index_file + std::string("sec"));
         if (sec_index_generated || sec_index_stored) { return 1; }
       }
@@ -228,7 +254,12 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   } else {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
 
-    index_prim->GenerateFromFile(parameters.reference_path);
+    if (parameters.gtf_path == "") {
+      index_prim->GenerateFromFile(parameters.reference_path);
+    } else {
+      index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+    }
+
     index_prim->StoreToFile(parameters.index_file);
 
     if (parameters.sensitive_mode == true) {
@@ -348,8 +379,6 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
           ((LogSystem::GetInstance().PROGRAM_VERBOSE_LEVEL & VERBOSE_FREQ_HIGH))) {
 
         std::stringstream ss;
-//        if (parameters->verbose_level > 6 && parameters->num_threads == 1)
-//              ss << "\n";
         ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld], length = %ld, qname: ",
                            (((float) (clock() - (*last_time)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
                            i, reads->get_sequences().size(), ((float) i) / ((float) reads->get_sequences().size()) * 100.0f,
@@ -397,8 +426,10 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
 
     // If the order of the reads should be kept, store them in a vector, otherwise output the alignment to file.
     if (parameters->output_in_original_order == false) {
-      #pragma omp critical
-      fprintf (fp_out, "%s\n", sam_line.c_str());
+      if (sam_line.size() > 0) {
+        #pragma omp critical
+        fprintf (fp_out, "%s\n", sam_line.c_str());
+      }
     }
     else {
       #pragma omp critical
@@ -442,28 +473,30 @@ std::string GraphMap::GenerateSAMHeader_(ProgramParameters &parameters, Index *i
 
   ss_header << "@HD\t" <<
                "VN:1.0\t" <<
-               "SO:unknown\t" <<
+               "SO:unknown" <<
                "\n";
 
-  for (int64_t reference_id=0; reference_id<((int64_t) index->get_num_sequences_forward()); reference_id++) {
-    std::string reference_header = index->get_headers()[reference_id];
-    uint64_t reference_length = (uint64_t) index->get_reference_lengths()[reference_id];
+  ss_header << ((IndexSpacedHashFast *) index)->GenerateSAMHeaders();
 
-    // If the output is not supposed to be verbose, reference header needs to be trimmed to the ID part (up to the first space).
-    if (parameters.verbose_sam_output < 4) {
-      std::string::size_type loc = reference_header.find(" ", 0);
-      if (loc != std::string::npos) {
-        reference_header = reference_header.substr(0, loc);
-      } else {
-        // There is no spaces in the reference header, do nothing and just report it as is.
-      }
-    }
-
-    ss_header << "@SQ\t" <<
-                "SN:" << reference_header << "\t" <<
-                "LN:" << reference_length << "" <<
-                "\n";
-  }
+//  for (int64_t reference_id=0; reference_id<((int64_t) index->get_num_sequences_forward()); reference_id++) {
+//    std::string reference_header = index->get_headers()[reference_id];
+//    uint64_t reference_length = (uint64_t) index->get_reference_lengths()[reference_id];
+//
+//    // If the output is not supposed to be verbose, reference header needs to be trimmed to the ID part (up to the first space).
+//    if (parameters.verbose_sam_output < 4) {
+//      std::string::size_type loc = reference_header.find(" ", 0);
+//      if (loc != std::string::npos) {
+//        reference_header = reference_header.substr(0, loc);
+//      } else {
+//        // There is no spaces in the reference header, do nothing and just report it as is.
+//      }
+//    }
+//
+//    ss_header << "@SQ\t" <<
+//                "SN:" << reference_header << "\t" <<
+//                "LN:" << reference_length << "" <<
+//                "\n";
+//  }
 
   // If verbose_sam_output == 1, then print out a special version of the PG line. This was used for the web server
   // to omit paths from the output (not to share server sensitive information with users).

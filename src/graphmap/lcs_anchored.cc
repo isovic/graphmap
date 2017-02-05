@@ -37,16 +37,31 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   std::vector<int> first_filtered_lcskpp_indices;
   std::vector<int> second_filtered_lcskpp_indices;
 
-  FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+  // Parameters for anchor filtering.
+  double indel_bandwidth_margin = parameters->error_rate/2 + 0.01f;
+  int32_t max_dist = 200;
+  int64_t min_covered_bases = 50; // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
+  int64_t cluster_size_cutoff = 2; // TODO: need to experiment with this. 1; // 2
+  FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, indel_bandwidth_margin, max_dist, 0, min_covered_bases, cluster_size_cutoff, first_filtered_lcskpp_indices, NULL);
   FilterAnchorsByDiff(read, local_score, parameters, first_filtered_lcskpp_indices, second_filtered_lcskpp_indices);
-  GenerateClusters(2, 50, 50, 0.0, second_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+//  FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);
+//  FilterAnchorsByDiff(read, local_score, parameters, first_filtered_lcskpp_indices, second_filtered_lcskpp_indices);
+
+  // Parameters for cluster filtering.
+  int64_t min_num_anchors_in_cluster = 2; // TODO: need to experiment with this. 1; // 2;
+  int64_t min_cluster_length = min_covered_bases; // 50;
+  int64_t min_cluster_covered_bases = min_cluster_length; // 50;
+  float min_cluster_coverage = 0.0f;
+  GenerateClusters(min_num_anchors_in_cluster, min_cluster_length, min_cluster_covered_bases, min_cluster_coverage,
+                   second_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
+//  GenerateClusters(2, 50, 50, 0.0, second_filtered_lcskpp_indices, local_score, mapping_data, indexes, read, parameters, clusters, cluster_indices, &cluster_ids);
 
   // Find the L1 parameters (median line and the confidence intervals).
   float l_diff = read->get_sequence_length() * parameters->error_rate;
   float maximum_allowed_deviation = l_diff * sqrt(2.0f) / 2.0f;
   float sigma_L2 = 0.0f, confidence_L1 = 0.0f;
   int64_t k = 0, l = 0;
-  // Actuall L1 calculation.
+  // Actual L1 calculation.
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, cluster_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
   if (ret_L1) {

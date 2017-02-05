@@ -8,6 +8,11 @@
 #ifndef SRC_CONTAINERS_RESULTS_H_
 #define SRC_CONTAINERS_RESULTS_H_
 
+#include <stdint.h>
+#include <string>
+#include "containers/range.h"
+#include "utility/utility_general.h"
+
 
 
 typedef struct Cluster {

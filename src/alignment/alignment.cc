@@ -76,6 +76,8 @@ void VerboseAlignment(const SingleSequence *read, const Index *index, const Prog
        aln->raw_pos_start, aln->raw_pos_end, aln->edit_distance);
     LOG_DEBUG_SPEC("Alignment:\n%s\n",
        alignment_as_string.c_str());
+    LOG_DEBUG_SPEC("MD string:\n%s\n\n", aln->md.c_str());
+    LOG_DEBUG_SPEC("CIGAR string:\n%s\n\n", aln->cigar.c_str());
     LOG_DEBUG_SPEC("\nref_start = %ld\nref_end = %ld\nraw_pos_start = %ld\nraw_pos_end = %ld\nquery_start = %ld\nquery_end = %ld\nreg_pos_start = %ld\nreg_pos_end = %ld\norientation = %s\nread_len = %ld\nis_aligned = %s\n",
                    aln->ref_start, aln->ref_end, aln->raw_pos_start, aln->raw_pos_end, aln->query_start, aln->query_end, aln->reg_pos_start, aln->reg_pos_end, (aln->orientation == kForward) ? "fwd" : "rev", read->get_sequence_length(), (aln->is_aligned == true) ? "true" : "false");
   }

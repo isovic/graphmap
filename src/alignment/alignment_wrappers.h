@@ -92,7 +92,7 @@ int SeqAnSemiglobalWrapperWithMyersLocalization(const int8_t *read_data, int64_t
 int MyersEditDistanceWrapper(const int8_t *read_data, int64_t read_length,
                              const int8_t *reference_data, int64_t reference_length,
                              int64_t *ret_alignment_position_end,
-                             int64_t *ret_edit_distance, int myers_mode_code=EDLIB_MODE_HW);
+                             int64_t *ret_edit_distance, EdlibAlignMode edlib_mode_code=EDLIB_MODE_HW);
 
 int SeqAnNWWrapper(const int8_t *read_data, int64_t read_length,
                            const int8_t *reference_data, int64_t reference_length,

@@ -60,6 +60,7 @@ IndexSpacedHashFast::IndexSpacedHashFast() {
   kmer_counts_ = NULL;
   all_kmers_ = NULL;
   shape_index_ = NULL;
+  is_transcriptome_ = false;
 
   Clear();
 
@@ -95,6 +96,7 @@ IndexSpacedHashFast::IndexSpacedHashFast(uint32_t shape_type) {
   kmer_counts_ = NULL;
   all_kmers_ = NULL;
   shape_index_ = NULL;
+  is_transcriptome_ = false;
 
   Clear();
 
@@ -136,6 +138,11 @@ void IndexSpacedHashFast::Clear() {
 
   num_kmers_ = 0;
   all_kmers_size_ = 0;
+
+//  genome_id_to_trans_id_.clear();
+//  trans_id_to_exons_.clear();
+//  trans_id_to_regions_.clear();
+//  is_transcriptome_ = false;
 }
 
 int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *shape, int64_t shape_length) const {
@@ -156,15 +163,17 @@ int64_t IndexSpacedHashFast::GenerateHashKeyFromShape(int8_t *seed, const char *
   return ((int64_t) ret);
 }
 
-void IndexSpacedHashFast::CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const {  // std::vector<int64_t> &ret_kmer_counts) {
+void IndexSpacedHashFast::CountKmersFromShape(int8_t *sequence_data, int64_t sequence_length, const char *shape, int64_t shape_length, int64_t shape_max_width, int64_t **ret_kmer_counts, int64_t *ret_num_kmers) const {  // std::vector<int64_t> &ret_kmer_counts) {
   int64_t hash_key = -1;
 
 //  ret_kmer_counts.resize(std::pow(2, (2 * k)));
   int64_t num_kmers = CalcNumHashKeysFromShape(shape, shape_length);
   int64_t *kmer_counts = (int64_t *) calloc(sizeof(int64_t), num_kmers);
 
-  for (uint64_t i = 0; i < (sequence_length - shape_length + 1); i++) {
+  for (uint64_t i = 0; i < (sequence_length - shape_max_width + 1); i++) {
     int8_t *seed_start = &(sequence_data[i]);
+//    printf ("shape = '%s', shape_length = %ld, shape_max_width = %ld, i = %ld, sequence_length = %ld\n", shape, shape_length, shape_max_width, i, sequence_length);
+//    fflush(stdout);
     hash_key = GenerateHashKeyFromShape(seed_start, shape, shape_length);
 
     if (hash_key < 0)
@@ -268,8 +277,11 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t 
   seed_length = shape_index_length_;
   ret_hits.clear();
   ret_num_hits.clear();
-  ret_hits.resize(shapes_lookup_.size(), NULL);
-  ret_num_hits.resize(shapes_lookup_.size(), 0);
+//  ret_hits.resize(shapes_lookup_.size(), NULL);
+//  ret_num_hits.resize(shapes_lookup_.size(), 0);
+
+//  printf ("seed = '%s'\n", GetSubstring((char *) seed, seed_length).c_str());
+//  fflush(stdout);
 
   int64_t total_num_hits = 0;
   for (int64_t i = 0; i < shapes_lookup_.size(); i++) {
@@ -278,9 +290,9 @@ int IndexSpacedHashFast::FindAllRawPositionsOfSeedNoCopy(int8_t *seed, uint64_t 
       continue;
     }
 
-    ret_hits[i] = &kmer_hash_array_[hash_key][0];
-    ret_num_hits[i] = kmer_counts_[hash_key];
-    total_num_hits += ret_num_hits[i];
+    ret_hits.push_back(&kmer_hash_array_[hash_key][0]);
+    ret_num_hits.push_back(kmer_counts_[hash_key]);
+    total_num_hits += ret_num_hits.back();
   }
 
   if (total_num_hits == 0) {
@@ -443,7 +455,7 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Index shape: '%s', length: %ld.\n", shape_index_, shape_index_length_), "CreateIndex_");
 
   int64_t num_kmers = 0;
-  CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, &kmer_counts_, &num_kmers);
+  CountKmersFromShape(data_, data_length_, shape_index_, shape_index_length_, shape_max_width_, &kmer_counts_, &num_kmers);
   int64_t *kmer_countdown = (int64_t *) malloc(sizeof(int64_t) * num_kmers);
   memmove(kmer_countdown, kmer_counts_, sizeof(int64_t) * num_kmers);
   num_kmers_ = num_kmers;
@@ -476,10 +488,8 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
   uint64_t current_ref_id = 0;
 
   /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
-  int64_t k = 0;
-  for (int32_t i = 0; i < shape_index_length_; i++) {
-    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
-  }
+//  int64_t k = shape_index_length_; // shape_max_width_;
+  int64_t k = shape_max_width_;
 
   for (uint64_t i = 0; i < (data_length_ - k + 1); i++) {
     if (i >= (reference_starting_pos_[current_ref_id] + reference_lengths_[current_ref_id]))
@@ -487,8 +497,6 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 
     int8_t *seed_start = &(data_[i]);
     hash_key = GenerateHashKeyFromShape(seed_start, shape_index_, shape_index_length_);
-
-//    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("%s = %ld = %X\n", GetSubstring((char *) seed_start, k_).c_str(), hash_key, hash_key), "[]");
 
     if (hash_key < 0)
       continue;
@@ -507,6 +515,8 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 //    uint64_t ref_id = ((uint64_t) current_ref_id) & ((uint64_t) 0x00000000FFFFFFFF);
     int64_t coded_position = (int64_t) ((ref_id << 32) | local_pos);
 
+//    LOG_DEBUG("%s = %ld = %X, local_pos = %lu\n", GetSubstring((char *) seed_start, k).c_str(), hash_key, hash_key, local_pos);
+
     kmer_hash_array_[hash_key][kmer_countdown[hash_key]] = coded_position;
     kmer_countdown[hash_key] += 1;
   }
@@ -524,6 +534,9 @@ int IndexSpacedHashFast::CreateIndex_(int8_t *data, uint64_t data_length) {
 
 int IndexSpacedHashFast::SerializeIndex_(FILE* fp_out) {
   int64_t vector_length = 0;
+
+  fwrite(&is_transcriptome_, sizeof(bool), 1, fp_out);
+
   fwrite(&shape_index_length_, sizeof(int64_t), 1, fp_out);
   fwrite(shape_index_, sizeof(char), shape_index_length_, fp_out);
 
@@ -559,11 +572,20 @@ void IndexSpacedHashFast::set_shape_index_length(int64_t shapeIndexLength) {
   shape_index_length_ = shapeIndexLength;
 }
 
+int64_t IndexSpacedHashFast::get_shape_max_width() const {
+  return shape_max_width_;
+}
+
+void IndexSpacedHashFast::set_shape_max_width(int64_t shape_max_width) {
+  shape_max_width_ = shape_max_width;
+}
+
 int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
   if (shape_index_)
     free(shape_index_);
   shape_index_ = NULL;
   shape_index_length_ = 0;
+  shape_max_width_ = 0;
   if (kmer_hash_array_)
     free(kmer_hash_array_);
   kmer_hash_array_ = NULL;
@@ -576,15 +598,15 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
 
   int64_t vector_length = 0;
 
-  LogSystem::GetInstance().Log(
-  VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
-                                      true, FormatString("\t- k_...\n"), "DeserializeIndex_");
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- is_transcriptome_...\n"), "DeserializeIndex_");
+  if (fread(&is_transcriptome_, sizeof(bool), 1, fp_in) != 1) {
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable is_transcriptome_."));
+    return 1;
+  }
+
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("\t- k_...\n"), "DeserializeIndex_");
   if (fread(&shape_index_length_, sizeof(int64_t), 1, fp_in) != 1) {
-    LogSystem::GetInstance().Error(
-    SEVERITY_INT_FATAL,
-                                 __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(
-                                 ERR_FILE_READ_DATA,
-                                                                                             "Occured when reading variable shape_index_length_."));
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FILE_READ_DATA, "Occured when reading variable shape_index_length_."));
     return 1;
   }
 
@@ -598,6 +620,12 @@ int IndexSpacedHashFast::DeserializeIndex_(FILE* fp_in) {
     return 1;
   }
   shape_index_[shape_index_length_] = '\0';
+
+  // Calculate the max width (each gap can consume two spaces).
+  shape_max_width_ = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    shape_max_width_ += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
 
   LogSystem::GetInstance().Log(
   VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG,
@@ -780,6 +808,7 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
   }
 
   shape_index_length_ = shape_for_indexing.size();
+
   shape_index_ = (char *) malloc(sizeof(char) * (shape_index_length_ + 1));
   memmove(shape_index_, shape_for_indexing.c_str(), shape_index_length_);
   shape_index_[shape_index_length_] = '\0';
@@ -789,6 +818,12 @@ int IndexSpacedHashFast::InitShapesPredefined(uint32_t shape_type) {
   compiled_seeds_.clear();
   for (int32_t i = 0; i < shapes_for_search.size(); i++) {
     compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
+  }
+
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  shape_max_width_ = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    shape_max_width_ += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
   }
 
   return 0;
@@ -818,6 +853,12 @@ int IndexSpacedHashFast::InitShapes(std::string shape_for_indexing, std::vector<
     compiled_seeds_.push_back(CompiledSeed(shapes_for_search[i]));
   }
 
+  /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
+  shape_max_width_ = 0;
+  for (int32_t i = 0; i < shape_index_length_; i++) {
+    shape_max_width_ += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+  }
+
   return 0;
 }
 
@@ -825,10 +866,10 @@ int IndexSpacedHashFast::CalcAllKeysFromSequence(const SingleSequence *read, int
   int64_t read_length = read->get_sequence_length();
 
   /// Calculate the largest gapped spaced seed length, so we don't step out of boundaries of the read.
-  int64_t k = 0;
-  for (int32_t i = 0; i < shape_index_length_; i++) {
-    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
-  }
+  int64_t k = shape_max_width_; // 0;
+//  for (int32_t i = 0; i < shape_index_length_; i++) {
+//    k += ((shape_index_[i] == '1') ? 1 : 2);  /// '0' can also mean an insertion, so it can occupy two bases instead of one.
+//  }
 
   /// Calculate all the hash keys.
   std::vector<unsigned __int128> hash_keys_with_pos;
@@ -1003,6 +1044,191 @@ int IndexSpacedHashFast::LookUpHashKeys(int64_t bin_size, const SingleSequence *
 //    printf ("[%ld] ref_id = %ld, y = %ld, x = %ld\n", i, ret_hits[i].ref_id, ret_hits[i].y, ret_hits[i].x);
 //    fflush(stdout);
 //  }
+
+  return 0;
+}
+
+
+
+
+bool IndexSpacedHashFast::is_transcriptome() const {
+  return is_transcriptome_;
+}
+
+int IndexSpacedHashFast::LoadOrGenerate(std::string reference_path, std::string out_index_path, bool verbose) {
+  FILE *fp=NULL;
+  fp = fopen(out_index_path.c_str(), "r");
+  if (fp != NULL) {
+    fclose(fp);
+    int ret_load_from_file = this->LoadFromFile(out_index_path);
+
+    if (ret_load_from_file != 0 || is_transcriptome_ == true) {
+      if (ret_load_from_file != 0 && verbose == true) {
+        LOG_ALL("Index needs to be rebuilt. It was generated using an older version.\n");
+        LOG_DEBUG("ret_load_from_file = %d\n", ret_load_from_file);
+      }
+      if (is_transcriptome_ == true && verbose == true) {
+        LOG_ALL("Existing index is a transcriptome, and you are trying to map to a genome. Index needs to be rebuilt.\n");
+      }
+
+      is_transcriptome_ = false;
+      GenerateFromFile(reference_path);
+
+      if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+      StoreToFile(out_index_path);
+      if (verbose == true) { LOG_ALL("New index stored.\n"); }
+
+    }
+  } else {
+    if (verbose == true) { LOG_ALL("Started generating new index from file '%s'...\n", reference_path.c_str()); }
+
+    is_transcriptome_ = false;
+    GenerateFromFile(reference_path);
+
+    if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+    StoreToFile(out_index_path);
+    if (verbose == true) { LOG_ALL("New index stored.\n"); }
+  }
+
+  return 0;
+}
+
+ int IndexSpacedHashFast::LoadOrGenerateTranscriptome(std::string reference_path, std::string gtf_path, std::string out_index_path, bool verbose) {
+  FILE *fp=NULL;
+  fp = fopen(out_index_path.c_str(), "r");
+  if (fp != NULL) {
+    fclose(fp);
+
+    LoadGTFInfo_(gtf_path);
+
+    int ret_load_from_file = LoadFromFile(out_index_path);
+
+    if (ret_load_from_file == 0 && is_transcriptome_ == true) {  // Everything went fine. Prepare headers for SAM output.
+      // Verbose output for debugging.
+      LOG_ALL("Loading the genomic sequences.\n");
+      SequenceFile sequences(reference_path);
+      genome_id_to_len_.clear();
+      HashGenomeLengths_(sequences, genome_id_to_len_);
+
+    } else {  // Something went wrong, generate the transcriptome again. This will prepare the headers as well.
+      if (ret_load_from_file != 0 && verbose == true) {
+        LOG_ALL("Index needs to be rebuilt. It was generated using an older version.\n");
+        LOG_DEBUG("ret_load_from_file = %d\n", ret_load_from_file);
+      }
+      if (is_transcriptome_ == false && verbose == true) {
+        LOG_ALL("Existing index is a genome, and you are trying to map to a transcriptome. Index needs to be rebuilt.\n");
+      }
+
+      GenerateTranscriptomeFromFile(reference_path, gtf_path);
+
+      if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+      StoreToFile(out_index_path);
+      if (verbose == true) { LOG_ALL("New index stored.\n"); }
+    }
+  } else {
+    if (verbose == true) { LOG_ALL("Started generating new index from file '%s'...\n", reference_path.c_str()); }
+
+    GenerateTranscriptomeFromFile(reference_path, gtf_path);
+
+    if (verbose == true) { LOG_ALL("Storing new index to file '%s'...\n", out_index_path.c_str()); }
+    StoreToFile(out_index_path);
+    if (verbose == true) { LOG_ALL("New index stored.\n"); }
+  }
+
+  return 0;
+}
+
+int IndexSpacedHashFast::LoadGTFInfo_(const std::string &gtf_path) {
+  genome_id_to_trans_id_.clear();
+  trans_id_to_genome_id_.clear();
+  trans_id_to_exons_.clear();
+  trans_id_to_regions_.clear();
+  is_transcriptome_ = false;
+
+  // Parse the GTF for exons.
+  ParseExons_(gtf_path, genome_id_to_trans_id_, trans_id_to_genome_id_, trans_id_to_exons_);
+
+  trans_id_to_regions_.clear();
+  MakeRegions_(trans_id_to_exons_, trans_id_to_regions_);
+
+  return 0;
+}
+
+int IndexSpacedHashFast::GenerateTranscriptomeFromFile(const std::string &sequence_file_path, const std::string &gtf_path, bool verbose) {
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, true, FormatString("Loading reference from file, and creating a transcriptome index.\n"), "GenerateFromFile");
+
+  LoadGTFInfo_(gtf_path);
+
+  LOG_ALL("Loading the genomic sequences.\n");
+  SequenceFile sequences(sequence_file_path);
+
+  // Construct transcriptome sequences
+  LOG_ALL("Constructing the transcriptome sequences.\n");
+  SequenceFile transcript_sequences;
+  MakeTranscript_(genome_id_to_trans_id_, trans_id_to_exons_, sequences, transcript_sequences);
+  LOG_ALL("In total, there are %ld transcripts.\n", transcript_sequences.get_sequences().size());
+
+  // Sanity check.
+  if (transcript_sequences.get_sequences().size() == 0) {
+    return 1;
+  }
+
+  genome_id_to_len_.clear();
+  HashGenomeLengths_(sequences, genome_id_to_len_);
+
+  is_transcriptome_ = true;
+
+//  transcript_sequences.WriteFASTA("test_transcript.fasta");
+
+  return GenerateFromSequenceFile(transcript_sequences);
+}
+
+std::string IndexSpacedHashFast::GenerateSAMHeaders() {
+  std::stringstream ss;
+
+  if (is_transcriptome_ == false) {
+    for (int64_t reference_id=0; reference_id<((int64_t) get_num_sequences_forward()); reference_id++) {
+      std::string reference_header = TrimToFirstSpace(std::string(get_headers()[reference_id]));
+      uint64_t reference_length = (uint64_t) get_reference_lengths()[reference_id];
+      ss << "@SQ\t" << "SN:" << reference_header << "\t" << "LN:" << reference_length << "\n";
+    }
+
+  } else {
+    for (auto& g: genome_id_to_len_) {
+      ss << "@SQ\t" << "SN:" << TrimToFirstSpace(g.first) << "\t" << "LN:" << g.second << "\n";
+    }
+  }
+
+  return ss.str();
+}
+
+int IndexSpacedHashFast::MakeRegions_(const std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_exons,
+                 std::map<std::string, std::vector<std::pair<int64_t, int64_t>>> &trans_id_to_regions) const {
+  for (auto& it: trans_id_to_exons) {
+    auto& tid = it.first;
+    auto& exons = it.second;
+    if (exons.size() == 0) { continue; }
+    int64_t start = exons[0].first;
+    int64_t end = exons[0].second;
+
+    trans_id_to_regions[tid] = std::vector<std::pair<int64_t, int64_t>>();
+//    std::vector<std::pair<int64_t, int64_t>> regions;
+    auto& regions = trans_id_to_regions[tid];
+
+    for (auto& exon: exons) {
+      if (exon.first <= end) {
+        end = std::max(end, exon.second);
+      } else {
+        regions.emplace_back(std::make_pair(start, end));
+        start = exon.first;
+        end = exon.second;
+      }
+    }
+
+    if (regions.size() == 0 || (regions.back().first != start || regions.back().second != end)) {
+      regions.emplace_back(std::make_pair(start, end));
+    }
+  }
 
   return 0;
 }
