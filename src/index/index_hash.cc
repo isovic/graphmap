@@ -160,20 +160,9 @@ void IndexHash::CountKmers(const SingleSequence &sequence, int k, int64_t **ret_
 int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& sequence) {
   Clear();
 
-//  std::vector<int64_t> kmer_counts;
-//  CountKmers(sequence, k_, kmer_counts);
   CountKmers(sequence, k_, &kmer_hash_counts_, &kmer_hash_counts_size_);
-  int64_t *kmer_countdown = (int64_t *) malloc(sizeof(int64_t) * kmer_hash_counts_size_);
-  memmove(kmer_countdown, kmer_hash_counts_, sizeof(int64_t) * kmer_hash_counts_size_);
-
-//  kmer_counts.resize(std::pow(2, (2 * k_)));
-//  for (uint64_t i=0; i<(sequence.get_sequence_length() - k_ + 1); i++) {
-//    int8_t *seed_start = &(sequence.get_data()[i]);
-//    int64_t hash_key = GenerateHashKey(seed_start, k_);
-//    if (hash_key < 0)
-//      continue;
-//    kmer_counts[hash_key] += 1;
-//  }
+  std::vector<int64_t> kmer_countdown(kmer_hash_counts_size_);
+  memmove(&kmer_countdown[0], kmer_hash_counts_, sizeof(int64_t) * kmer_hash_counts_size_);
 
   if (data_)
     delete[] data_;
@@ -196,12 +185,6 @@ int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& seque
 
 
 
-//  int k = 6;
-//
-//  k_ = k;
-
-//  kmer_hash_.resize(std::pow(2, (2 * k_)));
-//  kmer_hash_size_ = kmer_hash_.size();
   kmer_hash_size_ = std::pow(2, (2 * k_));
   kmer_hash_ = (int64_t **) malloc(sizeof(int64_t *) * kmer_hash_size_);
 
@@ -216,7 +199,6 @@ int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& seque
 
   int64_t kmer_hash_ptr = 0;
   for (int64_t i=0; i<kmer_hash_size_; i++) {
-//    kmer_hash_[i] = (int64_t *) calloc(sizeof(int64_t), kmer_hash_counts_[i]);
     if (kmer_hash_counts_[i] > 0)
       kmer_hash_[i] = (all_kmers_ + kmer_hash_ptr);
     else
@@ -229,17 +211,11 @@ int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& seque
   kmer_hash_last_key_ = 0;
   kmer_hash_last_key_initialized_ = false;
 
-//  for (uint64_t i=0; i<kmer_hash_size_; i++) {
-//    kmer_hash_[i].resize(kmer_hash_counts_[i]);
-//    kmer_countdown[i] -= 1;
-//  }
-
   int64_t hash_key = -1;
   bool last_skipped = true;
 
   for (uint64_t i=0; i<(sequence.get_sequence_length() - k_ + 1); i++) {
     int8_t *seed_start = &(data_[i]);
-//    int64_t hash_key = GenerateHashKey(seed_start, k_);
 
     if (i == 0 || last_skipped == true) {
       hash_key = GenerateHashKey(seed_start, k_);
@@ -253,27 +229,9 @@ int IndexHash::GenerateFromSingleSequenceOnlyForward(const SingleSequence& seque
       continue;
     }
 
-//    kmer_hash_[hash_key].push_back(((int64_t) i));
-//    printf ("\nkmer_counts[%ld] = %ld\n", hash_key, kmer_counts[hash_key]);
-//    fflush(stdout);
     kmer_hash_[hash_key][kmer_countdown[hash_key]] = ((int64_t) i);
     kmer_countdown[hash_key] -= 1;
-
-//    for (int j=0; j<kmer_hash_[hash_key].size(); j++)
-//    {
-//      printf (", ");
-//      printf ("%ld", kmer_hash_[hash_key][j]);
-//    }
-//    printf ("\n");
   }
-
-  if (kmer_countdown)
-    free(kmer_countdown);
-  kmer_countdown = NULL;
-
-//  for (uint64_t i=0; i<kmer_hash_.size(); i++) {
-//    std::sort(kmer_hash_[i].begin(), kmer_hash_[i].end(), std::greater<int64_t>());
-//  }
 
   return 0;
 }

@@ -584,49 +584,26 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
     return ALIGNMENT_WRONG_DATA;
 
-  uint8_t *converted_data = new uint8_t[read_length];
-  if (converted_data == NULL) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
-    return ALIGNMENT_WRONG_DATA;
-  }
+//  uint8_t *converted_data = new uint8_t[read_length];
+  std::vector<uint8_t> converted_data(read_length);
   for (int64_t i=0; i<read_length; i++) {
     converted_data[i] = kBaseToBwaUnsigned[read_data[i]];
   }
 
-  uint8_t *converted_ref = new uint8_t[reference_length];
-  if (converted_ref == NULL) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
-    return ALIGNMENT_WRONG_DATA;
-  }
+//  uint8_t *converted_ref = new uint8_t[reference_length];
+  std::vector<uint8_t> converted_ref(reference_length);
   for (int64_t i=0; i<reference_length; i++) {
     converted_ref[i] = kBaseToBwaUnsigned[reference_data[i]];
   }
 
   int db_length = 1;
-  uint8_t* db[1] = {converted_ref};
+  uint8_t* db[1] = {&converted_ref[0]};
   int32_t db_seq_lengths[] = {((int32_t) reference_length)};
   OpalSearchResult* results[db_length];
   for (int i = 0; i < db_length; i++) {
       results[i] = new OpalSearchResult;
       opalInitSearchResult(results[i]);
   }
-
-//  printf ("match_score = %ld\n", match_score);
-//  printf ("mex_score = %ld\n", mex_score);
-//  printf ("mismatch_penalty = %ld\n", mismatch_penalty);
-//  printf ("gap_open_penalty = %ld\n", gap_open_penalty);
-//  printf ("gap_extend_penalty = %ld\n", gap_extend_penalty);
-//  printf ("Read:\n");
-//  for (int64_t i=0; i<read_length; i++) {
-//    printf ("%d", converted_data[i]);
-//  }
-//  printf ("\n\n");
-//  printf ("Reference:\n");
-//  for (int64_t i=0; i<reference_length; i++) {
-//    printf ("%d", converted_ref[i]);
-//  }
-//  printf("\n");
-//  fflush(stdout);
 
   int alphabet_length = 5;
   int scoreMatrix[25] = {
@@ -637,7 +614,7 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
       (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty
   };
 
-  int resultCode = resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
+  int resultCode = resultCode = opalSearchDatabase(&converted_data[0], read_length, db, db_length, db_seq_lengths,
                                                     gap_open_penalty, gap_extend_penalty, mex_score, scoreMatrix, alphabet_length, results,
                                                     OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_SIMPLE);
 
@@ -653,41 +630,14 @@ int OpalNWWrapper(const int8_t *read_data, int64_t read_length,
   }
 
   if (results[0]->alignment == NULL) {
-//    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"));
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "Opal: no alignment was generated!"), std::string(__FUNCTION__));
     return ALIGNMENT_NOT_SANE;
   }
-
-//  if (results[0]->endLocationQuery > 0) {
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is > 0! results[0]->endLocationQuery = %d, read_length = %ld\n", results[0]->endLocationQuery, read_length), "ProcessRead");
-//  }
-//
-//  if (results[0]->endLocationQuery < read_length) {
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("Opal: query end location is < read_length! results[0]->endLocationQuery = %d, read_length = %ld\n", results[0]->endLocationQuery, read_length), "ProcessRead");
-//  }
 
   *ret_alignment_position_start = results[0]->startLocationTarget;
   *ret_alignment_position_end = results[0]->endLocationTarget;
   *ret_edit_distance = (int64_t) results[0]->score;
   ret_alignment.assign(results[0]->alignment, (results[0]->alignment + results[0]->alignmentLength));
-
-  /// Convert Opal alignment codes to EDLIB alignment codes.
-//  const uint8_t alignment_lookup[] = {EDLIB_EQUAL, EDLIB_D, EDLIB_I, EDLIB_X};
-//  for (int64_t i=0; i<ret_alignment.size(); i++) {
-//    ret_alignment[i] = alignment_lookup[ret_alignment[i]];
-//  }
-
-//  printf ("Alignment:\n");
-//  for (int64_t i=0; i<ret_alignment.size(); i++) {
-//    printf ("%d", ret_alignment[i]);
-//  }
-//  printf ("\n\n");
-//  fflush(stdout);
-
-  if (converted_data)
-    delete[] converted_data;
-  if (converted_ref)
-    delete[] converted_ref;
 
   return ALIGNMENT_GOOD;
 }
@@ -703,26 +653,20 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
   if (read_data == NULL || reference_data == NULL || read_length <= 0 || reference_length <= 0)
     return ALIGNMENT_WRONG_DATA;
 
-  uint8_t *converted_data = new uint8_t[read_length];
-  if (converted_data == NULL) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_data."));
-    return 1;
-  }
+//  uint8_t *converted_data = new uint8_t[read_length];
+  std::vector<uint8_t> converted_data(read_length);
   for (int64_t i=0; i<read_length; i++) {
     converted_data[i] = kBaseToBwaUnsigned[read_data[i]];
   }
 
-  uint8_t *converted_ref = new uint8_t[reference_length];
-  if (converted_ref == NULL) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_MEMORY, "Offending variable: converted_ref."));
-    return 1;
-  }
+//  uint8_t *converted_ref = new uint8_t[reference_length];
+  std::vector<uint8_t> converted_ref(reference_length);
   for (int64_t i=0; i<reference_length; i++) {
     converted_ref[i] = kBaseToBwaUnsigned[reference_data[i]];
   }
 
   int db_length = 1;
-  uint8_t* db[1] = {converted_ref};
+  uint8_t* db[1] = {&converted_ref[0]};
   int32_t db_seq_lengths[] = {((int32_t) reference_length)};
   OpalSearchResult* results[db_length];
   for (int i = 0; i < db_length; i++) {
@@ -739,7 +683,7 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
       (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty, (int) mismatch_penalty
   };
 
-  int resultCode = resultCode = opalSearchDatabase(converted_data, read_length, db, db_length, db_seq_lengths,
+  int resultCode = resultCode = opalSearchDatabase(&converted_data[0], read_length, db, db_length, db_seq_lengths,
                                                     gap_open_penalty, gap_extend_penalty, mex_score, scoreMatrix, alphabet_length, results,
                                                     OPAL_SEARCH_ALIGNMENT, OPAL_MODE_NW, OPAL_OVERFLOW_BUCKETS);
 
@@ -779,11 +723,6 @@ int OpalSHWWrapper(const int8_t *read_data, int64_t read_length,
   for (int64_t i=0; i<ret_alignment.size(); i++) {
     ret_alignment[i] = alignment_lookup[ret_alignment[i]];
   }
-
-  if (converted_data)
-    delete[] converted_data;
-  if (converted_ref)
-    delete[] converted_ref;
 
   return ALIGNMENT_GOOD;
 }

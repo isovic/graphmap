@@ -54,16 +54,21 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
 
     /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
 //    int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
+    LOG_DEBUG_SPEC("Reversing the query.\n");
     std::vector<int8_t> reversed_query_front;
     reverse_data2(read->get_data(), clip_count_front, reversed_query_front);
 
 //    int8_t *reversed_ref_front = NULL;
+    LOG_DEBUG_SPEC("Reversing the ref.\n");
     std::vector<int8_t> reversed_ref_front;
     int64_t reversed_ref_len = 0;
     if (clip_count_front*2  > (alignment_position_start - reference_start)) {
+      LOG_DEBUG_SPEC("Option 1.\n");
+      LOG_DEBUG_SPEC("alignment_position_start = %ld, reference_start = %ld\n", alignment_position_start, reference_start);
       reverse_data2(ref_data + reference_start, (alignment_position_start - reference_start), reversed_ref_front);
       reversed_ref_len = alignment_position_start - reference_start;
     } else {
+      LOG_DEBUG_SPEC("Option 2.\n");
       reverse_data2(ref_data + (alignment_position_start - 1) - (clip_count_front*2 - 1), clip_count_front*2, reversed_ref_front);
       reversed_ref_len = clip_count_front*2;
     }
@@ -71,6 +76,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     int64_t bandwidth = -1;
 //    bandwidth = 0.30f*read->get_sequence_length();
 
+    LOG_DEBUG_SPEC("Running AlignmentFunctionSHW.\n");
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
     std::vector<unsigned char> leftover_left_alignment;
     int ret_code_right = AlignmentFunctionSHW(&reversed_query_front[0], (clip_count_front),
@@ -79,6 +85,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
                                               &leftover_left_start, &leftover_left_end,
                                               &leftover_left_edit_distance, leftover_left_alignment);
 
+    LOG_DEBUG_SPEC("Checking the retcode.\n");
     if (ret_code_right == 0) {
       if (parameters->verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters->debug_read) {
         std::string alignment_as_string = "";
