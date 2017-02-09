@@ -9,24 +9,21 @@
 #include <algorithm>
 #include "libs/libdivsufsort-2.0.1-64bit/divsufsort64.h"
 #include "graphmap/graphmap.h"
-#include "index/index_hash.h"
+//#include "index/index_hash.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
+#include "transcriptome.h"
+#include "index/index_util.h"
 
 
 
-GraphMap::GraphMap() {
+GraphMap::GraphMap() : transcriptome_(nullptr) {
   indexes_.clear();
 }
 
 GraphMap::~GraphMap() {
-  for (int32_t i=0; i<indexes_.size(); i++) {
-    if (indexes_[i]) { delete indexes_[i]; }
-    indexes_[i] = NULL;
-  }
-  indexes_.clear();
-}
 
+}
 
 void GraphMap::Run(ProgramParameters& parameters) {
   clock_t time_start = clock();
@@ -81,7 +78,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
 //    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
     int64_t max_seed_count = 0;
 //    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
-    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
+///// TODO: Removed on 07.02.2017.    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
     LOG_ALL("Automatically setting the maximum number of seed hits to: %ld. Maximum seed occurrence in index: %ld.\n", parameters.max_num_hits, max_seed_count);
 
 //    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum number of kmer hits: %ld\n", parameters.max_num_hits), "Run");
@@ -161,122 +158,187 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 }
 
+bool FileExists(const std::string &path) {
+  FILE *fp = fopen(path.c_str(), "r");
+  if (fp == NULL) {
+    return false;
+  }
+  fclose (fp);
+  return true;
+}
+
 int GraphMap::BuildIndex(ProgramParameters &parameters) {
-  // Run away, you are free now!
-  for (int32_t i=0; i<indexes_.size(); i++) {
-    if (indexes_[i]) { delete indexes_[i]; }
-    indexes_[i] = NULL;
-  }
   indexes_.clear();
+  transcriptome_ = is::createTranscriptome();
 
-  IndexSpacedHashFast *index_prim = new IndexSpacedHashFast(SHAPE_TYPE_444);
-  IndexSpacedHashFast *index_sec = NULL;
-  indexes_.push_back(index_prim);
-
-  if (parameters.sensitive_mode == false) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Running in normal (parsimonious) mode. Only one index will be used.\n"), "Index");
-  } else {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Running in sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
-    index_sec = new IndexSpacedHashFast(SHAPE_TYPE_66);
-    indexes_.push_back(index_sec);
+  if (parameters.is_transcriptome) {
+    LOG_ALL("Loading GTF annotations.\n");
+    transcriptome_->LoadGTF(parameters.gtf_path);
   }
 
-  clock_t last_time = clock();
+  std::string prim_index_path = parameters.index_file;
+  std::string sec_index_path = parameters.index_file + std::string("sec");
 
-  if (parameters.calc_only_index == false) {
-    // Check if index already exists, if not generate it.
-    FILE *fp = fopen(parameters.index_file.c_str(), "r");
-    if (fp == NULL) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
+  bool exists = FileExists(prim_index_path) && FileExists(sec_index_path);
+  bool rebuild_index = !exists || parameters.rebuild_index || parameters.calc_only_index;
+
+  if (rebuild_index) {
+    LOG_ALL("Building the index.\n");
+
+    // Either load genomic sequence or generate a transcriptome.
+    std::shared_ptr<SequenceFile> refs = nullptr;
+    if (!parameters.is_transcriptome) {
+      LOG_ALL("Loading reference sequences.\n");
+      refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
     } else {
-      fclose (fp);
-      if (parameters.rebuild_index == false) {
-        LOG_ALL("Index already exists. Loading from file.\n");
-      } else {
-        LOG_ALL("Index already exists, but will be rebuilt.\n");
-      }
+      LOG_ALL("Loading genomic sequences.\n");
+      auto genomic = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
+      LOG_ALL("Generating the transcriptome.\n");
+      refs = transcriptome_->GenerateTranscriptomeSeqs(genomic);
     }
 
-    // Check whether the index needs to be rebuilt, or if it can only be loaded.
-    if (parameters.rebuild_index == false) {
-      int prim_index_loaded = 0;
-      if (parameters.gtf_path == "") {
-        index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
-      } else {
-        index_prim->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file, (parameters.verbose_level > 0));
-      }
+    LOG_ALL("Constructing the primary index.\n");
+    std::vector<std::string> shapes_prim = {"11110111101111"};
+    auto index_prim = is::createMinimizerIndex(shapes_prim);
+    index_prim->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+    indexes_.push_back(index_prim);
 
-      if (prim_index_loaded) { return 1; }
-    } else {
-      int prim_index_generated = 0;
-      if (parameters.gtf_path == "") {
-        index_prim->GenerateFromFile(parameters.reference_path);
-      } else {
-        index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
-      }
-
-      int prim_index_stored = index_prim->StoreToFile(parameters.index_file);
-      if (prim_index_generated || prim_index_stored) { return 1; }
+    if (parameters.sensitive_mode) {
+      LOG_ALL("Sensitive mode selected.\n");
+      LOG_ALL("Constructing the secondary index.\n");
+      std::vector<std::string> shapes_sec = {"11110111101111"};
+      auto index_sec = is::createMinimizerIndex(shapes_prim);
+      index_sec->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+      indexes_.push_back(index_sec);
     }
-
-    if (parameters.sensitive_mode == true ) {
-      fp = fopen((parameters.index_file + std::string("sec")).c_str(), "r");
-      if (fp == NULL) {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
-      } else {
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
-        fclose (fp);
-      }
-
-      if (parameters.rebuild_index == false) {
-        int sec_index_loaded = 0;
-        if (parameters.gtf_path == "") {
-          index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
-        } else {
-          index_sec->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
-        }
-        if (sec_index_loaded) { return 1; }
-      } else {
-        int sec_index_generated = 0;
-        if (parameters.gtf_path == "") {
-          index_sec->GenerateFromFile(parameters.reference_path);
-        } else {
-          index_sec->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
-        }
-        int sec_index_stored = index_sec->StoreToFile(parameters.index_file + std::string("sec"));
-        if (sec_index_generated || sec_index_stored) { return 1; }
-      }
-    }
-
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index loaded in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
-    return 0;
-
-  } else {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
-
-    if (parameters.gtf_path == "") {
-      index_prim->GenerateFromFile(parameters.reference_path);
-    } else {
-      index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
-    }
-
-    index_prim->StoreToFile(parameters.index_file);
-
-    if (parameters.sensitive_mode == true) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
-      index_sec->GenerateFromFile(parameters.reference_path);
-      index_sec->StoreToFile(parameters.index_file + std::string("sec"));
-    }
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index generated in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
   }
 
   return 0;
 }
 
+//void DeprecatedBuildIndex(ProgramParameters &parameters) {
+//  // Run away, you are free now!
+//  for (int32_t i=0; i<indexes_.size(); i++) {
+//    if (indexes_[i]) { delete indexes_[i]; }
+//    indexes_[i] = NULL;
+//  }
+//  indexes_.clear();
+//
+//  IndexSpacedHashFast *index_prim = new IndexSpacedHashFast(SHAPE_TYPE_444);
+//  IndexSpacedHashFast *index_sec = NULL;
+//  indexes_.push_back(index_prim);
+//
+//  if (parameters.sensitive_mode == false) {
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Running in normal (parsimonious) mode. Only one index will be used.\n"), "Index");
+//  } else {
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Running in sensitive mode. Two indexes will be used (double memory consumption).\n"), "Index");
+//    index_sec = new IndexSpacedHashFast(SHAPE_TYPE_66);
+//    indexes_.push_back(index_sec);
+//  }
+//
+//  clock_t last_time = clock();
+//
+//  if (parameters.calc_only_index == false) {
+//    // Check if index already exists, if not generate it.
+//    FILE *fp = fopen(parameters.index_file.c_str(), "r");
+//    if (fp == NULL) {
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index is not prebuilt. Generating index.\n"), "Index");
+//    } else {
+//      fclose (fp);
+//      if (parameters.rebuild_index == false) {
+//        LOG_ALL("Index already exists. Loading from file.\n");
+//      } else {
+//        LOG_ALL("Index already exists, but will be rebuilt.\n");
+//      }
+//    }
+//
+//    // Check whether the index needs to be rebuilt, or if it can only be loaded.
+//    transcriptome_ = is::createTranscriptome();
+//    if (parameters.rebuild_index == false) {
+//      int prim_index_loaded = 0;
+//      if (parameters.gtf_path == "") {
+//        index_prim->LoadOrGenerate(parameters.reference_path, parameters.index_file, (parameters.verbose_level > 0));
+//      } else {
+//        index_prim->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file, (parameters.verbose_level > 0));
+//      }
+//
+//      if (prim_index_loaded) { return 1; }
+//    } else {
+//      int prim_index_generated = 0;
+//      if (parameters.gtf_path == "") {
+//        index_prim->GenerateFromFile(parameters.reference_path);
+//      } else {
+//        index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+//      }
+//
+//      int prim_index_stored = index_prim->StoreToFile(parameters.index_file);
+//      if (prim_index_generated || prim_index_stored) { return 1; }
+//    }
+//
+//    if (parameters.sensitive_mode == true ) {
+//      fp = fopen((parameters.index_file + std::string("sec")).c_str(), "r");
+//      if (fp == NULL) {
+//        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index is not prebuilt. Generating index.\n"), "Index");
+//      } else {
+//        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Secondary index already exists. Loading from file.\n"), "Index");
+//        fclose (fp);
+//      }
+//
+//      if (parameters.rebuild_index == false) {
+//        int sec_index_loaded = 0;
+//        if (parameters.gtf_path == "") {
+//          index_sec->LoadOrGenerate(parameters.reference_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+//        } else {
+//          index_sec->LoadOrGenerateTranscriptome(parameters.reference_path, parameters.gtf_path, parameters.index_file + std::string("sec"), (parameters.verbose_level > 0));
+//        }
+//        if (sec_index_loaded) { return 1; }
+//      } else {
+//        int sec_index_generated = 0;
+//        if (parameters.gtf_path == "") {
+//          index_sec->GenerateFromFile(parameters.reference_path);
+//        } else {
+//          index_sec->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+//        }
+//        int sec_index_stored = index_sec->StoreToFile(parameters.index_file + std::string("sec"));
+//        if (sec_index_generated || sec_index_stored) { return 1; }
+//      }
+//    }
+//
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index loaded in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
+//    return 0;
+//
+//  } else {
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating index.\n"), "Index");
+//
+//    if (parameters.gtf_path == "") {
+//      index_prim->GenerateFromFile(parameters.reference_path);
+//    } else {
+//      index_prim->GenerateTranscriptomeFromFile(parameters.reference_path, parameters.gtf_path);
+//    }
+//
+//    index_prim->StoreToFile(parameters.index_file);
+//
+//    if (parameters.sensitive_mode == true) {
+//      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Generating secondary index.\n"), "Index");
+//      index_sec->GenerateFromFile(parameters.reference_path);
+//      index_sec->StoreToFile(parameters.index_file + std::string("sec"));
+//    }
+//    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Index generated in %.2f sec.\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC)), "Index");
+//  }
+//
+//  return 0;
+//}
+
 void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out) {
   // Write out the SAM header in fp_out.
   if (parameters.outfmt == "sam") {
-    std::string sam_header = GenerateSAMHeader_(parameters, indexes_[0]);
+    std::string sam_header;
+    if (parameters.gtf_path.size() == 0) {
+      sam_header = is::GenerateSAMHeader(indexes_[0], parameters);
+    } else {
+      sam_header = is::GenerateSAMHeader(transcriptome_);
+    }
+
     if (sam_header.size() > 0)
       fprintf (fp_out, "%s\n", sam_header.c_str());
   }
@@ -332,10 +394,10 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
   }
 
   // Division by to to avoid hyperthreading cores, and limit on 24 to avoid clogging a shared SMP.
-  int64_t num_threads = std::min(24, ((int) omp_get_num_procs()) / 2);
-
-  if (parameters->num_threads > 0)
-    num_threads = (int64_t) parameters->num_threads;
+//  int64_t num_threads = std::min(24, ((int) omp_get_num_procs()) / 2);
+//
+//  if (parameters->num_threads > 0)
+  int64_t num_threads = (int64_t) parameters->num_threads;
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.\n", num_threads), "ProcessReads");
 
   // Set up the starting and ending read index.
@@ -400,7 +462,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
     // The actual interesting part.
     std::string sam_line = "";
     MappingData mapping_data;
-    ProcessRead(&mapping_data, indexes_, reads->get_sequences()[i], parameters, evalue_params);
+    ProcessRead(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
 
     // Generate the output.
     int mapped_state = STATE_UNMAPPED;
@@ -463,55 +525,6 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
   }
 
   return 0;
-}
-
-
-
-std::string GraphMap::GenerateSAMHeader_(ProgramParameters &parameters, Index *index) {
-  // Output reference sequence information.
-  std::stringstream ss_header;
-
-  ss_header << "@HD\t" <<
-               "VN:1.0\t" <<
-               "SO:unknown" <<
-               "\n";
-
-  ss_header << ((IndexSpacedHashFast *) index)->GenerateSAMHeaders();
-
-//  for (int64_t reference_id=0; reference_id<((int64_t) index->get_num_sequences_forward()); reference_id++) {
-//    std::string reference_header = index->get_headers()[reference_id];
-//    uint64_t reference_length = (uint64_t) index->get_reference_lengths()[reference_id];
-//
-//    // If the output is not supposed to be verbose, reference header needs to be trimmed to the ID part (up to the first space).
-//    if (parameters.verbose_sam_output < 4) {
-//      std::string::size_type loc = reference_header.find(" ", 0);
-//      if (loc != std::string::npos) {
-//        reference_header = reference_header.substr(0, loc);
-//      } else {
-//        // There is no spaces in the reference header, do nothing and just report it as is.
-//      }
-//    }
-//
-//    ss_header << "@SQ\t" <<
-//                "SN:" << reference_header << "\t" <<
-//                "LN:" << reference_length << "" <<
-//                "\n";
-//  }
-
-  // If verbose_sam_output == 1, then print out a special version of the PG line. This was used for the web server
-  // to omit paths from the output (not to share server sensitive information with users).
-  if (parameters.verbose_sam_output == 1) {
-    ss_header << "@PG\tID:graphmap\tPN:graphmap";
-  } else {
-    // Output the command line used to run the process to the file.
-    ss_header << "@PG\t" <<
-                 "ID:graphmap\t" <<
-                 "PN:graphmap\t" <<
-                 "CL:" << parameters.command_line << "\t" <<
-                 "VN:" << std::string(GRAPHMAP_CURRENT_VERSION) << " compiled on " << std::string(GRAPHMAP_CURRENT_VERSION_RELEASE_DATE);
-  }
-
-  return ss_header.str();
 }
 
 FILE* GraphMap::OpenOutSAMFile_(std::string out_sam_path) {

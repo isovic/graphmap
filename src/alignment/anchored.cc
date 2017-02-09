@@ -18,7 +18,7 @@ enum ClusterAlnType {
 };
 
 int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
-                const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
                 const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
                 const int8_t *ref_data, int64_t ref_len, int64_t clip_count_front,
                 int64_t alignment_position_start, bool align_end_to_end, AlignmentResults &aln) {
@@ -152,7 +152,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
 }
 
 int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
-                const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
                 const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
                 const int8_t *ref_data, int64_t ref_len, int64_t cluster_id, AlignmentResults &aln) {
 
@@ -214,7 +214,7 @@ int AlignAnchor(AlignmentFunctionType AlignmentFunctionNW,
 }
 
 int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
-                          const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                          const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
                           const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
                           const int8_t *ref_data, int64_t ref_len, int64_t cluster_id, AlignmentResults &aln) {
 
@@ -314,7 +314,7 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
 }
 
 int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
-              const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+              const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
               const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
               const int8_t *ref_data, int64_t ref_len, int64_t clip_count_back, int64_t ref_start,
               int64_t alignment_position_end, bool align_end_to_end, AlignmentResults &aln) {
@@ -533,7 +533,8 @@ int FillFrontAndBackInsertions(std::vector<AlignmentResults> &alns) {
 //                           SeqOrientation *ret_orientation, int64_t *ret_reference_id, int64_t *ret_position_ambiguity,
 //                           int64_t *ret_eq_op, int64_t *ret_x_op, int64_t *ret_i_op, int64_t *ret_d_op) {
 int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFunctionType AlignmentFunctionSHW,
-                         const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                         const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome,
+                         const ProgramParameters *parameters,
                          const EValueParams *evalue_params, PathGraphEntry *region_results, bool align_end_to_end, bool spliced_alignment) {
 
   if (region_results->get_mapping_data().clusters.size() <= 0) {
@@ -553,7 +554,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
   int64_t reference_length = index->get_reference_lengths()[abs_ref_id];
   int64_t region_length_joined = 0, start_offset = 0, position_of_ref_end = 0;
 
-  int8_t *ref_data  = (int8_t *) index->get_data();       // The data of the region.
+  int8_t *ref_data  = (int8_t *) &index->get_data()[0];       // The data of the region.
   int64_t region_ref_start = region.start;            // Position of the start of the region on the original Index data. E.g. reg_data[0] is the same base as index->get_data()[index_pos].
   int64_t pos_of_ref_end = 0; // If the region was circular, it crosses the boundary between the end and the start of the data. ref_data[index_pos_of_ref_end] is the last base of the reference before the split part is concatenated.
   bool is_cleanup_required = NULL;  // If true, the region_data will have to be freed manually.
@@ -627,7 +628,9 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
   /// Aligning the begining of the read (in front of the first anchor).
   if (clip_count_front > 0) {
-    int ret_code_front = AlignFront(AlignmentFunctionSHW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, clip_count_front, alignment_position_start, align_end_to_end, alns[num_alns]);
+    int ret_code_front = AlignFront(AlignmentFunctionSHW, read, index, parameters, region_results, ref_data_start,
+                                    region_ref_start, ref_data, ref_data_len, clip_count_front,
+                                    alignment_position_start, align_end_to_end, alns[num_alns]);
     alns_anchor_type[num_alns] = kAlnBeginning;
     num_alns += 1;
     if (ret_code_front) { return ret_code_front; }
@@ -834,23 +837,23 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
     FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
 
-    if (((IndexSpacedHashFast *) index)->is_transcriptome()) {
+    if (parameters->is_transcriptome) {
       LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
-      ConvertFromTranscriptomeToGenomeAln((IndexSpacedHashFast *) index, curr_aln);
+      ConvertFromTranscriptomeToGenomeAln(parameters, index, transcriptome, curr_aln);
     }
 
     LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
     curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
     LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, index->get_data(), final_aln_pos_start);
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0], final_aln_pos_start);
 
 //    printf ("final_aln_pos_start = %ld\n", final_aln_pos_start);
 //    printf ("Query:\n%s\nTarget:\n%s\n", GetSubstring((char *) read->get_data(), read->get_data_length()).c_str(), GetSubstring((char *) index->get_data() + final_aln_pos_start, read->get_data_length()).c_str());
 //    fflush(stdout);
 
     LOG_DEBUG_SPEC("Counting alignment operations.\n");
-    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data(), abs_ref_id, curr_aln->raw_pos_start, orientation,
+    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), &index->get_data()[0], abs_ref_id, curr_aln->raw_pos_start, orientation,
                              parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
                              &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
 //    LOG_DEBUG_SPEC("Calculating the E-value.\n");

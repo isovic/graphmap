@@ -54,20 +54,23 @@ int64_t CalcScore(int32_t qpos, int32_t rpos, int32_t next_qpos, int32_t next_rp
 void GetPositionsFromRegistry2(const Vertices& registry_entries, int64_t vertex_id, int32_t *qpos_start, int32_t *rpos_start, int32_t *qpos_end, int32_t *rpos_end);
 void GetPositionsFromRegistry(const Vertices& registry_entries, const std::vector<int> &lcskpp_indices, int64_t lcskpp_id, int32_t *qpos_start, int32_t *rpos_start, int32_t *qpos_end, int32_t *rpos_end);
 void GetPositionsFrom128bit(const std::vector<uint128_t> &hits, const std::vector<int> &lcskpp_indices, int64_t lcskpp_id, int32_t seed_len, int32_t *qpos_start, int32_t *rpos_start, int32_t *qpos_end, int32_t *rpos_end);
+
 int FilterAnchorsByDiff(const SingleSequence* read, ScoreRegistry* local_score, const ProgramParameters *parameters,
                   const std::vector<int> &lcskpp_indices, std::vector<int> &ret_filtered_lcskpp_indices);
+
 int FilterAnchorsByChaining(const SingleSequence* seq, ScoreRegistry* local_score, const ProgramParameters *parameters,
                   const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids);
+
 int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_length, int64_t min_cluster_covered_bases, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
-                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     ScoreRegistry* local_score, MappingData* mapping_data,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids);
 int GenerateClustersDummy(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
-                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     ScoreRegistry* local_score, MappingData* mapping_data,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids);
 
-int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_score, const MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters, const std::vector<ClusterAndIndices *> &clusters);
+int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_score, const MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, const std::vector<ClusterAndIndices *> &clusters);
 
 #endif /* SRC_GRAPHMAP_FILTER_ANCHORS_H_ */

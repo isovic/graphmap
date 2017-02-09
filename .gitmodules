@@ -4,3 +4,6 @@
 [submodule "codebase/argumentparser"]
 	path = codebase/argumentparser
 	url = https://github.com/isovic/argumentparser.git
+[submodule "codebase/gindex"]
+	path = codebase/gindex
+	url = https://github.com/isovic/gindex

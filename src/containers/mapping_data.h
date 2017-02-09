@@ -12,9 +12,10 @@
 #include "program_parameters.h"
 #include "utility/utility_general.h"
 #include "containers/region.h"
-#include "index/index.h"
-#include "index/index_hash.h"
-#include "index/index_sa.h"
+//#include "index/index.h"
+//#include "index/index_hash.h"
+//#include "index/index_sa.h"
+#include "minimizer_index/minimizer_index.h"
 #include "containers/vertices.h"
 #include "utility/evalue.h"
 #include "containers/path_graph_entry.h"
@@ -84,11 +85,11 @@ class MappingData {
   bool IsMapped();
   bool IsAligned();
 
-  std::string VerboseFinalMappingsToString(const Index *index, const SingleSequence *read) const;
-  std::string VerboseIntermediateMappingsToString(const Index *index, const SingleSequence *read) const;
+  std::string VerboseFinalMappingsToString(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read) const;
+  std::string VerboseIntermediateMappingsToString(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read) const;
 
  private:
-  std::string VerboseMappingDataToString_(const std::vector<PathGraphEntry *> *mapping_data, const Index *index, const SingleSequence *read) const;
+  std::string VerboseMappingDataToString_(const std::vector<PathGraphEntry *> *mapping_data, std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read) const;
 
 };
 

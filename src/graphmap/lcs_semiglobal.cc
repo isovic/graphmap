@@ -313,7 +313,7 @@ int GraphMap::CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_sc
   return 0;
 }
 
-int GraphMap::SemiglobalPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::SemiglobalPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || ((int64_t) read->get_sequence_id()) == parameters->debug_read), FormatString("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id()), "PostProcessRegionWithLCS_");
 
   int lcskpp_length = 0;
@@ -455,7 +455,7 @@ int GraphMap::SemiglobalPostProcessRegionWithLCS_(ScoreRegistry* local_score, Ma
   return 0;
 }
 
-int GraphMap::CheckMinimumMappingConditions_(MappingResults *mapping_data, L1Results *l1_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters) {
+int GraphMap::CheckMinimumMappingConditions_(MappingResults *mapping_data, L1Results *l1_data, std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters) {
   mapping_data->is_mapped = true;
 
 //  if (mapping_data->cov_bases_query < 0.005f* read->get_sequence_length())

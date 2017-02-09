@@ -32,10 +32,10 @@
 
 class PathGraphEntry {
  public:
-  PathGraphEntry(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
+  PathGraphEntry(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
   ~PathGraphEntry();
 
-  void Set(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
+  void Set(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region, MappingResults *mapping_data=NULL, L1Results *l1_data=NULL, AlignmentResults *alignment_data=NULL);
 //  void AddSecondaryAlignmentData(AlignmentResults alignment_info);
 
   std::string GenerateSAM(bool is_primary, int64_t verbose_sam_output) const;
@@ -46,7 +46,7 @@ class PathGraphEntry {
   float CalcDistanceRatio() const;
   float CalcDistanceRatioSuppress() const;
   float CalcFPFilter() const;
-  static float CalcFPFilterStatic(const MappingResults &mapping_info, const Index *index, const SingleSequence *read, const ProgramParameters *parameters);
+  static float CalcFPFilterStatic(const MappingResults &mapping_info, std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters);
 
   void Verbose(FILE *fp) const;
 
@@ -87,7 +87,7 @@ class PathGraphEntry {
 
  private:
   const SingleSequence *read_;
-  const Index *index_;
+  std::shared_ptr<is::MinimizerIndex> index_;
   const ProgramParameters *parameters_;
 
   MappingResults mapping_info_;

@@ -316,7 +316,7 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
 }
 
 int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_length, int64_t min_cluster_covered_bases, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
-                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     ScoreRegistry* local_score, MappingData* mapping_data,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
@@ -461,7 +461,7 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
 }
 
 int GenerateClustersDummy(int64_t min_cluster_length, float min_cluster_coverage, std::vector<int> &lcskpp_indices,
-                     ScoreRegistry* local_score, MappingData* mapping_data, const std::vector<Index *> indexes,
+                     ScoreRegistry* local_score, MappingData* mapping_data,
                      const SingleSequence* read, const ProgramParameters* parameters, std::vector<ClusterAndIndices *> &ret_clusters,
                      std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
@@ -506,7 +506,7 @@ int GenerateClustersDummy(int64_t min_cluster_length, float min_cluster_coverage
   return 0;
 }
 
-int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_score, const MappingData* mapping_data, const std::vector<Index *> &indexes, const SingleSequence* read, const ProgramParameters* parameters, const std::vector<ClusterAndIndices *> &clusters) {
+int VerboseClustersToFile_(std::string out_file, const ScoreRegistry* local_score, const MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, const std::vector<ClusterAndIndices *> &clusters) {
   FILE *fp = fopen(out_file.c_str(), "a");
   if (fp == NULL) { return 1; }
 

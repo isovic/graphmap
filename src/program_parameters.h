@@ -111,6 +111,10 @@ struct ProgramParameters {
   double max_indel_error_rate = 1.0f;
 
   std::string gtf_path;
+  bool is_transcriptome = false;
+
+  bool use_minimizers = false;
+  int64_t minimizer_window = 5;
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);

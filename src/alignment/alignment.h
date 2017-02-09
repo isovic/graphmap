@@ -15,6 +15,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <memory>
 
 #include "sequences/single_sequence.h"
 #include "utility/utility_general.h"
@@ -31,30 +32,31 @@
 #include "seqan/sequence.h"
 #include "seqan/stream.h"
 #include "utility/evalue.h"
+#include "graphmap/transcriptome.h"
 
 
 
 
-int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results);
+int AlignRegion(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results);
 int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
-                        const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                        const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
                         const EValueParams *evalue_params, PathGraphEntry *region_results);
 int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFunctionType AlignmentFunctionSHW,
-                         const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                         const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const ProgramParameters *parameters,
                          const EValueParams *evalue_params, PathGraphEntry *region_results, bool align_end_to_end, bool spliced_alignment);
 
-void VerboseAlignment(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const AlignmentResults *aln);
+void VerboseAlignment(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters, const AlignmentResults *aln);
 
 /// Determines the start and end locations for semiglobal alignment, keeping in mind the boundaries of the reference being aligned to. Works with circular alignment as well.
 //int GetAlignmentWindowFromRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
 //                                 int64_t *win_start, int64_t *win_end, int64_t *win_len);
-int GetL1PosInRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
+int GetL1PosInRegion(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
                      int64_t *l1_start, int64_t *l1_end);
 
 // Checks if the region is linear or circular. If it's linear, only a pointer to the beginning of the region (in the index) will be returned. Otherwise, a data array will be created containing the
 // concatenated region.
 // Returns 0 if the region was linear, otherwise 1. Value of 1 means that manual cleanup of ret_data is required, using free().
-int GetAlignmentWindowData(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
+int GetAlignmentWindowData(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
                            int8_t** data, int64_t* data_length, int8_t **pos_of_win_start, int8_t **pos_of_win_end, int64_t* offset_from_ref_start, int64_t* pos_of_ref_end, bool *is_cleanup_required);
 
 int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_end,
@@ -64,6 +66,6 @@ int FindCircularEnd(const std::vector<uint8_t> &alignment, int64_t pos_of_ref_en
 int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, int64_t ref_start, int64_t ref_len, AlignmentResults *aln_l, AlignmentResults *aln_r);
 
 
-int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read=NULL, const Index* index=NULL, int64_t reference_hit_id=-1, int64_t reference_hit_pos=-1);
+int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read=NULL,std::shared_ptr<is::MinimizerIndex> index=nullptr, int64_t reference_hit_id=-1, int64_t reference_hit_pos=-1);
 
 #endif /* SRC_ALIGNMENT_ALIGNMENT_H_ */

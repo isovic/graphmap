@@ -7,22 +7,22 @@
 
 #include "alignment/transcriptome_mod.h"
 #include "alignment/cigargen.h"
-#include "index/index_spaced_hash_fast.h"
+//#include "index/index_spaced_hash_fast.h"
 
-int ConvertFromTranscriptomeToGenomeAln(const IndexSpacedHashFast *index, AlignmentResults *aln) {
-  if (index->is_transcriptome() == false) { return 1; }
+int ConvertFromTranscriptomeToGenomeAln(const ProgramParameters *parameters, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, AlignmentResults *aln) {
+  if (parameters->is_transcriptome == false) { return 1; }
 
   // Get the info about the source chromosome.
   std::string tid = aln->ref_header;
-  auto it_tid = index->get_trans_id_to_genome_id().find(tid);
-  if (it_tid == index->get_trans_id_to_genome_id().end()) { return 1; }
+  auto it_tid = transcriptome->get_trans_id_to_genome_id().find(tid);
+  if (it_tid == transcriptome->get_trans_id_to_genome_id().end()) { return 1; }
 
   auto& chr_info = it_tid->second;
   const std::string& chr_name = chr_info.first;  // The header of the chromosome the tid corresponds to.
   char chr_orient = chr_info.second;    // Orientation of the transcriptome on the genome.
 
   // Get the split regions.
-  auto& trans_id_to_regions = index->get_trans_id_to_regions();
+  auto& trans_id_to_regions = transcriptome->get_trans_id_to_regions();
   if (trans_id_to_regions.size() == 0) { return 2; }
 
   auto regions_it = trans_id_to_regions.find(aln->ref_header);

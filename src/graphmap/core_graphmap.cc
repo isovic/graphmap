@@ -9,7 +9,7 @@
 
 
 
-int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingData* mapping_data, const std::vector<Index *> indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::GraphMap_(ScoreRegistry* local_score, std::shared_ptr<is::MinimizerIndex> index_read, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
   LOG_DEBUG_SPEC("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024));
 
   uint64_t readlength = read->get_sequence_length();
@@ -33,7 +33,7 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingDa
   // This part takes care of the split regions.
   if (local_score->get_region().is_split == false) {
     local_score->Reserve((local_score->get_region().end - local_score->get_region().start) * 2);
-    data_ptr = indexes[0]->get_data();
+    data_ptr = &indexes[0]->get_data()[0];
     data_start = local_score->get_region().start;
     data_end = local_score->get_region().end - parameters->k_graph + 1;
 
@@ -70,16 +70,18 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, Index *index_read, MappingDa
   return 0;
 }
 
-int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, Index *index_read, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, std::shared_ptr<is::MinimizerIndex> index_read, const SingleSequence* read, const ProgramParameters* parameters) {
 
   int64_t k = parameters->k_graph;
   int64_t num_links = parameters->num_links;
 
-  uint64_t hits_start = -1;
-  uint64_t num_hits = 0;
-  int64_t *hits = NULL;
+//  uint64_t hits_start = -1;
+//  uint64_t num_hits = 0;
+//  int64_t *hits = NULL;
+//  int ret_search = index_read->FindAllRawPositionsOfIncrementalSeed(kmer, (uint64_t) k, (uint64_t) parameters->max_num_hits, &hits, &hits_start, &num_hits);
 
-  int ret_search = ((IndexHash *) index_read)->FindAllRawPositionsOfIncrementalSeed(kmer, (uint64_t) k, (uint64_t) parameters->max_num_hits, &hits, &hits_start, &num_hits);
+  std::vector<uint128_t> hits;
+  int ret_search = index_read->FindAndJoin(kmer, k, hits);
 
   if (ret_search == 1) {      // There are no hits for the current kmer.
     return 1;
@@ -103,11 +105,11 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
 
   int64_t num_vertices = mapping_data->vertices.num_vertices;
 
-  int64_t *hits_start_ptr = &hits[hits_start];
+//  int64_t *hits_start_ptr = &hits[hits_start];
 
-  for (int64_t i = 0; i < (num_hits); i++) {
+  for (int64_t i = 0; i < (hits.size()); i++) {
     // Each hit position is a location on the read. Reference position is passed through function parameter kmer_start.
-    int64_t hit = hits_start_ptr[i];
+    int64_t hit = is::MinimizerIndex::seed_position(hits[i]);
     int64_t position = num_vertices - hit - 1;
     int64_t best_vertex_idx = -1;
 

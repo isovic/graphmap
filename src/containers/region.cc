@@ -7,27 +7,27 @@
 
 #include "containers/region.h"
 
-int CopyLinearRegion(const Index *index_reference, const Region *region, int8_t **ret_concatenated_data, int64_t *ret_data_length, int64_t *ret_start_offset) {
-  if (region->is_split == true)
-    return 1;
+//int CopyLinearRegion(const Index *index_reference, const Region *region, int8_t **ret_concatenated_data, int64_t *ret_data_length, int64_t *ret_start_offset) {
+//  if (region->is_split == true)
+//    return 1;
+//
+//  int8_t *data_copy = new int8_t[(region->end - region->start + 1) + 1];
+//  if (data_copy == NULL) {
+//    return 3;
+//  }
+//
+//  memmove((data_copy), &(index_reference->get_data()[region->start]), (region->end - region->start + 1));
+//
+//  data_copy[(region->end - region->start + 1)] = '\0';
+//
+//  *ret_concatenated_data = data_copy;
+//  *ret_data_length = (region->end - region->start + 1);
+//  *ret_start_offset = region->start;
+//
+//  return 0;
+//}
 
-  int8_t *data_copy = new int8_t[(region->end - region->start + 1) + 1];
-  if (data_copy == NULL) {
-    return 3;
-  }
-
-  memmove((data_copy), &(index_reference->get_data()[region->start]), (region->end - region->start + 1));
-
-  data_copy[(region->end - region->start + 1)] = '\0';
-
-  *ret_concatenated_data = data_copy;
-  *ret_data_length = (region->end - region->start + 1);
-  *ret_start_offset = region->start;
-
-  return 0;
-}
-
-int ConcatenateSplitRegion(const Index *index_reference, const Region *region, int8_t **ret_concatenated_data, int64_t *ret_data_length, int64_t *ret_start_offset, int64_t *ret_position_of_ref_end) {
+int ConcatenateSplitRegion(std::shared_ptr<is::MinimizerIndex> index_reference, const Region *region, int8_t **ret_concatenated_data, int64_t *ret_data_length, int64_t *ret_start_offset, int64_t *ret_position_of_ref_end) {
   if (region->is_split == false)
     return 1;
 
@@ -73,11 +73,11 @@ int ConcatenateSplitRegion(const Index *index_reference, const Region *region, i
   return 0;
 }
 
-int GetRegionData(const Index *index, const Region *region,
+int GetRegionData(std::shared_ptr<is::MinimizerIndex> index, const Region *region,
                   int8_t **region_data, int64_t *data_len, int64_t *index_reg_start, int64_t *pos_of_ref_end, bool *is_cleanup_required) {
 
   if (region->is_split == false) {
-    *region_data = (int8_t *) index->get_data() + region->start;
+    *region_data = (int8_t *) (&index->get_data()[0] + region->start);
     *data_len = (region->end - region->start);
     *index_reg_start = region->start;
     *pos_of_ref_end = -1;
@@ -92,20 +92,20 @@ int GetRegionData(const Index *index, const Region *region,
   return 0;
 }
 
-int GetRegionDataCopy(const Index *index, const Region *region,
-                  int8_t **region_data, int64_t *data_len, int64_t *index_reg_pos, int64_t *reg_pos_of_ref_end) {
-
-  if (region->is_split == false) {
-    CopyLinearRegion(index, region, region_data, data_len, index_reg_pos);
-    *reg_pos_of_ref_end = -1;
-
-  } else {
-    ConcatenateSplitRegion(index, region, region_data, data_len, index_reg_pos, reg_pos_of_ref_end);
-
-  }
-
-  return 0;
-}
+//int GetRegionDataCopy(const Index *index, const Region *region,
+//                  int8_t **region_data, int64_t *data_len, int64_t *index_reg_pos, int64_t *reg_pos_of_ref_end) {
+//
+//  if (region->is_split == false) {
+//    CopyLinearRegion(index, region, region_data, data_len, index_reg_pos);
+//    *reg_pos_of_ref_end = -1;
+//
+//  } else {
+//    ConcatenateSplitRegion(index, region, region_data, data_len, index_reg_pos, reg_pos_of_ref_end);
+//
+//  }
+//
+//  return 0;
+//}
 
 std::string VerboseRegionAsString(Region &region) {
   std::stringstream ss;

@@ -8,7 +8,7 @@
 #include "alignment/alignment.h"
 #include "libs/opal.h"
 
-int AlignRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results) {
+int AlignRegion(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const ProgramParameters *parameters, const EValueParams *evalue_params, bool extend_to_end, PathGraphEntry *region_results) {
 //  bool align_end_to_end = true;
 //  bool spliced_alignment = true;
 //  bool spliced_alignment = false;
@@ -34,13 +34,13 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Myers' bit-vector algorithm for alignment!\n", "Alignment");
-      return AnchoredAlignmentNew(MyersNWWrapper, MyersSHWWrapper, read, index, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
+      return AnchoredAlignmentNew(MyersNWWrapper, MyersSHWWrapper, read, index, transcriptome, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
 
     } else if (parameters->alignment_algorithm == "anchorgotoh" || parameters->alignment_algorithm == "splicedgotoh") {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using anchored alignment approach.\n", "Alignment");
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Gotoh's algorithm for alignment!\n", "Alignment");
-      return AnchoredAlignmentNew(SeqAnNWWrapper, SeqAnSHWWrapper, read, index, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
+      return AnchoredAlignmentNew(SeqAnNWWrapper, SeqAnSHWWrapper, read, index, transcriptome, parameters, evalue_params, region_results, align_end_to_end, spliced_alignment);
 
 #ifndef RELEASE_VERSION
 
@@ -49,7 +49,7 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
       bool is_linear = region_results->get_region_data().is_split == false || parameters->is_reference_circular == false;
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, ((int64_t) read->get_sequence_id()) == parameters->debug_read, "Using Match Extend algorithm for alignment!\n", "Alignment");
 //      return AnchoredAlignmentNew(OpalNWWrapper, OpalSHWWrapper, read, index, parameters, evalue_params, region_results);
-      return AnchoredAlignmentNew(OpalNWWrapper, NULL, read, index, parameters, evalue_params, region_results, false, spliced_alignment);
+      return AnchoredAlignmentNew(OpalNWWrapper, NULL, read, index, transcriptome, parameters, evalue_params, region_results, false, spliced_alignment);
 #endif
 
     } else {
@@ -62,12 +62,12 @@ int AlignRegion(const SingleSequence *read, const Index *index, const ProgramPar
   return -10;
 }
 
-void VerboseAlignment(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const AlignmentResults *aln) {
+void VerboseAlignment(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters, const AlignmentResults *aln) {
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
     std::string alignment_as_string = "";
 
     alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data(), read->get_sequence_length(),
-       (const unsigned char *) (index->get_data() + aln->raw_pos_start), (aln->raw_pos_end - aln->raw_pos_start + 1),
+       (const unsigned char *) (&index->get_data()[0] + aln->raw_pos_start), (aln->raw_pos_end - aln->raw_pos_start + 1),
        (unsigned char *) &(aln->raw_alignment[0]), aln->raw_alignment.size(),
        aln->raw_pos_end - aln->raw_pos_start, aln->aln_mode_code);
 //       (aln->raw_pos_end - aln->aln_window_start), aln->aln_mode_code);
@@ -84,7 +84,7 @@ void VerboseAlignment(const SingleSequence *read, const Index *index, const Prog
 }
 
 /// Determines the start and end locations for semiglobal alignment locally to within the region. Region coordinates will be known from outside.
-int GetL1PosInRegion(const SingleSequence *read, const Index *index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
+int GetL1PosInRegion(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters, const PathGraphEntry *region_results,
                      int64_t *l1_start, int64_t *l1_end) {
   const Region &region = region_results->get_region_data();
 
@@ -257,7 +257,7 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
 // Checks if there is a strange (large) number of insertions and deletions, or consecutive insertion/deletion operations.
 // SeqAn likes to make such alignments.
 // Returns 0 if everything went ok.
-int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read, const Index* index, int64_t reference_hit_id, int64_t reference_hit_pos) {
+int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read, std::shared_ptr<is::MinimizerIndex> index, int64_t reference_hit_id, int64_t reference_hit_pos) {
   unsigned char last_move = -1;  // Code of last move.
   int64_t num_same_moves = 0;
   int64_t read_length = 0;
@@ -298,7 +298,7 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
     LOG_DEBUG("CheckAlignmentSane returned false! return 4. Calculated reference length (from alignment) is longer than the actual reference. (ref_length = %ld, index->get_reference_lengths()[reference_hit_id] = %ld", ref_length, index->get_reference_lengths()[reference_hit_id]);
     return 4;
   }
-  if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
+  if ((index != nullptr && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
     LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n");
     return 5;

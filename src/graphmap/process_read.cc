@@ -9,13 +9,12 @@
 #include <limits>
 #include <algorithm>
 #include "graphmap/graphmap.h"
-#include "index/index_hash.h"
 
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include "alignment/alignment.h"
 
-int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> indexes, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+int GraphMap::ProcessRead(MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
   if (indexes.size() == 0 || indexes[0] == NULL) {
     LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
   }
@@ -71,14 +70,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
   ///// Create a hash index from the read /////
   /////////////////////////////////////////////
   // Create the index for the current read. This index is used in graph construction.
-  Index *index_read = NULL;
-  if (parameters->k_graph < 10) {
-    index_read = new IndexHash();
-    ((IndexHash *) index_read)->set_k(parameters->k_graph);
-  } else {
-    index_read = new IndexSA();
-  }
-  index_read->GenerateFromSingleSequenceOnlyForward(*read);
+  std::vector<std::string> graph_shapes = {std::string(parameters->k_graph, '1')};
+  auto index_read = is::createMinimizerIndex(graph_shapes);
+  SequenceFile sf_read;
+  sf_read.AddSequence((SingleSequence *) read, false);
+  index_read->Create(sf_read, 0.0f, false, false, 1, 1);
 
   //////////////////////////////
   ///// Initialize stuff.  /////
@@ -205,9 +201,9 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: num_regions_processed = %ld.\n", num_regions_processed), "ProcessRead");
 
-  if (index_read)
-    delete index_read;
-  index_read = NULL;
+//  if (index_read)
+//    delete index_read;
+//  index_read = NULL;
   mapping_data->vertices.Clear();
 
   end_clock = clock();
@@ -217,7 +213,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const std::vector<Index *> 
 
   begin_clock = clock();
 
-  GenerateAlignments_(mapping_data, indexes[0], read, parameters, evalue_params);
+  GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
 
   end_clock = clock();
   elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
@@ -409,7 +405,7 @@ int GraphMap::EvaluateMappings_(MappingData *mapping_data, const SingleSequence 
   return 0;
 }
 
-int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+int GraphMap::GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
   if (mapping_data->intermediate_mappings.size() == 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
@@ -438,7 +434,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, const Index *index,
 
     /// Align the region and measure the time for execution.
     clock_t begin_clock = clock();
-    int ret_aln = AlignRegion(read, index, parameters, evalue_params, true, region_data);
+    int ret_aln = AlignRegion(read, index, transcriptome, parameters, evalue_params, true, region_data);
     clock_t end_clock = clock();
     double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
@@ -552,13 +548,13 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
 
   if (mapping_data->unmapped_reason.size() > 0) {
     if (parameters->outfmt == "sam") {
-      ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
+      ret_aln_lines = GenerateUnmappedSamLine_(read, mapping_data->unmapped_reason, parameters->verbose_sam_output);
     } else if (parameters->outfmt == "afg") {
       // In AFG format there is no need to report 'unmapped' (or non-overlapping) reads).
     } else if (parameters->outfmt == "m5") {
 
     } else {  // Default to SAM output if the specified format is unknown.
-      ret_aln_lines = GenerateUnmappedSamLine_(mapping_data, parameters->verbose_sam_output, read);
+      ret_aln_lines = GenerateUnmappedSamLine_(read, mapping_data->unmapped_reason, parameters->verbose_sam_output);
     }
     return STATE_UNMAPPED;
   }
@@ -625,7 +621,7 @@ int GraphMap::CollectFinalMappingsAndMapQ_(bool generate_final_mapping_ptrs, Map
   return 0;
 }
 
-std::string GraphMap::GenerateUnmappedSamLine_(MappingData *mapping_data, int64_t verbose_sam_output, const SingleSequence *read) const {
+std::string GraphMap::GenerateUnmappedSamLine_(const SingleSequence *read, const std::string& unmapped_reason, int64_t verbose_sam_output) const {
   std::stringstream ss;
 
   std::string qname = ((std::string) (read->get_header()));
@@ -668,7 +664,7 @@ std::string GraphMap::GenerateUnmappedSamLine_(MappingData *mapping_data, int64_
   ss << ss_optional1.str();
 
   if (verbose_sam_output >= 3) {
-    ss << "\tX3:Z:" << mapping_data->unmapped_reason;
+    ss << "\tX3:Z:" << unmapped_reason;
   }
 
   return ss.str();

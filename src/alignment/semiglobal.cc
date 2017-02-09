@@ -9,7 +9,7 @@
 #include "alignment/alignment.h"
 
 int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
-                        const SingleSequence *read, const Index *index, const ProgramParameters *parameters,
+                        const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
                         const EValueParams *evalue_params, PathGraphEntry *region_results) {
   /// General useful things.
   const Region &region = region_results->get_region_data();
@@ -147,7 +147,7 @@ int SemiglobalAlignment(AlignmentFunctionType AlignmentFunction,
 //    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), ref_id, curr_aln->ref_start + ref_start + index->get_reference_starting_pos()[ref_id]);
 //    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, read->get_data(), index->get_data(), abs_ref_id, final_aln_pos_start);
 //    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), index->get_data() + index->get_reference_starting_pos()[ref_id], abs_ref_id,  curr_aln->raw_pos_start);
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, index->get_data() + index->get_reference_starting_pos()[ref_id], final_aln_pos_start);
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0] + index->get_reference_starting_pos()[ref_id], final_aln_pos_start);
 //    printf ("final_aln_pos_start = %ld\n", final_aln_pos_start);
 //    printf ("Query:\n%s\n", GetSubstring((char *) read->get_data(), read->get_data_length()).c_str());
 //    printf ("Target:\n%s\n", GetSubstring((char *) index->get_data() + final_aln_pos_start, read->get_data_length()).c_str());

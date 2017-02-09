@@ -8,6 +8,7 @@
 #include "program_parameters.h"
 #include "argparser.h"
 #include "utility/utility_general.h"
+#include <omp.h>
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 {
@@ -81,6 +82,9 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.10", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.25", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "", "min-read-len", "80", "If a read is shorter than this, it will be marked as unmapped. This value can be lowered if the reads are known to be accurate.", 0, "Algorithmic options");
+
+  argparser.AddArgument(&parameters->use_minimizers, VALUE_TYPE_BOOL, "", "minimizers", "0", "If selected, minimizers will be constructed from reference seeds.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
@@ -192,9 +196,27 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
     VerboseShortHelpAndExit(argc, argv);
   }
 
-  if (parameters->gtf_path.size() > 0 &&
-      (parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex")) {
-    fprintf (stderr, "Transcriptome mapping currently available only in anchored alignment mode.\n\n", parameters->alignment_algorithm.c_str());
+  parameters->is_transcriptome = false;
+  if (parameters->gtf_path.size() > 0) {
+    if ((parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex")) {
+      fprintf (stderr, "Transcriptome mapping currently available only in anchored alignment mode.\n\n", parameters->alignment_algorithm.c_str());
+      VerboseShortHelpAndExit(argc, argv);
+    } else {
+      parameters->is_transcriptome = true;
+    }
+  }
+
+  if (parameters->k_graph > 12) {
+    fprintf (stderr, "Graph k-mer sizes larger than 12 are no longer supported. Please choose a smaller value.\n");
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
+  if (parameters->num_threads < 0) {
+    parameters->num_threads = std::min(24, ((int) omp_get_num_procs()) / 2);
+  }
+
+  if (parameters->minimizer_window <= 0) {
+    fprintf (stderr, "Minimizer window length cannot be <= 0!\n");
     VerboseShortHelpAndExit(argc, argv);
   }
 

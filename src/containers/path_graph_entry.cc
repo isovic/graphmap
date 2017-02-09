@@ -65,7 +65,7 @@ PathGraphEntry::~PathGraphEntry() {
 
 //  Set(local_scores_id, region_id, source_node, sink_node, lcs_length, covered_bases, region_kmer_count, deviation, query_start, query_end, reference_start, reference_end, actual_query_start,
 //      actual_query_end, actual_reference_start, actual_reference_end);
-PathGraphEntry::PathGraphEntry(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region,
+PathGraphEntry::PathGraphEntry(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region,
                                MappingResults *mapping_data, L1Results *l1_data, AlignmentResults *alignment_data) {
   fpfilter_ = 0.0f;
   fpfilter_cov_bases_ = 0.0f;
@@ -76,7 +76,7 @@ PathGraphEntry::PathGraphEntry(const Index *index, const SingleSequence *read, c
   Set(index, read, parameters, region, mapping_data, l1_data, alignment_data);
 }
 
-void PathGraphEntry::Set(const Index *index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region,
+void PathGraphEntry::Set(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const Region &region,
                          MappingResults *mapping_data, L1Results *l1_data, AlignmentResults *alignment_data) {
   index_ = index;
   read_ = read;
@@ -187,7 +187,7 @@ float PathGraphEntry::CalcFPFilter() const {
   return fpfilter;
 }
 
-float PathGraphEntry::CalcFPFilterStatic(const MappingResults &mapping_info, const Index *index, const SingleSequence *read, const ProgramParameters *parameters) {
+float PathGraphEntry::CalcFPFilterStatic(const MappingResults &mapping_info, std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters) {
   int64_t query_start = mapping_info.query_coords.start;
   int64_t query_end = (mapping_info.query_coords.end + parameters->k_graph);
   int64_t read_length = read->get_sequence_length();
