@@ -115,6 +115,7 @@ struct ProgramParameters {
 
   bool use_minimizers = false;
   int64_t minimizer_window = 5;
+  bool threshold_hits = false;
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);

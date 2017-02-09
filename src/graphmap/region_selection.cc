@@ -87,7 +87,7 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
         clock_t diff_find_seeds = clock();
         std::vector<const uint128_t *> hit_vector;
         std::vector<int64_t> hit_counts;
-        int ret_search = index->Find(seed, k, hit_vector, hit_counts);
+        int ret_search = index->Find(seed, k, parameters->threshold_hits, hit_vector, hit_counts);
         mapping_data->time_region_seed_lookup += ((double) clock() - diff_find_seeds) / CLOCKS_PER_SEC;
 
         // Check if there is too many hits (or too few).

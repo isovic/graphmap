@@ -75,13 +75,8 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
   int64_t k = parameters->k_graph;
   int64_t num_links = parameters->num_links;
 
-//  uint64_t hits_start = -1;
-//  uint64_t num_hits = 0;
-//  int64_t *hits = NULL;
-//  int ret_search = index_read->FindAllRawPositionsOfIncrementalSeed(kmer, (uint64_t) k, (uint64_t) parameters->max_num_hits, &hits, &hits_start, &num_hits);
-
   std::vector<uint128_t> hits;
-  int ret_search = index_read->FindAndJoin(kmer, k, hits);
+  int ret_search = index_read->FindAndJoin(kmer, k, false, hits);
 
   if (ret_search == 1) {      // There are no hits for the current kmer.
     return 1;

@@ -85,6 +85,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->use_minimizers, VALUE_TYPE_BOOL, "", "minimizers", "0", "If selected, minimizers will be constructed from reference seeds.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->threshold_hits, VALUE_TYPE_BOOL, "", "threshold-hits", "0", "Applies a percentil threshold to the number of hits.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");

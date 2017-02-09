@@ -42,6 +42,12 @@ void GraphMap::Run(ProgramParameters& parameters) {
     return;
   }
 
+  if (parameters.threshold_hits) {
+    LOG_MEDHIGH("Hits will be thresholded at the percentil value.\n");
+  } else {
+    LOG_MEDHIGH("No thresholding will be applied during seed lookup.\n");
+  }
+
   // Dynamic calculation of the number of allowed regions. This should be relative to the genome size.
   // The following formula has been chosen arbitrarily.
   // The dynamic calculation can be overridden by explicitly stating the max_num_regions in the arguments passed to the binary.
