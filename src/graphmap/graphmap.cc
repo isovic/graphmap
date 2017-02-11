@@ -468,8 +468,8 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
     // The actual interesting part.
     std::string sam_line = "";
     MappingData mapping_data;
-//    ProcessRead(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
-    ProcessRead2(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
+    ProcessRead(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
+//    ProcessRead2(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
 
     // Generate the output.
     int mapped_state = STATE_UNMAPPED;
