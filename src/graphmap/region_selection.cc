@@ -220,3 +220,196 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
 
   return 0;
 }
+
+void GraphMap::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::MinimizerIndex> index, bool threshold_hits, double count_cutoff, std::vector<uint128_t> &all_hits) {
+  int64_t key = is::MinimizerIndex::seed_key(seed);
+  int32_t pos_read = is::MinimizerIndex::seed_position(seed);
+
+  const uint128_t *found_seeds = NULL;
+  int64_t num_found_seeds = 0;
+
+  int lookup_ret = index->KeyLookup(key, &found_seeds, &num_found_seeds);
+
+//  printf ("key = %s = %ld, pos_read = %d, num_found_seeds = %ld\n", is::SeedToString(key, index->get_shape_max_width()).c_str(), key, pos_read, num_found_seeds);
+
+  // Something went wrong.
+  if (lookup_ret) {
+    return;
+  }
+
+  // Filter seeds with excessive hits if necessary.
+  if (threshold_hits &&
+      num_found_seeds >= count_cutoff) {
+    return;
+  }
+
+  all_hits.insert(all_hits.end(), num_found_seeds, 0);
+
+  // Reformat the new hits. The key part is no longer needed,
+  // but source position on read is.
+  auto *phits = &all_hits[0] + (all_hits.size() - num_found_seeds);
+  for (int64_t k=0; k<num_found_seeds; k++) {
+    if (found_seeds[k] == kInvalidSeed) {
+      continue;
+//      printf ("Invalid seed found!!\n");
+//      fflush(stdout);
+//      exit(1);
+    }
+
+    uint128_t pos_ref = is::MinimizerIndex::seed_position(found_seeds[k]);
+    uint128_t diag = pos_ref - pos_read;
+    uint128_t seq_id = is::MinimizerIndex::seed_seq_id(found_seeds[k]);
+    phits[k] = (seq_id << 64) | (diag << 32) | (pos_ref);
+  }
+}
+
+inline int32_t hit_pos_ref(const uint128_t& hit) {
+  return (int32_t) (hit & kSeedMask32_1);
+}
+
+inline int32_t hit_diag(const uint128_t& hit) {
+  return (int32_t) ((hit & kSeedMask32_2) >> 32);
+}
+
+inline int32_t hit_seq_id(const uint128_t& hit) {
+  return (int32_t) ((hit & kSeedMask32_3) >> 64);
+}
+
+std::string PrintSeed(uint128_t seed) {
+  std::stringstream ss;
+
+  ss << (uint32_t) ((seed & kSeedMask32_4) >> 96) << " " << (uint32_t) ((seed & kSeedMask32_3) >> 64) << " " << (uint32_t) ((seed & kSeedMask32_2) >> 32) << " " << (uint32_t) ((seed & kSeedMask32_1));
+
+  return ss.str();
+}
+
+void FindRegionBounds(const std::vector<uint128_t> &all_hits, int64_t begin_hit, int64_t end_hit, int64_t &start, int64_t &end) {
+  if ((end_hit - begin_hit + 1) <= 0) {
+    return;
+  }
+
+  start = hit_pos_ref(all_hits[begin_hit]);
+  end = start;
+  for (int64_t i=begin_hit; i<end_hit; i++) {
+    int64_t curr_pos = hit_pos_ref(all_hits[i]);
+    start = std::min(start, curr_pos);
+    end = std::max(end, curr_pos);
+  }
+}
+
+int GraphMap::RegionSelectionWithSort_(int64_t bin_size, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes,
+                                       const SingleSequence* read, const ProgramParameters* parameters, std::vector<Region>& regions) {
+  clock_t begin_clock = clock();
+  clock_t diff_clock = begin_clock;
+
+  if (indexes.size() == 0 || indexes[0] == nullptr) {
+    FATAL_REPORT(ERR_UNEXPECTED_VALUE, "No reference indexes are specified.");
+  }
+
+  int64_t max_shape_width = indexes[0]->get_shape_max_width();
+  for (int32_t i=0; i<indexes.size(); i++) {
+    max_shape_width = std::max(max_shape_width, indexes[i]->get_shape_max_width());
+  }
+
+  int64_t readlength = read->get_sequence_length();
+  int64_t num_fwd_seqs = indexes[0]->get_num_sequences_forward();
+  bool is_overlapper = (parameters->overlapper == true && parameters->reference_path == parameters->reads_path);
+  bool no_self_overlap = (parameters->no_self_hits == true);
+  float bin_size_inverse = (bin_size > 0) ? (1.0f / ((float) bin_size)) : (0.0f);
+
+  mapping_data->bin_size = bin_size;
+
+
+//  exit(1);
+
+  std::vector<uint128_t> all_hits;
+  all_hits.reserve(indexes[0]->avg_seed_occurrence() * readlength);
+
+  for (int32_t i=0; i<indexes.size(); i++) {
+    std::vector<uint128_t> seeds;       // All seeds for a given index and a given sequence.
+    std::vector<int8_t> seed_key_lens;  // Lengths of seed keys. Since multiple lookup keys can be used, each can be of different length.
+    std::vector<int8_t> seed_lens;    // Since there are several
+    auto index = indexes[i];
+    index->CollectLookupSeeds(read->get_data(), read->get_quality(), read->get_sequence_length(), 0.0f, false, false, 1, seeds);
+//    index->CollectLookupSeeds(read->get_data(), read->get_quality(), read->get_sequence_length(), 0.0f, false, parameters->use_minimizers, parameters->minimizer_window, seeds);
+
+//    printf ("seeds.size() = %ld\n", seeds.size());
+//    fflush(stdout);
+    for (int64_t j=0; j<seeds.size(); j++) {
+//      printf ("%s\n", PrintSeed(seeds[j]).c_str());
+//      fflush(stdout);
+      AppendSeedHits_(seeds[j], index, parameters->threshold_hits, index->count_cutoff(), all_hits);
+//      printf ("--------------\n");
+//      fflush(stdout);
+    }
+  }
+
+  std::sort(all_hits.begin(), all_hits.end());
+
+  // Cluster minimizer hits.
+  int32_t diag_epsilon = 500;     // TODO: Parametrize this.
+  int64_t begin_hit = 0;
+  int64_t total_num_hits = all_hits.size();
+//  printf ("all_hits.size() = %ld\n", all_hits.size());
+//  fflush(stdout);
+
+  mapping_data->bins.clear();
+  for (int64_t end_hit=0; end_hit<total_num_hits; end_hit++) {
+    if ((end_hit + 1) == total_num_hits || hit_seq_id(all_hits[end_hit+1]) != hit_seq_id(all_hits[end_hit]) || (hit_diag(all_hits[end_hit+1]) - hit_diag(all_hits[end_hit])) >= diag_epsilon) {
+      // Add a cluster.
+      int64_t ref_id = hit_seq_id(all_hits[end_hit]);
+      int64_t ref_start = indexes[0]->get_reference_starting_pos()[ref_id];
+      int64_t ref_len = indexes[0]->get_reference_lengths()[ref_id];
+      int64_t read_len = read->get_sequence_length();
+
+      int64_t start = 0, end = 0;
+      FindRegionBounds(all_hits, begin_hit, end_hit, start, end);
+
+      Region region;
+      region.start = std::max(ref_start + start - read_len, ref_start);
+      region.end = ref_start + std::min(end + max_shape_width + read_len, ref_len);; // TODO: instead of max_seed_len, the exact seed length (for a sepecific lookup key) should be used here.
+      region.reference_id = ref_id;
+      region.region_index = 0;
+      region.region_votes = (end_hit - begin_hit + 1);
+      region.is_split = false;
+      region.split_start = 0;
+      region.split_end = 0;
+
+      begin_hit = end_hit + 1;
+
+      if (region.reference_id == 0xFFFFFFFFFFFFFFFF ||
+          region.region_votes < 5) {
+        continue;
+      }
+      regions.emplace_back(region);
+
+//      ChromosomeBin new_bin;
+//      new_bin.reference_id = hit_seq_id(all_hits[end_hit]);
+//      new_bin.bin_id = j;
+//      new_bin.bin_value = bins_chromosome[i][j];
+//      if (j > 0) { new_bin.bin_value += bins_chromosome[i][j-1] / 2.0f; }
+//      if ((j + 1) < bins_chromosome[i].size()) { new_bin.bin_value += bins_chromosome[i][j+1] / 2.0f; }
+//      mapping_data->bins.push_back(new_bin);
+    }
+  }
+
+  std::sort(regions.begin(), regions.end(), [](const Region& r1, const Region& r2) { return r1.region_votes > r2.region_votes; });
+
+  clock_t end_clock = clock();
+  double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+  mapping_data->time_region_selection = elapsed_secs;
+
+  LOG_DEBUG_SPEC("Region selection timings:\n");
+  LOG_DEBUG_SPEC("    time_region_seed_lookup = %f\n", mapping_data->time_region_seed_lookup);
+  LOG_DEBUG_SPEC("    time_region_alloc = %f\n", mapping_data->time_region_alloc);
+  LOG_DEBUG_SPEC("    time_region_counting = %f\n", mapping_data->time_region_counting);
+  LOG_DEBUG_SPEC("    time_region_conversion = %f\n", mapping_data->time_region_conversion);
+  LOG_DEBUG_SPEC("    time_region_sort = %f\n", mapping_data->time_region_hitsort);
+  LOG_DEBUG_SPEC("\n");
+//  LOG_DEBUG_SPEC("    total_num_hits = %ld\n", total_num_hits);
+//  LOG_DEBUG_SPEC("    read_len = %ld\n", read->get_sequence_length());
+//  exit(1);
+
+  return 0;
+}
+

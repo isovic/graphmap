@@ -13,6 +13,7 @@
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include "alignment/alignment.h"
+#include "utility/tictoc.h"
 
 int GraphMap::ProcessRead(MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
   if (indexes.size() == 0 || indexes[0] == NULL) {
@@ -229,6 +230,189 @@ int GraphMap::ProcessRead(MappingData *mapping_data, std::vector<std::shared_ptr
   return 0;
 }
 
+void GraphMap::VerboseRegions_(const ProgramParameters* parameters, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const std::vector<Region>& regions) {
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Top 100 scoring bins:\n"), "ProcessRead");
+    for (int64_t i = 0; i < regions.size() && i < 100; i++) {
+      auto& region = regions[i];
+      ScoreRegistry local_score(region, i);
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read,
+                 FormatString("[i = %ld / %ld] ref_id = %ld, ref_id_fwd = %ld, location_start = %ld, location_end = %ld, dist = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n",
+                 i, regions.size(), region.reference_id, (region.reference_id % indexes[0]->get_num_sequences_forward()), region.start, region.end, (region.end - region.start - 1),
+                 (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
+    }
+  }
+}
+
+void GraphMap::OpenDebugClustersFile_(const ProgramParameters* parameters, const SingleSequence* read) {
+  #ifndef RELEASE_VERSION
+    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+
+      std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
+      FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
+      if (fp_cluster_path) {
+        fclose(fp_cluster_path);
+      }
+    }
+  #endif
+}
+
+int GraphMap::ProcessRead2(MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+  if (indexes.size() == 0 || indexes[0] == NULL) {
+    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
+  }
+
+  LOG_DEBUG_SPEC_NEWLINE;
+  LOG_DEBUG_SPEC("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024));
+
+  // If the read length is too short, call it unmapped.
+  if (read->get_sequence_length() < parameters->min_read_len) {
+    std::stringstream ss;
+    ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << parameters->min_read_len << "__num_region_iterations=" << mapping_data->num_region_iterations;
+    mapping_data->unmapped_reason += ss.str();
+    return 2;
+  }
+
+  ////////////////////////////////////
+  ///// Perform Region Selection /////
+  ////////////////////////////////////
+  std::vector<Region> regions;
+
+  TicToc tt_region;
+  tt_region.start();
+
+  RegionSelectionWithSort_(0, mapping_data, indexes, read, parameters, regions);
+
+  tt_region.stop();
+
+  mapping_data->time_region_selection = tt_region.get_secs();
+  LOG_DEBUG_SPEC("\n+++++++++++++++++ Region selection (sort version) elapsed time: %f sec.\n\n", mapping_data->time_region_selection);
+
+  /// Sanity check.
+  if (regions.size() == 0) {
+    mapping_data->unmapped_reason += "Unmapped_2.3_no_regions_were_selected._";
+    return 1;
+  }
+
+
+
+  /////////////////////////////////////////////
+  ///// Start the mapping process         /////
+  /////////////////////////////////////////////
+  TicToc tt_mapping;
+  tt_mapping.start();
+
+  /////////////////////////////////////////////
+  ///// Create a hash index from the read /////
+  /////////////////////////////////////////////
+  // Temporary SequenceFile for the current read.
+  SequenceFile sf_read;
+  sf_read.AddSequence((SingleSequence *) read, false);
+
+  // Create an index of the current read. This index is used in graph construction.
+  std::vector<std::string> graph_shapes = {std::string(parameters->k_graph, '1')};
+  auto index_read = is::createMinimizerIndex(graph_shapes);
+  index_read->Create(sf_read, 0.0f, false, false, 1, 1);
+
+  //////////////////////////////
+  ///// Initialize stuff.  /////
+  /////////////////////////////
+
+  // Initialize the vertices of the graph.
+  mapping_data->vertices.Resize(read->get_sequence_length());
+
+  // Initialize the iteration counter and the value after which the counter should be reset.
+  mapping_data->iteration = 0;
+
+//  float bin_value_threshold = std::max(std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), 2.0);
+  int64_t min_allowed_bin_value = 5.0f;
+  LOG_DEBUG_SPEC("regions.size() = %ld\n", regions.size());
+
+  int64_t min_num_votes = std::max((int64_t) std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), min_allowed_bin_value);
+  int64_t max_num_regions = (max_num_regions < 0) ? (parameters->max_num_regions) : (regions.size());
+
+
+  // Just verbose.
+  LOG_DEBUG_SPEC("min_allowed_bin_value = %f, bin_value_threshold = %f\n", min_allowed_bin_value);
+  LOG_DEBUG_SPEC("regions.front().region_votes = %ld, regions.back().region_votes = %ld\n", regions.front().region_votes, regions.back().region_votes);
+  LOG_DEBUG_SPEC("parameters->bin_threshold_step = %f\n", parameters->bin_threshold_step);
+  VerboseRegions_(parameters, indexes, read, regions);
+  OpenDebugClustersFile_(parameters, read);
+  LOG_DEBUG_SPEC("\n\n");
+
+  //////////////////////////////
+  ///// Perform mapping.   /////
+  /////////////////////////////
+  mapping_data->num_region_iterations = 0;
+
+  int64_t num_regions_processed = 0;
+  // Process regions one by one.
+  for (int64_t i=0; i<regions.size() && i < max_num_regions; i++) {
+    auto& region = regions[i];
+
+    if (region.region_votes < min_num_votes) {
+      break;
+    }
+
+    mapping_data->num_region_iterations += 1;
+    num_regions_processed += 1;
+
+    ScoreRegistry local_score(region, i);
+
+    bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
+    LOG_DEBUG_SPEC("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n",
+                   i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index);
+
+    // Perform the GraphMap on a single region.
+    GraphMap_(&local_score, index_read, mapping_data, indexes, read, parameters);
+
+    // Just verbose.
+    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+      LOG_DEBUG_SPEC("Local scores (raw, before LCSk):\n");
+      LOG_DEBUG_SPEC("%s", local_score.VerboseToString().c_str());
+      LOG_DEBUG_SPEC("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, regions.size(), local_score.get_registry_entries().num_vertices);
+    }
+
+    if (parameters->alignment_algorithm == "sg" || parameters->alignment_algorithm == "sggotoh") {
+      int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+    } else {
+      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+    }
+
+    local_score.Clear();
+
+    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+      LOG_DEBUG_SPEC("-----\n\n");
+    }
+  }
+
+  LOG_DEBUG_SPEC("Last region processed: num_regions_processed = %ld.\n", num_regions_processed);
+
+  mapping_data->vertices.Clear();
+
+  tt_mapping.stop();
+  mapping_data->time_mapping = tt_mapping.get_secs();
+  LOG_DEBUG_SPEC("\n+++++++++++++++++ Read mapping elapsed time: %f sec.\n\n", mapping_data->time_mapping);
+
+  TicToc tt_alignment;
+  tt_alignment.start();
+  GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
+  tt_alignment.stop();
+
+  mapping_data->time_alignment = tt_alignment.get_secs();
+  LOG_DEBUG_SPEC("\n+++++++++++++++++ GenerateAlignments elapsed time: %f sec.\n\n", mapping_data->time_alignment);
+
+  // Just verbose.
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
+  }
+
+  return 0;
+}
+
+
+
 int64_t GraphMap::CountBinsWithinThreshold_(const MappingData *mapping_data, float threshold) {
   int64_t num_regions_within_threshold = 0;
   for (int64_t i = 0; i < mapping_data->bins.size(); i++) {
@@ -373,6 +557,54 @@ int GraphMap::CheckRegionSearchFinished_(int64_t current_region, float min_allow
   return 0;
 }
 
+int GraphMap::CheckRegionSearchFinished2_(int64_t current_region, float min_allowed_bin_value, float threshold_step,
+                                          float *bin_value_threshold, MappingData *mapping_data, const std::vector<Region> &regions,
+                                          const SingleSequence *read, const ProgramParameters *parameters) {
+  float region_votes = regions[current_region].region_votes;
+
+  LOG_DEBUG_SPEC("*bin_value_threshold = %f, region_votes = %f\n", *bin_value_threshold, region_votes);
+
+  if (region_votes < (*bin_value_threshold)) {
+    LOG_DEBUG_SPEC("region_votes = %f, *bin_value_threshold = %f\n", region_votes, *bin_value_threshold);
+    // Check if there are "ok" mappings, should we continue iterating.
+    int ret_evaluate_mappings = EvaluateMappings_(mapping_data, read, parameters);
+
+    if (ret_evaluate_mappings == 0) {
+      LOG_DEBUG_SPEC("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings);
+      LOG_DEBUG_SPEC("Stopping because all basic thresholds have been satisfied in the region batch. A potentially good mapping is already found.\n\n\n");
+
+      return -1;
+
+    } else {
+      LOG_DEBUG_SPEC("\nret_evaluate_mappings = %d\n", ret_evaluate_mappings);
+
+      if (regions[current_region].region_votes < 2) {
+        LOG_DEBUG_SPEC("Stopping because region_votes < 1.\n\n\n");
+        return -2;
+      }
+
+      // We need to go into another iteration.
+      *bin_value_threshold -= std::floor(region_votes * (threshold_step));
+      *bin_value_threshold = std::max(*bin_value_threshold, 2.0f);
+//      int64_t num_regions_within_threshold = CountBinsWithinThreshold_(mapping_data, *bin_value_threshold);
+
+      if (*bin_value_threshold < min_allowed_bin_value) {
+        LOG_DEBUG_SPEC("Stopping because bin_value_threshold < (%f * bins_.front().bin_value). *bin_value_threshold = %f, min_allowed_bin_value = %f\n\n\n", threshold_step, *bin_value_threshold, min_allowed_bin_value);
+        return -3;
+      }
+
+//      if (num_regions_within_threshold > parameters->max_num_regions) {
+//        LOG_DEBUG_SPEC("Stopping because num_regions_within_threshold > parameters->max_num_regions. (num_regions_within_threshold = %ld, parameters->max_num_regions = %ld)\n\n\n", num_regions_within_threshold, parameters->max_num_regions);
+//        return -4;
+//      }
+    }
+
+    return ret_evaluate_mappings;
+  }
+
+  return 0;
+}
+
 // Returns 0 if a mapping seems to satisfy some basic thresholds. Otherwise, returns value > 0.
 int GraphMap::EvaluateMappings_(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters) {
   if (mapping_data->intermediate_mappings.size() == 0)
@@ -394,8 +626,12 @@ int GraphMap::EvaluateMappings_(MappingData *mapping_data, const SingleSequence 
   if (best_entry->get_mapping_data().cov_bases_max < threshold)
     return 2;
 
+  LOG_DEBUG_SPEC("best_entry->get_fpfilter_cov_bases() = %f < 0.50f\n", best_entry->get_fpfilter_cov_bases());
+  LOG_DEBUG_SPEC("best_entry->get_fpfilter_query_len() = %f < 0.75f\n", best_entry->get_fpfilter_query_len());
+  LOG_DEBUG_SPEC("best_entry->get_fpfilter_std() = %f < 0.20f\n", best_entry->get_fpfilter_std());
+
   if (best_entry->get_fpfilter_cov_bases() < 0.50f ||      // 0.20f
-      best_entry->get_fpfilter_query_len() < 0.75f ||      // 0.20f
+      best_entry->get_fpfilter_query_len() < 0.55f ||      // 0.20f
       best_entry->get_fpfilter_std() < 0.20f)              // 0.20f
     return 3;
 
