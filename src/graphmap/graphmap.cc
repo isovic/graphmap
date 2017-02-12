@@ -70,28 +70,28 @@ void GraphMap::Run(ProgramParameters& parameters) {
     parameters.max_num_regions_cutoff = (parameters.max_num_regions < 0) ? (parameters.max_num_regions) : (parameters.max_num_regions / 5);
   }
 
-  // Dynamic calculation of the number of allowed kmer hits for region selection.
-  // The following formula has been chosen arbitrarily.
-  // The correct value would be the one that calculates the mean (or median) of the kspectra and its standard deviation
-  // to detect outliers, but calculating the kspectra could be time and memory consuming for larger genomes. That is why
-  // we employ this simple heuristic.
-  // The dynamic calculation can be overridden by explicitly stating the max_num_hits in the arguments passed to the binary.
-  if (parameters.max_num_hits < 0) {
-    // This is how it was done previously.
-//    int64_t num_kmers = (1 << (parameters.k_region * 2));
-//    int64_t num_kmers_in_genome = (this->indexes_[0]->get_data_length_forward() * 2) - parameters.k_region + 1;
-//    double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
-//    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
-    int64_t max_seed_count = 0;
-//    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
-///// TODO: Removed on 07.02.2017.    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
-    LOG_ALL("Automatically setting the maximum number of seed hits to: %ld. Maximum seed occurrence in index: %ld.\n", parameters.max_num_hits, max_seed_count);
-
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum number of kmer hits: %ld\n", parameters.max_num_hits), "Run");
-//    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\tmax_num_hits = %ld\n", parameters.max_num_hits), "Run");
-  } else if (parameters.max_num_hits == 0) {
-    LOG_ALL("No limit to the maximum number of seed hits will be set in region selection.\n");
-  }
+//  // Dynamic calculation of the number of allowed kmer hits for region selection.
+//  // The following formula has been chosen arbitrarily.
+//  // The correct value would be the one that calculates the mean (or median) of the kspectra and its standard deviation
+//  // to detect outliers, but calculating the kspectra could be time and memory consuming for larger genomes. That is why
+//  // we employ this simple heuristic.
+//  // The dynamic calculation can be overridden by explicitly stating the max_num_hits in the arguments passed to the binary.
+//  if (parameters.max_num_hits < 0) {
+//    // This is how it was done previously.
+////    int64_t num_kmers = (1 << (parameters.k_region * 2));
+////    int64_t num_kmers_in_genome = (this->indexes_[0]->get_data_length_forward() * 2) - parameters.k_region + 1;
+////    double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
+////    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
+//    int64_t max_seed_count = 0;
+////    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
+/////// TODO: Removed on 07.02.2017.    ((IndexSpacedHashFast *) this->indexes_[0])->CalcPercentileHits(0.9999, &parameters.max_num_hits, &max_seed_count);
+//    LOG_ALL("Automatically setting the maximum number of seed hits to: %ld. Maximum seed occurrence in index: %ld.\n", parameters.max_num_hits, max_seed_count);
+//
+////    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum number of kmer hits: %ld\n", parameters.max_num_hits), "Run");
+////    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\tmax_num_hits = %ld\n", parameters.max_num_hits), "Run");
+//  } else if (parameters.max_num_hits == 0) {
+//    LOG_ALL("No limit to the maximum number of seed hits will be set in region selection.\n");
+//  }
 
   if (parameters.is_reference_circular == false)
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be linear.\n"), "Run");
@@ -182,10 +182,14 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     transcriptome_->LoadGTF(parameters.gtf_path);
   }
 
+  if (parameters.index_on_the_fly) {
+    LOG_ALL("Index will be generated on the fly (won't be stored to disk). However, if it already exists it will be loaded from disk.\n");
+  }
+
   std::string prim_index_path = parameters.index_file;
   std::string sec_index_path = parameters.index_file + std::string("sec");
 
-  bool exists = FileExists(prim_index_path) && FileExists(sec_index_path);
+  bool exists = FileExists(prim_index_path) && (!parameters.sensitive_mode || FileExists(sec_index_path));
   bool rebuild_index = !exists || parameters.rebuild_index || parameters.calc_only_index;
 
   if (rebuild_index) {
@@ -196,6 +200,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     if (!parameters.is_transcriptome) {
       LOG_ALL("Loading reference sequences.\n");
       refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
+
     } else {
       LOG_ALL("Loading genomic sequences.\n");
       auto genomic = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
@@ -207,14 +212,33 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     std::vector<std::string> shapes_prim = {"11110111101111"};
     auto index_prim = is::createMinimizerIndex(shapes_prim);
     index_prim->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+    LOG_ALL("Storing the primary index to file: '%s'.\n", prim_index_path.c_str());
+    if (parameters.index_on_the_fly == false) {
+      index_prim->Store(prim_index_path);
+    }
     indexes_.push_back(index_prim);
 
     if (parameters.sensitive_mode) {
       LOG_ALL("Sensitive mode selected.\n");
       LOG_ALL("Constructing the secondary index.\n");
-      std::vector<std::string> shapes_sec = {"11110111101111"};
+      std::vector<std::string> shapes_sec = {"1111110111111"};
       auto index_sec = is::createMinimizerIndex(shapes_prim);
       index_sec->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+      LOG_ALL("Storing the secondary index to file: '%s'.\n", sec_index_path.c_str());
+      if (parameters.index_on_the_fly == false) {
+        index_sec->Store(sec_index_path);
+      }
+      indexes_.push_back(index_sec);
+    }
+
+  } else {      // Load the index.
+    LOG_ALL("Loading the primary index.\n");
+    auto index_prim = is::createMinimizerIndex(prim_index_path);
+    indexes_.push_back(index_prim);
+
+    if (parameters.sensitive_mode) {
+      LOG_ALL("Loading the secondary index.\n");
+      auto index_sec = is::createMinimizerIndex(sec_index_path);
       indexes_.push_back(index_sec);
     }
   }

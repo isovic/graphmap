@@ -58,7 +58,7 @@ struct ProgramParameters {
   int64_t max_num_regions = 0;            // 'g' If still more regions than this are selected, the read is too ambiguous for processing, so it will be skipped.
 
   // Binning parameters
-  int64_t max_num_hits = 0;               // 'm' Maximum number of hits per kmer during the binning process.
+//  int64_t max_num_hits = 0;               // 'm' Maximum number of hits per kmer during the binning process.
   bool skip_multiple_kmers_per_bin = true;  // 'p' One kmer of a read can have multiple hits withing the same bin. If true, this parameter prevents this.
 
   bool output_in_original_order = false;    // 'u' If true, SAM alignments will be output after the processing has finished, in the order of input reads.
@@ -116,6 +116,7 @@ struct ProgramParameters {
   bool use_minimizers = false;
   int64_t minimizer_window = 5;
   bool threshold_hits = false;
+  bool index_on_the_fly = false;
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);
