@@ -269,7 +269,7 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
       alignment_char = alignment[i];
       if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X || alignment[i] == EDLIB_I || alignment[i] == EDLIB_S)
         read_length += 1;
-      if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X || alignment[i] == EDLIB_D)
+      if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X || alignment[i] == EDLIB_D || alignment[i] == EDLIB_N)
         ref_length += 1;
     }
 
@@ -300,7 +300,15 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
   }
   if ((index != nullptr && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
-    LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n");
+//    LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n"
+//        "\treference_hit_pos = %ld, ref_length = %ld\n"
+//        "\t(reference_hit_pos + ref_length) = %ld\n"
+//        "\tindex->get_reference_starting_pos()[reference_hit_id] = %ld, index->get_reference_lengths()[reference_hit_id] = %ld\n"
+//        "\t(index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]) = %ld\n",
+//        reference_hit_pos, ref_length, (reference_hit_pos + ref_length),
+//        index->get_reference_starting_pos()[reference_hit_id], index->get_reference_lengths()[reference_hit_id],
+//        (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]));
+
     return 5;
   }
 

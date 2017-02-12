@@ -837,6 +837,14 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 
     FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
 
+    LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
+    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id, curr_aln->ref_start) != 0) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Alignment is insane!\n");
+    } else {
+      LOG_DEBUG_SPEC("Alignment is ok!\n");
+    }
+
     if (parameters->is_transcriptome) {
       LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
       ConvertFromTranscriptomeToGenomeAln(parameters, index, transcriptome, curr_aln);
@@ -858,14 +866,6 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
                              &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
 //    LOG_DEBUG_SPEC("Calculating the E-value.\n");
 //    CalculateEValueDNA(curr_aln->alignment_score, curr_aln->nonclipped_length, index->get_data_length_forward(), evalue_params, &curr_aln->evalue);
-
-    LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
-    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id, curr_aln->ref_start) != 0) {
-      curr_aln->is_aligned = false;
-      LOG_DEBUG_SPEC("Alignment is insane!\n");
-    } else {
-      LOG_DEBUG_SPEC("Alignment is ok!\n");
-    }
 
     LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
     double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
