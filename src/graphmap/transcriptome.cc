@@ -185,7 +185,7 @@ int Transcriptome::MakeTranscript_(const std::map<std::string, std::vector<std::
                                          std::shared_ptr<SequenceFile> transcripts) const {
   transcripts->Clear();
   int64_t refN = references->get_sequences().size();
-  int64_t id = 1;
+  int64_t id = 0;
   for(int64_t i = 0; i < refN; i++) {
     auto seq = references->get_sequences()[i];
     auto seqName = getSequenceName_(*seq);
@@ -219,7 +219,9 @@ int Transcriptome::MakeTranscript_(const std::map<std::string, std::vector<std::
 //      char *header = new char[headerLen];
 //      std::copy(trans.first.begin(), trans.first.end(), header);
 
-      s->InitHeaderAndDataFromAscii((char *) &trans.first[0], trans.first.size(), (int8_t *) &transSeq[0], transSeq.length(), id++);
+      s->InitHeaderAndDataFromAscii((char *) &trans.first[0], trans.first.size(), (int8_t *) &transSeq[0], transSeq.length(), id, id);
+      id += 1;
+
       if(trans.second == '-') {
         s->ReverseComplement();
       }

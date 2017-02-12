@@ -200,7 +200,6 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     if (!parameters.is_transcriptome) {
       LOG_ALL("Loading reference sequences.\n");
       refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
-
     } else {
       LOG_ALL("Loading genomic sequences.\n");
       auto genomic = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
@@ -211,7 +210,9 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     LOG_ALL("Constructing the primary index.\n");
     std::vector<std::string> shapes_prim = {"11110111101111"};
     auto index_prim = is::createMinimizerIndex(shapes_prim);
+
     index_prim->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+
     LOG_ALL("Storing the primary index to file: '%s'.\n", prim_index_path.c_str());
     if (parameters.index_on_the_fly == false) {
       index_prim->Store(prim_index_path);
@@ -223,7 +224,9 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
       LOG_ALL("Constructing the secondary index.\n");
       std::vector<std::string> shapes_sec = {"1111110111111"};
       auto index_sec = is::createMinimizerIndex(shapes_prim);
+
       index_sec->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+
       LOG_ALL("Storing the secondary index to file: '%s'.\n", sec_index_path.c_str());
       if (parameters.index_on_the_fly == false) {
         index_sec->Store(sec_index_path);

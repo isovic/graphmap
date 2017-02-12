@@ -108,6 +108,10 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
           total_num_hits += hit_counts[hits_id];
 
           for (int64_t j = 0; j < hit_counts[hits_id]; j++) {
+            if (hits[j] == kInvalidSeed) {
+              continue;
+            }
+
 //            int64_t position = hits[j];
             int64_t local_position = is::MinimizerIndex::seed_position(hits[j]);
             int64_t reference_index = is::MinimizerIndex::seed_seq_id(hits[j]);
@@ -273,14 +277,6 @@ inline int32_t hit_diag(const uint128_t& hit) {
 
 inline int32_t hit_seq_id(const uint128_t& hit) {
   return (int32_t) ((hit & kSeedMask32_3) >> 64);
-}
-
-std::string PrintSeed(uint128_t seed) {
-  std::stringstream ss;
-
-  ss << (uint32_t) ((seed & kSeedMask32_4) >> 96) << " " << (uint32_t) ((seed & kSeedMask32_3) >> 64) << " " << (uint32_t) ((seed & kSeedMask32_2) >> 32) << " " << (uint32_t) ((seed & kSeedMask32_1));
-
-  return ss.str();
 }
 
 void FindRegionBounds(const std::vector<uint128_t> &all_hits, int64_t begin_hit, int64_t end_hit, int64_t &start, int64_t &end) {
