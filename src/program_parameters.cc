@@ -20,6 +20,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
   argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 //  argparser.AddCompositeArgument("sensitive", "-a gotoh -w sg -M 5 -X 4 -G 8 -E 6");
+  argparser.AddCompositeArgument("sensitive", "--freq-percentil 1.0 --minimizer-window 1");
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
@@ -77,15 +78,16 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->margin_for_ambiguity, VALUE_TYPE_FLOAT, "F", "ambiguity", "0.02", "All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0 counts only identical mappings.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->output_multiple_alignments, VALUE_TYPE_BOOL, "Z", "secondary", "0", "If specified, all (secondary) alignments within (-F FLT) will be output to a file. Otherwise, only one alignment will be output.", 0, "Algorithmic options");
 //  argparser.AddArgument(&parameters->output_multiple_alignments, VALUE_TYPE_BOOL, "Z", "no-secondary", "1", "If specified, all (secondary) alignments within (-F FLT) will be output to a file. Otherwise, only one alignment will be output.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->sensitive_mode, VALUE_TYPE_BOOL, "P", "sensitive", "0", "If false, only one gapped spaced index will be used in region selection. If true, two such indexes (with different shapes) will be used (2x memory-hungry but more powerful for very high error rates).", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->use_double_index, VALUE_TYPE_BOOL, "P", "double-index", "0", "If false, only one gapped spaced index will be used in region selection. If true, two such indexes (with different shapes) will be used (2x memory-hungry but more powerful for very high error rates).", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_bin_percent, VALUE_TYPE_DOUBLE, "", "min-bin-perc", "0.75", "Consider only bins with counts above FLT * max_bin, where max_bin is the count of the top scoring bin.", 0, "Algorithmic options");
 //  argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.10", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->bin_threshold_step, VALUE_TYPE_DOUBLE, "", "bin-step", "0.25", "After a chunk of bins with values above FLT * max_bin is processed, check if there is one extremely dominant region, and stop the search.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "", "min-read-len", "80", "If a read is shorter than this, it will be marked as unmapped. This value can be lowered if the reads are known to be accurate.", 0, "Algorithmic options");
 
-  argparser.AddArgument(&parameters->use_minimizers, VALUE_TYPE_BOOL, "", "minimizers", "0", "If selected, minimizers will be constructed from reference seeds.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->threshold_hits, VALUE_TYPE_BOOL, "", "threshold-hits", "0", "Applies a percentil threshold to the number of hits.", 0, "Algorithmic options");
+//  argparser.AddArgument(&parameters->use_minimizers, VALUE_TYPE_BOOL, "", "minimizers", "0", "If selected, minimizers will be constructed from reference seeds.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from. If equal to 1, minimizers will be turned off.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentil", "0.99", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
+//  argparser.AddArgument(&parameters->threshold_hits, VALUE_TYPE_BOOL, "", "threshold-hits", "0", "Applies a percentil threshold to the number of hits.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->index_on_the_fly, VALUE_TYPE_BOOL, "", "fly-index", "0", "Index will be constructed on the fly, without storing it to disk. If it already exists on disk, it will be loaded unless --rebuild-index is specified.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
@@ -220,6 +222,13 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   if (parameters->minimizer_window <= 0) {
     fprintf (stderr, "Minimizer window length cannot be <= 0!\n");
     VerboseShortHelpAndExit(argc, argv);
+  } else {
+    parameters->use_minimizers = (parameters->minimizer_window > 1);
+  }
+
+  if(parameters->frequency_percentil < 0.0 || parameters->frequency_percentil > 1.0) {
+  } else {
+    parameters->threshold_hits = (parameters->frequency_percentil < 1.0);
   }
 
 #ifndef RELEASE_VERSION
@@ -446,7 +455,7 @@ void VerboseProgramParameters(ProgramParameters *parameters) {
   fprintf (stderr, "%smargin_for_ambiguity = %f\n", line_prefix.c_str(), parameters->margin_for_ambiguity);
   fprintf (stderr, "%soutput_multiple_alignments = %s\n", line_prefix.c_str(), (parameters->output_multiple_alignments == true)?"true":"false");
 
-  fprintf (stderr, "%ssensitive_mode = %s\n", line_prefix.c_str(), (parameters->sensitive_mode == true)?"true":"false");
+  fprintf (stderr, "%ssensitive_mode = %s\n", line_prefix.c_str(), (parameters->use_double_index == true)?"true":"false");
 
   fprintf (stderr, "%sevalue_threshold = %f\n", line_prefix.c_str(), parameters->evalue_threshold);
   fprintf (stderr, "%smapq_threshold = %ld\n", line_prefix.c_str(), parameters->mapq_threshold);

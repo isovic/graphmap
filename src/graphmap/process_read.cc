@@ -72,7 +72,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, std::vector<std::shared_ptr
   /////////////////////////////////////////////
   // Create the index for the current read. This index is used in graph construction.
   std::vector<std::string> graph_shapes = {std::string(parameters->k_graph, '1')};
-  auto index_read = is::createMinimizerIndex(graph_shapes);
+  auto index_read = is::createMinimizerIndex(graph_shapes, 1.0);
   SequenceFile sf_read;
   sf_read.AddSequence((SingleSequence *) read, false);
   index_read->Create(sf_read, 0.0f, false, false, 1, 1);
@@ -311,7 +311,7 @@ int GraphMap::ProcessRead2(MappingData *mapping_data, std::vector<std::shared_pt
 
   // Create an index of the current read. This index is used in graph construction.
   std::vector<std::string> graph_shapes = {std::string(parameters->k_graph, '1')};
-  auto index_read = is::createMinimizerIndex(graph_shapes);
+  auto index_read = is::createMinimizerIndex(graph_shapes, 1.0);
   index_read->Create(sf_read, 0.0f, false, false, 1, 1);
 
   //////////////////////////////

@@ -1,5 +1,21 @@
 ## GraphMap - ChangeLog
 
+**__Version 0.4.1 -> 0.5.0__**  
+Release date: 13 February 2017
+- Re-implemented the index. Removed all other indexes that were previously implemented, and cleaned up the code to only use the new index (MinimizerIndex). MinimizerIndex is implemented in a separate repo added to the codebase. It also uses a hash table to store the seeds, however instead of the perfect hash as before, Google's DenseHash is used. Seeds are first compiled in a giant list (each sequence in its space, in parallel), and afterwards the list is sorted (also multithreaded). Basic statistics on seed key distribution are calculated (mean, median, standard deviation). The index also allows thresholding the amount of hits during lookup (keys with a count higher than a user-specified percentil are skipped) which is very significant for large, repetitive genomes. The index can also generate minimizers (also user specified). Index also allows for custom indexing shapes to be defined, and creates the lookup shapes automatically.  
+- Changed the command line parameters to allow for new features, concretely:  
+  1. Removed the parameter ```max-hits``` which is now obsolete.
+  2. Added parameter ```minimizer-window``` to specify the length of the minimizer window to choose minimizers from. If equal to 1, minimizers won't be used.  
+  3. Added parameter ```freq-percentil``` to specify the percentil of key occurances which will be kept. E.g. if 0.99, then 1% of most repetitive keys will be skipped. If 1.0, no filtering will be used.  
+  4. Added parameter ```fly-index``` which will generate index on the fly and won't store it to disk. If the index already exists on disk, it will be loaded. To completely generate a new index on the fly, use ```--fly-index --rebuild-index```.  
+  5. Renamed the parameter which was previously known as ```sensitive``` to ```double-index```.
+  6. Added a composite parameter called ```-x sensitive``` which will turn off minimizers and key frequency filtering.  
+
+- Fixed an issue with RNA-seq transcriptome mapping, where recall would be lower than expected. There was a bug when checking if alignment is sane - the check would occur *after* the alignment was converted from transcriptome space to genome space, instead still on the transcriptome. This could not have caused false positives, but definitely caused many reads to be unmapped.  
+- The reimplemented index now fixes the issue of segmentation fault on the human genome.  
+
+
+
 **__Version 0.4.0 -> 0.4.1__**  
 Release date: 28 January 2017  
 - Fixed the SAM headers for transcriptome mapping. In the last version, the headers corresponded to the transcriptome headers, although the alignments are in the genome space.

@@ -43,9 +43,15 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 
   if (parameters.threshold_hits) {
-    LOG_MEDHIGH("Hits will be thresholded at the percentil value.\n");
+    LOG_MEDHIGH("Hits will be thresholded at the percentil value (%f%%).\n", parameters.frequency_percentil);
   } else {
     LOG_MEDHIGH("No thresholding will be applied during seed lookup.\n");
+  }
+
+  if (parameters.use_minimizers) {
+    LOG_MEDHIGH("Minimizers will be used. Minimizer window length: %ld\n", parameters.minimizer_window);
+  } else {
+    LOG_MEDHIGH("Minimizers will not be used.\n");
   }
 
   // Dynamic calculation of the number of allowed regions. This should be relative to the genome size.
@@ -189,7 +195,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
   std::string prim_index_path = parameters.index_file;
   std::string sec_index_path = parameters.index_file + std::string("sec");
 
-  bool exists = FileExists(prim_index_path) && (!parameters.sensitive_mode || FileExists(sec_index_path));
+  bool exists = FileExists(prim_index_path) && (!parameters.use_double_index || FileExists(sec_index_path));
   bool rebuild_index = !exists || parameters.rebuild_index || parameters.calc_only_index;
 
   if (rebuild_index) {
@@ -209,7 +215,7 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
     LOG_ALL("Constructing the primary index.\n");
     std::vector<std::string> shapes_prim = {"11110111101111"};
-    auto index_prim = is::createMinimizerIndex(shapes_prim);
+    auto index_prim = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
 
     index_prim->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
 
@@ -219,11 +225,11 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
     }
     indexes_.push_back(index_prim);
 
-    if (parameters.sensitive_mode) {
+    if (parameters.use_double_index) {
       LOG_ALL("Sensitive mode selected.\n");
       LOG_ALL("Constructing the secondary index.\n");
       std::vector<std::string> shapes_sec = {"1111110111111"};
-      auto index_sec = is::createMinimizerIndex(shapes_prim);
+      auto index_sec = is::createMinimizerIndex(shapes_sec, parameters.frequency_percentil);
 
       index_sec->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
 
@@ -236,12 +242,12 @@ int GraphMap::BuildIndex(ProgramParameters &parameters) {
 
   } else {      // Load the index.
     LOG_ALL("Loading the primary index.\n");
-    auto index_prim = is::createMinimizerIndex(prim_index_path);
+    auto index_prim = is::createMinimizerIndex(prim_index_path, parameters.frequency_percentil);
     indexes_.push_back(index_prim);
 
-    if (parameters.sensitive_mode) {
+    if (parameters.use_double_index) {
       LOG_ALL("Loading the secondary index.\n");
-      auto index_sec = is::createMinimizerIndex(sec_index_path);
+      auto index_sec = is::createMinimizerIndex(sec_index_path, parameters.frequency_percentil);
       indexes_.push_back(index_sec);
     }
   }

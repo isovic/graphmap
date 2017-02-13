@@ -84,7 +84,7 @@ struct ProgramParameters {
   std::string composite_parameters = "";  // 'x', specifies several parameters at the same time, such as 'nanopore' and 'illumina'.
   float margin_for_ambiguity = 0.05;  // All mapping positions within the given fraction of the top score will be counted for ambiguity (mapping quality). Value of 0.0f counts only identical mappings.
   bool output_multiple_alignments = false;  // If 0, only one best alignment will be output. Otherwise, all alignments within margin_for_ambiguity will be output to a file.
-  bool sensitive_mode = false; // If false, only one index will be used, but the memory consumption will be reduced by half. If false, sensitive and memory-hungry mode will be used.
+  bool use_double_index = false; // If false, only one index will be used, but the memory consumption will be reduced by half. If false, sensitive and memory-hungry mode will be used.
   int64_t min_num_anchor_bases = 12;
   double evalue_threshold = -1;
   int64_t mapq_threshold = 0;
@@ -116,6 +116,7 @@ struct ProgramParameters {
   bool use_minimizers = false;
   int64_t minimizer_window = 5;
   bool threshold_hits = false;
+  double frequency_percentil = 0.99;
   bool index_on_the_fly = false;
 };
 
