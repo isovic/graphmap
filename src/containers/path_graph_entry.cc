@@ -382,10 +382,12 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
 std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_output) const {
   std::stringstream ss;
 
+  int64_t aln_counter = 0;
   for (int64_t i=0; i<alignments_.size(); i++) {
     if (alignments_[i].is_aligned == true) {
-      if (i > 0) { ss << "\n"; }
+      if (aln_counter > 0) { ss << "\n"; }
       ss << GenerateSAMFromInfoAlignment_(alignments_[i], mapping_metadata_, (i == 0), verbose_sam_output);
+      aln_counter += 1;
     }
   }
 

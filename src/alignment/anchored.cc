@@ -34,10 +34,11 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
   aln.is_aligned = true;
   aln.raw_alignment.clear();
 
-  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
-  int64_t reference_id = region_results->get_region_data().reference_id;
-  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
-  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
+//  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
+//  int64_t reference_id = region_results->get_region_data().reference_id;
+//  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
+//  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
+  int64_t reference_start = 0;
 
   LOG_DEBUG_SPEC("Aligning the beginning of the read (overhang).\n");
 
@@ -329,10 +330,12 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
   aln.ref_end = aln.raw_pos_end - ref_index_start;
   aln.raw_alignment.clear();
 
-  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
-  int64_t reference_id = region_results->get_region_data().reference_id;
-  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
-  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
+//  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
+//  int64_t reference_id = region_results->get_region_data().reference_id;
+//  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
+//  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
+  int64_t reference_start = 0;
+  int64_t reference_length = ref_len;
 
   LOG_DEBUG_SPEC("Aligning the end of the read (overhang).\n");
 
@@ -374,7 +377,8 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
       if (parameters->verbose_level > 5 && ((int64_t) read->get_sequence_id()) == parameters->debug_read) {
         std::string alignment_as_string = "";
         alignment_as_string = PrintAlignmentToString((const unsigned char *) read->get_data() + query_end + 1, clip_count_back,
-                                                     (const unsigned char *) (ref_data + alignment_position_end + 1), std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)),
+                                                     (const unsigned char *) (ref_data + alignment_position_end + 1),
+                                                     std::min(clip_count_back*2, (reference_start + reference_length - alignment_position_end - 1)),
                                                      (unsigned char *) &(leftover_right_alignment[0]), leftover_right_alignment.size(),
                                                      (0), EDLIB_MODE_SHW);
         LOG_DEBUG_SPEC("Aligning the end of the read:\n%s\n", alignment_as_string.c_str());
@@ -838,7 +842,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
 
     LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
-    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id, curr_aln->ref_start) != 0) {
+    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id + (curr_aln->is_reverse) ? index->get_num_sequences_forward() : 0, curr_aln->raw_pos_start) != 0) {
       curr_aln->is_aligned = false;
       LOG_DEBUG_SPEC("Alignment is insane!\n");
     } else {
@@ -882,7 +886,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     VerboseAlignment(read, index, parameters, curr_aln);
   }
 
-  if (is_cleanup_required) { free(ref_data); }
+  if (is_cleanup_required && ref_data) { delete[] ref_data; }
 
   /// Count the number of 'unaligned' alignments.
   int32_t num_unaligned = 0;

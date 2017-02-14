@@ -213,12 +213,19 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
   aln_l->reg_pos_end = aln_l->reg_pos_start + end_on_ref;     // Update the region alignment coordinates.
   aln_l->query_end = aln_l->query_start + end_on_read;        // Update the query coordinate.
   int64_t clip_l = aln_l->query_len - (end_on_read + 1);
-  uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
-  memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
-  memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
-  // Copy the alignment to the raw_alignment member.
-  aln_l->raw_alignment.clear();
-  aln_l->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+
+  std::vector<uint8_t> temp_aln_left;
+  temp_aln_left.assign(&aln->raw_alignment[0], &aln->raw_alignment[0] + end_on_aln + 1);
+  temp_aln_left.insert(temp_aln_left.end(), clip_l, EDLIB_S);
+  std::swap(aln_l->raw_alignment, temp_aln_left);
+
+//  uint8_t *alignment_l = (uint8_t *) malloc(sizeof(uint8_t) * ((end_on_aln + 1) + clip_l + 1));
+//  memmove(&alignment_l[0], &aln->raw_alignment[0], end_on_aln + 1);
+//  memset(&alignment_l[end_on_aln+1], EDLIB_S, clip_l);
+//  // Copy the alignment to the raw_alignment member.
+//  aln_l->raw_alignment.clear();
+//  aln_l->raw_alignment.assign(alignment_l, alignment_l + ((end_on_aln + 1) + clip_l));
+
   // Update the final alignment of the left part.
   aln_l->alignment = aln_l->raw_alignment;
   if (aln_l->orientation == kReverse) ReverseArray(aln_l->alignment);
@@ -232,13 +239,18 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
   aln_r->query_start = aln_r->query_start + start_on_read;                  // Update the query coordinate.
   int64_t clip_r = start_on_read;
   int64_t copy_r = (aln->raw_alignment.size() - start_on_aln);
-  uint8_t *alignment_r = (uint8_t *) malloc(sizeof(uint8_t) * (copy_r + clip_r + 1));
-  memset(&alignment_r[0], EDLIB_S, clip_r);
-  memmove(&alignment_r[clip_r], &aln->raw_alignment[start_on_aln], copy_r);
-  alignment_r[copy_r + clip_r] = '\0';
-  // Copy the alignment to the raw_alignment member.
-  aln_r->raw_alignment.clear();
-  aln_r->raw_alignment.assign(alignment_r, alignment_r + copy_r + clip_r);
+
+  std::vector<uint8_t> temp_aln_right(clip_r, EDLIB_S);
+  temp_aln_right.insert(temp_aln_right.end(), &aln->raw_alignment[start_on_aln], &aln->raw_alignment[start_on_aln] + copy_r);
+//  temp_aln_right.push_back('\n');
+  std::swap(aln_r->raw_alignment, temp_aln_right);
+//  uint8_t *alignment_r = (uint8_t *) malloc(sizeof(uint8_t) * (copy_r + clip_r + 1));
+//  memset(&alignment_r[0], EDLIB_S, clip_r);
+//  memmove(&alignment_r[clip_r], &aln->raw_alignment[start_on_aln], copy_r);
+//  alignment_r[copy_r + clip_r] = '\0';
+//  // Copy the alignment to the raw_alignment member.
+//  aln_r->raw_alignment.clear();
+//  aln_r->raw_alignment.assign(alignment_r, alignment_r + copy_r + clip_r);
   // Update the final alignment of the left part.
   aln_r->alignment = aln_r->raw_alignment;
   if (aln_r->orientation == kReverse) ReverseArray(aln_r->alignment);
@@ -300,14 +312,15 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
   }
   if ((index != nullptr && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
-//    LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n"
-//        "\treference_hit_pos = %ld, ref_length = %ld\n"
-//        "\t(reference_hit_pos + ref_length) = %ld\n"
-//        "\tindex->get_reference_starting_pos()[reference_hit_id] = %ld, index->get_reference_lengths()[reference_hit_id] = %ld\n"
-//        "\t(index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]) = %ld\n",
-//        reference_hit_pos, ref_length, (reference_hit_pos + ref_length),
-//        index->get_reference_starting_pos()[reference_hit_id], index->get_reference_lengths()[reference_hit_id],
-//        (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]));
+    LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n"
+        "\treference_hit_pos = %ld, ref_length = %ld\n"
+        "\t(reference_hit_pos + ref_length) = %ld\n"
+        "\tindex->get_reference_starting_pos()[reference_hit_id] = %ld, index->get_reference_lengths()[reference_hit_id] = %ld\n"
+        "\t(index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]) = %ld\n",
+        reference_hit_pos, ref_length, (reference_hit_pos + ref_length),
+        index->get_reference_starting_pos()[reference_hit_id], index->get_reference_lengths()[reference_hit_id],
+        (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]));
+    LOG_DEBUG("reference_hit_id = %ld\n", reference_hit_id);
 
     return 5;
   }
