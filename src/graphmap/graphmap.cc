@@ -43,7 +43,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 
   if (parameters.threshold_hits) {
-    LOG_MEDHIGH("Hits will be thresholded at the percentil value (%f%%).\n", parameters.frequency_percentil);
+    LOG_MEDHIGH("Hits will be thresholded at the percentil value (percentil: %f%%, frequency: %.0f).\n", parameters.frequency_percentil, indexes_[0]->count_cutoff());
   } else {
     LOG_MEDHIGH("No thresholding will be applied during seed lookup.\n");
   }
