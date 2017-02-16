@@ -19,7 +19,7 @@
 #include "program_parameters.h"
 #include "utility/utility_general.h"
 
-//#include "owler/owler.h"
+#include "owler/owler.h"
 #include "argparser.h"
 
 int main(int argc, char *argv[]) {
@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
     }
     fflush(stdout);
 
-//    Owler owler;
-//    owler.Run(program_parameters);
+    Owler owler;
+    owler.Run(program_parameters);
 
   } else {
     fprintf (stderr, "ERROR: Unknown value of 'tool' parameter. Exiting.\n\n");

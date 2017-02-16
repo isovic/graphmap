@@ -170,15 +170,6 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 }
 
-bool FileExists(const std::string &path) {
-  FILE *fp = fopen(path.c_str(), "r");
-  if (fp == NULL) {
-    return false;
-  }
-  fclose (fp);
-  return true;
-}
-
 int GraphMap::BuildIndex(ProgramParameters &parameters) {
   indexes_.clear();
   transcriptome_ = is::createTranscriptome();

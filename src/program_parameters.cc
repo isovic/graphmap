@@ -227,6 +227,8 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   }
 
   if(parameters->frequency_percentil < 0.0 || parameters->frequency_percentil > 1.0) {
+    fprintf (stderr, "Frequency percentil should be in range [0.0, 1.0].\n");
+    VerboseShortHelpAndExit(argc, argv);
   } else {
     parameters->threshold_hits = (parameters->frequency_percentil < 1.0);
   }
@@ -264,6 +266,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->calc_only_index, VALUE_TYPE_BOOL, "I", "index-only", "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
 //  argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Rebuild index even if it already exists in given path.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "1024", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Rebuild index even if it already exists in given path.", 0, "Input/Output options");
 
   argparser.AddArgument(&parameters->error_rate, VALUE_TYPE_FLOAT, "e", "error-rate", "0.45", "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
 //  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "0", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
@@ -277,6 +280,9 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
 
   argparser.AddArgument(&parameters->debug_read, VALUE_TYPE_INT64, "y", "debug-read", "-1", "ID of the read to give the detailed verbose output.", 0, "Debug options");
   argparser.AddArgument(&parameters->debug_read_by_qname, VALUE_TYPE_STRING, "Y", "debug-qname", "", "QNAME of the read to give the detailed verbose output. Has precedence over -y. Use quotes to specify.", 0, "Debug options");
+
+  argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from. If equal to 1, minimizers will be turned off.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentil", "0.99", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
 
   argparser.ProcessArguments(argc, argv);
 
@@ -376,6 +382,20 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
       parameters->alignment_algorithm != "anchor" && parameters->alignment_algorithm != "anchorgotoh" && parameters->alignment_algorithm != "anchormex") {
     fprintf (stderr, "Unknown alignment algorithm '%s'!\n\n", parameters->alignment_algorithm.c_str());
     VerboseShortHelpAndExit(argc, argv);
+  }
+
+  if (parameters->minimizer_window <= 0) {
+    fprintf (stderr, "Minimizer window length cannot be <= 0!\n");
+    VerboseShortHelpAndExit(argc, argv);
+  } else {
+    parameters->use_minimizers = (parameters->minimizer_window > 1);
+  }
+
+  if(parameters->frequency_percentil < 0.0 || parameters->frequency_percentil > 1.0) {
+    fprintf (stderr, "Frequency percentil should be in range [0.0, 1.0].\n");
+    VerboseShortHelpAndExit(argc, argv);
+  } else {
+    parameters->threshold_hits = (parameters->frequency_percentil < 1.0);
   }
 
 #ifndef RELEASE_VERSION

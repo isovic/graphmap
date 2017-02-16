@@ -33,6 +33,8 @@
 
 #include "minimizer_index/minimizer_index.h"
 
+#include "utility/tictoc.h"
+
 
 
 class Owler {
@@ -42,59 +44,49 @@ class Owler {
 
   // Main function for running the mapping process. It generates/loads the index, and handles batch loading of sequences from the reads file.
   void Run(ProgramParameters &parameters);
-  // Generates or loads the index of the reference genome.
-  int BuildIndex(ProgramParameters &parameters);
-  // Loads reads from a file in batches of given size (in MiB), or all at once.
-  void ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out);
 
-  // Process the loaded batch of reads. Uses OpenMP to do it in parallel. Calls ProcessOneRead for each read in the SequenceFile.
-  int ProcessSequenceFileInParallel(ProgramParameters *parameters, SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped);
-
-  int ProcessRead(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> indexes, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
-//  int CollectSAMLines(std::string &ret_sam_lines, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);
-
-  int CollectAMOSLines(std::string &ret_amos_lines, OwlerData *owler_data, const SingleSequence *read, const ProgramParameters *parameters);
-
-  int CollectSeedHits(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int FilterUnlikelyOverlaps(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int ApplyLCS(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-
-  int CollectSeedHitsExperimental(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int CollectSeedHitsExperimentalCalcSubseedsFast(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int CollectSeedHitsExperimentalSubseededIndex(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int ApplyLCS2(OwlerData *owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int CollectMHAPLines(std::string &ret_overlap_lines, OwlerData *owler_data, const SingleSequence *read, const ProgramParameters *parameters);
-  std::string OverlapToMHAP(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, int64_t read_id, int64_t read_length);
-  std::string OverlapToAFG(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, int64_t read_id, int64_t read_length);
-  std::string OverlapToDot(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, int64_t read_id, int64_t read_length);
-  bool CheckDistanceTooBig(OwlerData* owler_data, int64_t index_last, int64_t index_current, float error_rate);
-  bool CheckDistanceStep(OwlerData* owler_data, int64_t index_first, int64_t index_last, int64_t index_current, float max_diff);
-  int FilterAnchorBreakpoints(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t seed_length, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids=NULL);
-  int FilterAnchorBreakpointsExperimental(const std::vector<int> &lcskpp_indices, int64_t ref_hits_start, int64_t ref_hits_end, int64_t seed_length, int64_t min_cluster_length, float min_cluster_coverage, OwlerData* owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids=NULL);
-
-  int OverlapLength(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *A_start, int64_t *A_end, int64_t *ret_query_length, int64_t *B_start, int64_t *B_end, int64_t *ret_ref_length);
-  std::string OverlapMHAPVerbose(OwlerData* owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, int64_t ref_id, int64_t hits_start, std::vector<int> &lcskpp_indices);
-
-  OverlapResult GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, std::string ref_header, int64_t read_id, int64_t read_length, bool read_reversed, std::string read_header);
+//  std::string OverlapMHAPVerbose(OwlerData* owler_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, int64_t ref_id, int64_t hits_start, std::vector<int> &lcskpp_indices);
+//
+//  OverlapResult GenerateOverlapResult(std::vector<SeedHit2> &seed_hits, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t ref_id, int64_t reference_length, bool ref_reversed, std::string ref_header, int64_t read_id, int64_t read_length, bool read_reversed, std::string read_header);
 
  private:
   std::shared_ptr<SequenceFile> ref_;
-  std::vector<std::shared_ptr<is::MinimizerIndex>> indexes_;
+  std::shared_ptr<SequenceFile> reads_;
+//  std::vector<std::shared_ptr<is::MinimizerIndex>> indexes_;
+  std::shared_ptr<is::MinimizerIndex> index_;
 
-  // Retrieves a file list from the given folder.
-  bool GetFileList_(std::string folder, std::vector<std::string> &ret_files);
-  // Check if string ends with the given suffix (parameter 'ending'), and returns true if so.
-  bool StringEndsWith_(std::string const &full_string, std::string const &ending);
-  // Returns only files with one of the following extensions: fasta, fastq, fa, fq, sam.
-  void FilterFileList_(std::vector<std::string> &files, std::vector<std::string> &ret_read_files, std::vector<std::string> &ret_sam_files);
   // Opens the output SAM file for writing if the path is specified. If the path is empty, then output is set to STDOUT.
   FILE* OpenOutFile_(std::string out_sam_path="");
 
-  void CalcLCSFromLocalScoresCacheFriendly_(OwlerData* owler_data, int64_t overlap_id, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
+  // Generates or loads the index of the reference genome.
+  int BuildIndex_(ProgramParameters &parameters);
 
-  void CalcLCSFromLocalScoresCacheFriendly2_(OwlerData* owler_data, int64_t ref_hits_start, int64_t ref_hits_end, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
+  // Process the loaded batch of reads. Uses OpenMP to do it in parallel. Calls ProcessOneRead for each read in the SequenceFile.
+  int ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::shared_ptr<SequenceFile> reads, TicToc &tt_all, FILE *fp_out);
 
-  int CalcCoveredBases(std::vector<SeedHit2> &seed_hits, int64_t seed_length, std::vector<int> &lcskpp_indices, int64_t hits_start, int64_t hits_end, int64_t *ret_cov_A, int64_t *ret_cov_B);
+  int ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data);
+
+  int CollectHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data);
+
+  int ClusterHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, int32_t diag_epsilon, OwlerData &owler_data);
+
+  void GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data);
+
+  inline int32_t HitPosRef_(const uint128_t& hit);
+  inline int32_t HitPosRead_(const uint128_t& hit);
+  inline int32_t HitDiag_(const uint128_t& hit);
+  inline int32_t HitSeqId_(const uint128_t& hit);
+  void FindRegionBounds_(const std::vector<uint128_t> &all_hits, int64_t begin_hit, int64_t end_hit, int64_t &start_read, int64_t &end_read, int64_t &start, int64_t &end);
+  void AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::MinimizerIndex> index, bool threshold_hits, double count_cutoff, bool is_overlapper, int64_t qid, std::vector<uint128_t> &all_hits);
+  int LCSkFilter_(const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int64_t qid, int64_t tid, int32_t seed_len, PairwiseOverlap &overlap);
+  void LCSk_(std::vector<uint128_t> &events, int64_t n, int64_t k, std::vector<uint64_t> &matches_starts, std::vector<uint64_t> &matches_indices, std::vector<int32_t> &lcsk_indices, int64_t &lcsk_len);
+  inline uint128_t MakeHit_(const uint128_t& seq_id, const uint128_t& diag, const uint128_t& pos_ref, const uint128_t& pos_read);
+
+  int PrepareEvents_(const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int64_t seed_len,
+                            std::vector<uint128_t> &events, std::vector<uint64_t> &matches_starts, std::vector<uint64_t> &matches_indices, int64_t &max_seq_len);
+  std::string GenerateMHAPLine(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap);
+  int CheckOverlap_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap);
+
 };
 
 #endif /* OWLER_H_ */

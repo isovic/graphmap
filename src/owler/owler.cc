@@ -9,331 +9,182 @@
 
 #include <omp.h>
 #include <algorithm>
-//#include "libs/libdivsufsort-2.0.1-64bit/divsufsort64.h"
-//#include "index/index_hash.h"
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
+
+#include "utility/tictoc.h"
 
 
 
 Owler::Owler() {
-  ref_ = nullptr;
-  indexes_.clear();
+
 }
 
 Owler::~Owler() {
 }
 
 void Owler::Run(ProgramParameters& parameters) {
-  clock_t time_start = clock();
-  clock_t last_time = time_start;
-
   // Set the verbose level for the execution of this program.
   LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
 
-  // Check if the index exists, and build it if it doesn't.
-  BuildIndex(parameters);
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
-  last_time = clock();
-
-  if (indexes_.size() == 0 || (indexes_.size() > 0 && indexes_[0] == NULL)) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_ERROR, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No index was generated! Exiting."));
-    return;
-  }
-
-  if (parameters.calc_only_index == true) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Finished generating index. Note: only index was generated due to selected program arguments.\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
-    return;
-  }
-
-
-
-  // Dynamic calculation of the number of allowed regions. This should be relative to the genome size.
-  // The following formula has been chosen arbitrarily.
-  // The dynamic calculation can be overridden by explicitly stating the max_num_regions and max_num_regions in the arguments passed to the binary.
-  if (parameters.max_num_regions == 0) {
-    if (this->indexes_[0]->get_data_length_forward() < 5000000){
-      parameters.max_num_regions = 500;          // Limit the number of allowed regions, because log10 will drop rapidly after this point.
-    } else {
-      float M10 = 1000;     // Baseline number of allowed regions. M10 is the number of allowed regions for 10Mbp reference size.
-      float factor = log10(((float) this->indexes_[0]->get_data_length()) / 1000000.0f);     // How many powers of 10 above 1 million?
-      parameters.max_num_regions = (int64_t) (M10 * factor);
-    }
-
-//    if (this->index_->get_data_length_forward() < 5000000) {
-//      parameters.max_num_regions = 500;
-//    } else if (this->index_->get_data_length_forward() >= 5000000 && this->index_->get_data_length_forward() < 10000000) {
-//      parameters.max_num_regions = 1000;
-//    } else if (this->index_->get_data_length_forward() >= 5000000 && this->index_->get_data_length_forward() < 5000000) {
-//      parameters.max_num_regions = 1000;
-//    }
-
-    parameters.max_num_regions_cutoff = parameters.max_num_regions / 5;
-
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum allowed number of regions: max. %ld, attempt to reduce after %ld\n", parameters.max_num_regions, parameters.max_num_regions_cutoff), "Run");
-//    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\tmax_num_regions = %ld, max_num_regions_cutoff = %ld\n", parameters.max_num_regions, parameters.max_num_regions_cutoff), "Run");
-
-  } else if (parameters.max_num_regions < 0) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("No limit to the maximum allowed number of regions will be set.\n"), "Run");
-  }
-
-  // Dynamic calculation of the number of allowed kmer hits for region selection.
-  // The following formula has been chosen arbitrarily.
-  // The correct value would be the one that calculates the mean (or median) of the kspectra and its standard deviation
-  // to detect outliers, but calculating the kspectra could be time and memory consuming for larger genomes. That is why
-  // we employ this simple heuristic.
-  // The dynamic calculation can be overridden by explicitly stating the max_num_hits in the arguments passed to the binary.
-  if (parameters.max_num_hits == 0) {
-    int64_t num_kmers = (1 << (parameters.k_region * 2));
-    int64_t num_kmers_in_genome = (this->indexes_[0]->get_data_length_forward() * 2) - parameters.k_region + 1;
-    double average_num_kmers = ((double) num_kmers_in_genome) / ((double) num_kmers);
-    parameters.max_num_hits = (int64_t) ceil(average_num_kmers) * 500;
-
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Automatically setting the maximum number of kmer hits: %ld\n", parameters.max_num_hits), "Run");
-//    ErrorReporting::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("\tmax_num_hits = %ld\n", parameters.max_num_hits), "Run");
-  } else if (parameters.max_num_hits < 0) {
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("No limit to the maximum number of kmer hits will be set.\n"), "Run");
-  }
-
-  if (parameters.is_reference_circular == false)
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be linear.\n"), "Run");
-  else
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reference genome is assumed to be circular.\n"), "Run");
-
-//  if (parameters.alignment_algorithm == "edlib")
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in non-parsimonious mode.\n"), "Run");
-//  else if (parameters.alignment_algorithm == "seqan")
-//    LogSystem::GetInstance().VerboseLog(VERBOSE_LEVEL_ALL, true, FormatString("Alignment will be performed in slower, more accurate mode: %s.\n", parameters.composite_parameters.c_str()), "Run");
-
-  if (parameters.output_multiple_alignments == false)
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Only one alignment will be reported per mapped read.\n"), "Run");
-  else
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("One or more similarly good alignments will be output per mapped read. Will be marked secondary.\n"), "Run");
-
-
-
-  // Processing reads.
-  // Reads can either be processed from a single file, or they can be processed from several files in a given folder.
-  if (parameters.process_reads_from_folder == false) {
-    last_time = clock();
-    FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
-
-    // Do the actual work.
-    ProcessReadsFromSingleFile(parameters, fp_out);
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min).\n", (((float) (clock() - last_time))/CLOCKS_PER_SEC), ((((float) (clock() - last_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
-
-    if (fp_out != stdout)
-      fclose(fp_out);
-
-  } else {
-    std::vector<std::string> file_list, file_list_out, read_files, sam_files;
-
-    // The GetFileList_ functions also checks if the folder exists. If it doesn't exist, a fatal error is reported.
-    if (GetFileList_(parameters.reads_folder, file_list)) {
-      // Sanity check for the output folder also. Function returns false if the folder does not exist.
-      if (GetFileList_(parameters.output_folder, file_list_out) == true) {
-        FilterFileList_(file_list, read_files, sam_files);
-
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Loading reads from input folder. In total, %ld files need to be processed.\n", read_files.size()), "Run");
-
-        clock_t all_reads_time = clock();
-
-        for (int64_t i=0; i<((int64_t) read_files.size()); i++) {
-          last_time = clock();
-          parameters.reads_path = parameters.reads_folder + "/" + read_files.at(i);
-          parameters.out_sam_path = parameters.output_folder + "/graphmap-" + sam_files.at(i);
-          FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output SAM file is specified. If it is not, then output to STDOUT.
-
-          // Do the actual work.
-          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Starting to process read file %ld/%ld ('%s').\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
-          ProcessReadsFromSingleFile(parameters, fp_out);
-          LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Finished processing read file %ld/%ld ('%s').\n\n", (i + 1), read_files.size(), parameters.reads_path.c_str()), "ProcessReads");
-
-          if (fp_out != stdout)
-            fclose(fp_out);
-        }
-
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads processed in %.2f sec (or %.2f CPU min). =====\n", (((float) (clock() - all_reads_time))/CLOCKS_PER_SEC), ((((float) (clock() - all_reads_time))/CLOCKS_PER_SEC) / 60.0f)), "ProcessReads");
-      }
-    }
-
-    if (read_files.size() == 0) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("No read files found in path '%s'. Exiting.\n\n", parameters.reads_folder.c_str()), "Run");
-    }
-  }
-}
-
-int Owler::BuildIndex(ProgramParameters &parameters) {
-  indexes_.clear();
-
-  LOG_ALL("Building the index.\n");
+  TicToc tt_all;
+  tt_all.start();
 
   LOG_ALL("Loading genomic sequences.\n");
+  TicToc tt_load;
+  tt_load.start();
   ref_ = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
+  if (parameters.reads_path == parameters.reference_path) {
+    reads_ = ref_;
+  } else {
+    ref_ = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reads_path));
+  }
+  tt_load.stop();
+  LOG_ALL("All sequences loaded in %.2f sec (size of reads file around %ld MB). (%ld bases)\n", tt_load.get_secs(), reads_->CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads_->GetNumberOfBases());
+  LOG_ALL("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str());
 
-  LOG_ALL("Constructing the index.\n");
+  // Construct the index.
+  TicToc tt_index;
+  tt_index.start();
+  BuildIndex_(parameters);
+  tt_index.stop();
+  LOG_MEDHIGH("Memory consumption: %s\n\n", FormatMemoryConsumptionAsString().c_str());
+
+  // Processing reads.
+  TicToc tt_processing;
+  tt_processing.start();
+
+  FILE *fp_out = OpenOutFile_(parameters.out_sam_path); // Checks if the output file is specified. If it is not, then output to STDOUT.
+
+  // Do the actual work.
+  ProcessSequenceFileInParallel_(parameters, reads_, tt_all, fp_out);
+
+  if (fp_out != stdout) {
+    fclose(fp_out);
+  }
+
+  tt_processing.stop();
+
+  LOG_NEWLINE;
+  LOG_ALL("All reads processed in %.2f sec (or %.2f CPU min).\n", tt_processing.get_secs(), tt_processing.get_secs() / 60.0f);
+
+
+}
+
+//int Owler::BuildIndex_(ProgramParameters &parameters) {
+//  LOG_ALL("Building the index.\n");
+//  // Division by 2 to to avoid hyperthreading cores, and limit
+//  // to 24 to avoid clogging a shared SMP.
+//  int64_t num_threads = (parameters.num_threads > 0) ?
+//                              parameters.num_threads :
+//                              std::min(24, ((int) omp_get_num_procs()) / 2);
+//
+//  std::vector<std::string> shapes_prim = {"1111110111111"};
+//  auto index_prim = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
+//  index_prim->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
+//
+//  if (index_prim == nullptr) {
+//    FATAL_REPORT(ERR_UNEXPECTED_VALUE, "No index was generated! Exiting.");
+//  }
+//
+//  index_ = index_prim;
+//
+//  return 0;
+//}
+
+int Owler::BuildIndex_(ProgramParameters &parameters) {
+  LOG_ALL("Building the index.\n");
+
+  // Division by 2 to to avoid hyperthreading cores, and limit
+  // to 24 to avoid clogging a shared SMP.
+  int64_t num_threads = (parameters.num_threads > 0) ?
+                              parameters.num_threads :
+                              std::min(24, ((int) omp_get_num_procs()) / 2);
+
   std::vector<std::string> shapes_prim = {"1111110111111"};
-  auto index_prim = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
-  index_prim->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
+  index_ = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
 
-  indexes_.push_back(index_prim);
+  std::string index_path = parameters.index_file + "owl";
+
+  if (!parameters.rebuild_index && FileExists(index_path)) {
+    index_->Load(index_path);
+  } else {
+    index_->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
+    index_->Store(index_path);
+  }
+
+  if (index_ == nullptr) {
+    FATAL_REPORT(ERR_UNEXPECTED_VALUE, "No index was generated! Exiting.");
+  }
 
   return 0;
 }
 
-void Owler::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out) {
-  // Write out the SAM header in fp_out.
-//  if (parameters.outfmt == "sam") {
-//    std::string sam_header = GenerateSAMHeader_(parameters, indexes_[0]);
-//    if (sam_header.size() > 0)
-//      fprintf (fp_out, "%s\n", sam_header.c_str());
-//  }
-
-  // Check whether to load in batches or to load all the data at once.
-  if (parameters.batch_size_in_mb <= 0) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads will be loaded in memory.\n"), "ProcessReads");
-  } else {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Reads will be loaded in batches of up to %ld MB in size.\n", parameters.batch_size_in_mb), "ProcessReads");
-  }
-
-  SequenceFile reads;
-  reads.OpenFileForBatchLoading(parameters.reads_path);
-
-  clock_t absolute_time = clock();
-  clock_t last_batch_loading_time = clock();
-  int64_t num_mapped = 0;
-  int64_t num_unmapped = 0;
-
-
+int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::shared_ptr<SequenceFile> reads, TicToc &tt_all, FILE *fp_out) {
   if (parameters.outfmt == "dot") {
     fprintf (fp_out, "digraph overlaps {\n");
-//    fprintf (fp_out, "digraph overlaps {\n\tsize = \"4,4\";\n");
-//    fprintf (fp_out, "\tnode [shape=circle,width=0.95,fixedsize=true,style=filled,fillcolor=grey];\n");
     fprintf (fp_out, "\tnode [shape=circle,fixedsize=true,style=filled,fillcolor=grey];\n");
-
-//    fprintf (fp_out, "{node [shape = circle, width = 0.95, fixedsize = true, style = filled, fillcolor = grey] ");
-//    for (int64_t i=0; i<indexes_[0]->get_num_sequences(); i++) {
-//      if (i > 0)
-//        fprintf (fp_out, " R%ld", i);
-//      else
-//        fprintf (fp_out, "R%ld", i);
-//    }
-//    fprintf (fp_out, "}\n");
-//    fprintf (fp_out, "[fillcolor = palegreen];\n");
-  }
-//Hm iz nekog razloga ne crta strelice iako bi trebao ih crtati u dot formatu!
-
-  // Load sequences in batch (if requested), or all at once.
-  while ((parameters.batch_size_in_mb <= 0 && !reads.LoadAllAsBatch(SeqFmtToString(parameters.infmt), false)) || (parameters.batch_size_in_mb > 0 && !reads.LoadNextBatchInMegabytes(SeqFmtToString(parameters.infmt), parameters.batch_size_in_mb, false))) {
-    if (parameters.outfmt == "dot") {
-////      fprintf (fp_out, "\n{node [shape=circle,width=0.95,fixedsize=true,style=filled,fillcolor=skyblue] ");
-//      fprintf (fp_out, "\t{node [shape=circle,fixedsize=true,style=filled,fillcolor=skyblue] ");
-//      for (int64_t i=0; i<reads.get_sequences().size(); i++) {
-//        if (i > 0)
-//          fprintf (fp_out, " Q%ld", (i + reads.get_current_batch_starting_sequence_id()));
-//        else
-//          fprintf (fp_out, "Q%ld", (i + reads.get_current_batch_starting_sequence_id()));
-//      }
-//      fprintf (fp_out, "}\n");
-    }
-
-    if (parameters.batch_size_in_mb <= 0) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("All reads loaded in %.2f sec (size around %ld MB). (%ld bases)\n", (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads.GetNumberOfBases()), "ProcessReads");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
-    }
-    else {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("Batch of %ld reads (%ld MiB) loaded in %.2f sec. (%ld bases)\n", reads.get_sequences().size(), reads.CalculateTotalSize(MEMORY_UNIT_MEGABYTE), parameters.reads_path.c_str(), (((float) (clock() - last_batch_loading_time))/CLOCKS_PER_SEC), reads.GetNumberOfBases()), "ProcessReads");
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
-    }
-
-    // This line actually does all the work.
-    ProcessSequenceFileInParallel(&parameters, &reads, &absolute_time, fp_out, &num_mapped, &num_unmapped);
-
-    if (parameters.batch_size_in_mb > 0) {
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, FormatString("\n"), "[]");
-    }
-
-    last_batch_loading_time = clock();
   }
 
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str()), "ProcessReads");
-
-  reads.CloseFileAfterBatchLoading();
-
-  if (parameters.outfmt == "dot") {
-    fprintf (fp_out, "}\n");
-  }
-}
-
-int Owler::ProcessSequenceFileInParallel(ProgramParameters *parameters, SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
   int64_t num_reads = reads->get_sequences().size();
-  std::vector<std::string> sam_lines;
+  // Division by 2 to to avoid hyperthreading cores, and limit
+  // to 24 to avoid clogging a shared SMP.
+  int64_t num_threads = (parameters.num_threads > 0) ?
+                              parameters.num_threads :
+                              std::min(24, ((int) omp_get_num_procs()) / 2);
+//  // Accumulating the results.
+//  std::vector<std::string> out_lines;
 
-  if (parameters->output_in_original_order == true) {
-    sam_lines.resize(num_reads, std::string(""));
-  }
-
-  // Division by to to avoid hyperthreading cores, and limit on 24 to avoid clogging a shared SMP.
-  int64_t num_threads = std::min(24, ((int) omp_get_num_procs()) / 2);
-
-  if (parameters->num_threads > 0)
-    num_threads = (int64_t) parameters->num_threads;
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.\n", num_threads), "ProcessReads");
+  LOG_MEDHIGH("Using %ld threads.\n", num_threads);
 
   // Set up the starting and ending read index.
-  int64_t start_i = (parameters->start_read >= 0)?((int64_t) parameters->start_read):0;
+  int64_t start_i = (parameters.start_read >= 0)?((int64_t) parameters.start_read):0;
+  int64_t max_i = (parameters.num_reads_to_process >= 0) ? (start_i + (int64_t) parameters.num_reads_to_process) : num_reads;
 
   #ifndef RELEASE_VERSION
-    if (parameters->debug_read >= 0)
-      start_i = parameters->debug_read;
+    if (parameters.debug_read >= 0)
+      start_i = parameters.debug_read;
 
-    if (parameters->debug_read_by_qname != "") {
+    if (parameters.debug_read_by_qname != "") {
       for (int64_t i=0; i<num_reads; i++) {
-        if (std::string(reads->get_sequences().at(i)->get_header()).compare(0, parameters->debug_read_by_qname.size(), parameters->debug_read_by_qname) == 0) {
+        if (std::string(reads->get_sequences().at(i)->get_header()).compare(0, parameters.debug_read_by_qname.size(), parameters.debug_read_by_qname) == 0) {
           start_i = i;
-          parameters->debug_read = i;
+          parameters.debug_read = i;
           break;
         }
       }
     }
   #endif
 
-  int64_t max_i = (parameters->num_reads_to_process >= 0) ? (start_i + (int64_t) parameters->num_reads_to_process) : num_reads;
-
   // Initialize the counters.
   int64_t num_mapped=0, num_unmapped=0, num_ambiguous=0, num_errors=0;
   int64_t num_reads_processed_in_thread_0 = 0;
 
-  EValueParams *evalue_params;
-  SetupScorer((char *) "EDNA_FULL_5_4", indexes_[0]->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
-
   // Process all reads in parallel.
-  #pragma omp parallel for num_threads(num_threads) firstprivate(num_reads_processed_in_thread_0, evalue_params) shared(reads, parameters, last_time, sam_lines, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
+  #pragma omp parallel for num_threads(num_threads) firstprivate(num_reads_processed_in_thread_0) shared(reads, parameters, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
   for (int64_t i=start_i; i<max_i; i++) {
     uint32_t thread_id = omp_get_thread_num();
 
     // Verbose the currently processed read. If the verbose frequency is low, only output to STDOUT every 100th read.
     // If medium verbose frequency is set, every 10th read will be output, while for high every read will be reported.
-    if (thread_id == 0 && parameters->verbose_level > 0) {
+    if (thread_id == 0 && parameters.verbose_level > 0) {
       if (((!(LogSystem::GetInstance().PROGRAM_VERBOSE_LEVEL & VERBOSE_FREQ_ALL) ||
             (LogSystem::GetInstance().PROGRAM_VERBOSE_LEVEL & VERBOSE_FREQ_LOW)) && (num_reads_processed_in_thread_0 % 100) == 0) ||
           ((LogSystem::GetInstance().PROGRAM_VERBOSE_LEVEL & VERBOSE_FREQ_MED) && (num_reads_processed_in_thread_0 % 10) == 0) ||
           ((LogSystem::GetInstance().PROGRAM_VERBOSE_LEVEL & VERBOSE_FREQ_HIGH))) {
 
         std::stringstream ss;
-        if (parameters->verbose_level > 6 && parameters->num_threads == 1)
+        if (parameters.verbose_level > 6 && parameters.num_threads == 1)
               ss << "\n";
         ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld], length = %ld, qname: ",
-                           (((float) (clock() - (*last_time)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
+                           tt_all.get_secs_current(), getCurrentRSS()/(1024*1024),
                            i, reads->get_sequences().size(), ((float) i) / ((float) reads->get_sequences().size()) * 100.0f,
                            num_mapped, num_unmapped,
                            reads->get_sequences()[i]->get_data_length()) << reads->get_sequences()[i]->get_header();
         std::string string_buffer = FormatStringToLength(ss.str(), 140);
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
 
-        if (parameters->verbose_level > 6 && parameters->num_threads == 1)
+        if (parameters.verbose_level > 6 && parameters.num_threads == 1)
               ss << "\n";
       }
 
@@ -344,22 +195,23 @@ int Owler::ProcessSequenceFileInParallel(ProgramParameters *parameters, Sequence
     }
 
     // The actual interesting part.
-    std::string sam_line = "";
 
     OwlerData owler_data;
-    ProcessRead(&owler_data, indexes_, reads->get_sequences()[i], parameters, evalue_params);
+    ProcessRead_(index_, reads->get_sequences()[i], &parameters, owler_data);
+
     int mapped_state = STATE_UNMAPPED;
-//    if (parameters->outfmt == "afg") {
-//      mapped_state = CollectAMOSLines(sam_line, &owler_data, reads->get_sequences()[i], parameters);
-////    } else if (parameters->outfmt == "sam") {
-////      mapped_state = CollectSAMLines(sam_line, &mapping_data, reads->get_sequences()[i], parameters);
-//    } else {
-////      LogSystem::GetInstance().Log(SEVERITY_INT_WARNING, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_WRONG_FILE_TYPE, "Unknown output format specified: '%s'. Defaulting to AFG output.", parameters->outfmt.c_str()));
-//      mapped_state = CollectAMOSLines(sam_line, &owler_data, reads->get_sequences()[i], parameters);
-//    }
-    if (owler_data.overlap_lines.size() > 0) {
+    if (owler_data.out_lines.size() > 0) {
       mapped_state = STATE_MAPPED;
-      sam_line = owler_data.overlap_lines;
+
+      std::string out_line;
+      for (int32_t i=0; i<owler_data.out_lines.size(); i++) {
+        out_line += owler_data.out_lines[i] + "\n";
+      }
+
+      #pragma omp critical
+      {
+        fprintf (fp_out, "%s", out_line.c_str());
+      }
     }
 
     // Keep the counts.
@@ -379,55 +231,31 @@ int Owler::ProcessSequenceFileInParallel(ProgramParameters *parameters, Sequence
       #pragma omp critical
       num_errors += 1;
     }
-
-    // If the order of the reads should be kept, store them in a vector, otherwise output the alignment to file.
-    if (parameters->output_in_original_order == false) {
-      if (sam_line.size() > 0) {
-        #pragma omp critical
-        fprintf (fp_out, "%s\n", sam_line.c_str());
-      }
-    }
-    else {
-      #pragma omp critical
-      sam_lines[i] = sam_line;
-    }
   }
-
-  (*ret_num_mapped) = num_mapped;
-  (*ret_num_unmapped) = num_unmapped;
-
-  if (evalue_params)
-    DeleteEValueParams(evalue_params);
 
   // Verbose the final processing info.
   std::string string_buffer = FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld]",
-                               (((float) (clock() - (*last_time)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
+                               tt_all.get_secs_current(), getCurrentRSS()/(1024*1024),
                                reads->get_sequences().size(), reads->get_sequences().size(), 100.0f,
                                num_mapped, num_unmapped);
   string_buffer = FormatStringToLength(string_buffer, 140);
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
-  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, "\n", "[]");
+  LOG_ALL("%s\n", string_buffer.c_str());
 
-  // Output the results to the SAM file in the exact ordering of the input file (if it was requested by the specified parameter).
-  if (parameters->output_in_original_order == true) {
-    for (int64_t i=0; i<num_reads; i++) {
-      if (sam_lines[i].size() > 0) {
-        fprintf (fp_out, "%s\n", sam_lines[i].c_str());
-      }
-    }
+  if (parameters.outfmt == "dot") {
+    fprintf (fp_out, "}\n");
   }
 
   return 0;
 }
 
-FILE* Owler::OpenOutFile_(std::string out_sam_path) {
+FILE* Owler::OpenOutFile_(std::string out_path) {
   // Check if the output SAM file is specified. If it is not, then output to STDOUT.
   FILE *fp_out = stdout;
 
-  if (out_sam_path.size() > 0) {
-    fp_out = fopen(out_sam_path.c_str(), "w");
+  if (out_path.size() > 0) {
+    fp_out = fopen(out_path.c_str(), "w");
     if (fp_out == NULL) {
-      LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_OPENING_FILE, "File path: '%s'.", out_sam_path.c_str()));
+      FATAL_REPORT(ERR_OPENING_FILE, "File path: '%s'.", out_path.c_str());
       return NULL;
     }
   }
@@ -435,56 +263,3 @@ FILE* Owler::OpenOutFile_(std::string out_sam_path) {
   return fp_out;
 }
 
-bool Owler::GetFileList_(std::string folder, std::vector<std::string> &ret_files) {
-  ret_files.clear();
-
-  DIR *dir;
-  struct dirent *ent;
-  if ((dir = opendir(folder.c_str())) != NULL) {
-    // Get the list of file and folder names.
-    while ((ent = readdir(dir)) != NULL) {
-      ret_files.push_back(std::string(ent->d_name));
-    }
-    closedir (dir);
-
-  } else {
-    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_FOLDER_NOT_FOUND, "Folder path: '%s'.", folder.c_str()));
-    return false;
-  }
-
-  return true;
-}
-
-
-bool Owler::StringEndsWith_(std::string const &full_string, std::string const &ending) {
-  if (full_string.length() >= ending.length()) {
-    return (full_string.compare(full_string.length() - ending.length(), ending.length(), ending) == 0);
-  } else {
-    return false;
-  }
-}
-
-void Owler::FilterFileList_(std::vector<std::string> &files, std::vector<std::string> &ret_read_files, std::vector<std::string> &ret_sam_files) {
-  std::string ext_fasta = "fasta";
-  std::string ext_fastq = "fastq";
-  std::string ext_fa = "fa";
-  std::string ext_fq = "fq";
-  std::string ext_sam = "sam";
-  std::string sam_file = "";
-
-  ret_read_files.clear();
-  ret_sam_files.clear();
-
-  for (int64_t i=0; i<((int64_t) files.size()); i++) {
-    if (StringEndsWith_(files.at(i), ext_fastq) || StringEndsWith_(files.at(i), ext_fasta)) {
-      sam_file = files.at(i).substr(0, files.at(i).size() - 5) + ext_sam;
-      ret_read_files.push_back(files.at(i));
-      ret_sam_files.push_back(sam_file);
-    }
-    else if (StringEndsWith_(files.at(i), ext_fq) || StringEndsWith_(files.at(i), ext_fa)) {
-      sam_file = files.at(i).substr(0, files.at(i).size() - 2) + ext_sam;
-      ret_read_files.push_back(files.at(i));
-      ret_sam_files.push_back(sam_file);
-    }
-  }
-}
