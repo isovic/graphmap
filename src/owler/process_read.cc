@@ -319,7 +319,8 @@ std::string Owler::GeneratePAFLine_(std::shared_ptr<is::MinimizerIndex> index, c
     ref_end = ref_length - overlap.target.start;
   }
 
-  int64_t shared_minmers = overlap.num_seeds * parameters->minimizer_window;
+//  int64_t shared_minmers = overlap.num_seeds * parameters->minimizer_window;
+  int64_t shared_minmers = overlap.num_seeds; // * parameters->minimizer_window;
 
   ret << read_header << "\t";
   ret << read_length << "\t";
@@ -332,11 +333,13 @@ std::string Owler::GeneratePAFLine_(std::shared_ptr<is::MinimizerIndex> index, c
   ret << ref_start + 0 << "\t";
   ret << ref_end + 0 << "\t";
 
-  ret << overlap.cov_bases * parameters->minimizer_window << "\t";
+//  ret << overlap.cov_bases * parameters->minimizer_window << "\t";
+  ret << overlap.cov_bases << "\t";
   ret << (ref_end - ref_start) << "\t";
 
   ret << "255" << "\t";
-  ret << "cm:i:" << shared_minmers * parameters->minimizer_window;
+//  ret << "cm:i:" << shared_minmers * parameters->minimizer_window;
+  ret << "cm:i:" << shared_minmers;
 
   return ret.str();
 }
