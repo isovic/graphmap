@@ -20,12 +20,14 @@
 
 class PairwiseOverlap {
  public:
-  PairwiseOverlap() : qid(0), tid(0), num_seeds(0), cov_bases(0) { }
+//  PairwiseOverlap() : qid(0), tid(0), num_seeds(0), cov_bases(0), num_sv(0) { }
+  PairwiseOverlap(int64_t _qid, int64_t _tid) : qid(_qid), tid(_tid), num_seeds(0), cov_bases(0), num_sv(0) { }
 
   Range query, target;
   int64_t qid, tid;
   int64_t num_seeds;
   int64_t cov_bases;
+  int32_t num_sv;
 };
 
 class OwlerData {
@@ -36,7 +38,8 @@ class OwlerData {
   std::vector<uint128_t> hits;
   std::vector<PairwiseOverlap> overlaps;
   std::string unmapped_reason;
-  std::vector<std::string> out_lines;
+  std::string overlap_lines;
+//  std::vector<std::string> out_lines;
 };
 
 #endif /* OWLER_DATA_H_ */

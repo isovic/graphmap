@@ -179,11 +179,11 @@ if __name__ == "__main__":
 
 	i = 2;
 	while (i < len(sys.argv)):
-		local_scores_id = int(sys.argv[i]);
-		scores_path = '%s/scores-%d' % (results_path, local_scores_id);
-		lcs_path = '%s/LCS-%d' % (results_path, local_scores_id);
-		lcsl1_path = '%s/LCSL1-%d' % (results_path, local_scores_id);
-		l1_path = '%s/double_LCS-%d' % (results_path, local_scores_id);
+		local_scores_id = (sys.argv[i]);
+		scores_path = '%s/scores-%s' % (results_path, local_scores_id);
+		lcs_path = '%s/LCS-%s' % (results_path, local_scores_id);
+		lcsl1_path = '%s/LCSL1-%s' % (results_path, local_scores_id);
+		l1_path = '%s/double_LCS-%s' % (results_path, local_scores_id);
 		# boundedl1_path = '%s/boundedl1-%d' % (results_path, local_scores_id);
 
 		# data_path = lcs_path;
@@ -248,7 +248,7 @@ if __name__ == "__main__":
 		# # FindHoughLine(x, y, error_rate);
 		# plot_data(224, x, y, l_median, threshold_L1_under_max, 1 if (error_rate > 0.0) else 0, 'boundedl1-%d' % local_scores_id, data_path + '.png');
 
-		out_png_path = '%s/all-%d-qid_%d.png' % (results_path, local_scores_id, query_id);
+		out_png_path = '%s/all-%s-qid_%d.png' % (results_path, local_scores_id, query_id);
 		if (out_png_path != ''):
 			if (HIGH_DPI_PLOT == False):
 				sys.stderr.write('Writing image to file: %s\n\n' % out_png_path);

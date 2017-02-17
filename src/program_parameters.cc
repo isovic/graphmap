@@ -267,13 +267,16 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Rebuild index even if it already exists in given path.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "1024", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Rebuild index even if it already exists in given path.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->index_on_the_fly, VALUE_TYPE_BOOL, "", "fly-index", "0", "Index will be constructed on the fly, without storing it to disk. If it already exists on disk, it will be loaded unless --rebuild-index is specified.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->error_rate, VALUE_TYPE_FLOAT, "e", "error-rate", "0.45", "Approximate error rate of the input read sequences.", 0, "Algorithmic options");
+//  argparser.AddArgument(&parameters->max_error_rate, VALUE_TYPE_DOUBLE, "", "max-error", "1.0", "If an alignment has error rate (X+I+D) larger than this, it won't be taken into account. If >= 1.0, this filter is disabled.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "0", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "", "min-read-len", "80", "If a read is shorter than this, it will be skipped. This value can be lowered if the reads are known to be accurate.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
+  argparser.AddArgument(&parameters->verbose_sam_output, VALUE_TYPE_INT64, "b", "verbose-out", "0", "Helpful debug comments can be placed in output lines (at the end). Comments can be turned off by setting this parameter to 0.", 0, "Debug options");
   argparser.AddArgument(&parameters->start_read, VALUE_TYPE_INT64, "s", "start", "0", "Ordinal number of the read from which to start processing data.", 0, "Other options");
   argparser.AddArgument(&parameters->num_reads_to_process, VALUE_TYPE_INT64, "n", "numreads", "-1", "Number of reads to process per batch. Value of '-1' processes all reads.", 0, "Other options");
   argparser.AddArgument(&help, VALUE_TYPE_BOOL, "h", "help", "0", "View this help.", 0, "Other options");

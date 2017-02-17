@@ -37,7 +37,7 @@ void Owler::Run(ProgramParameters& parameters) {
   if (parameters.reads_path == parameters.reference_path) {
     reads_ = ref_;
   } else {
-    ref_ = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reads_path));
+    reads_ = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reads_path));
   }
   tt_load.stop();
   LOG_ALL("All sequences loaded in %.2f sec (size of reads file around %ld MB). (%ld bases)\n", tt_load.get_secs(), reads_->CalculateTotalSize(MEMORY_UNIT_MEGABYTE), reads_->GetNumberOfBases());
@@ -93,8 +93,6 @@ void Owler::Run(ProgramParameters& parameters) {
 //}
 
 int Owler::BuildIndex_(ProgramParameters &parameters) {
-  LOG_ALL("Building the index.\n");
-
   // Division by 2 to to avoid hyperthreading cores, and limit
   // to 24 to avoid clogging a shared SMP.
   int64_t num_threads = (parameters.num_threads > 0) ?
@@ -106,11 +104,21 @@ int Owler::BuildIndex_(ProgramParameters &parameters) {
 
   std::string index_path = parameters.index_file + "owl";
 
-  if (!parameters.rebuild_index && FileExists(index_path)) {
+  bool load = !parameters.index_on_the_fly && (!parameters.rebuild_index && FileExists(index_path));
+
+  if (load) {
+    LOG_ALL("Loading the index from file.\n");
+
     index_->Load(index_path);
+
   } else {
+    LOG_ALL("Building the index.\n");
+
     index_->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
-    index_->Store(index_path);
+
+    if (!parameters.index_on_the_fly) {
+      index_->Store(index_path);
+    }
   }
 
   if (index_ == nullptr) {
@@ -132,8 +140,6 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
   int64_t num_threads = (parameters.num_threads > 0) ?
                               parameters.num_threads :
                               std::min(24, ((int) omp_get_num_procs()) / 2);
-//  // Accumulating the results.
-//  std::vector<std::string> out_lines;
 
   LOG_MEDHIGH("Using %ld threads.\n", num_threads);
 
@@ -200,17 +206,12 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
     ProcessRead_(index_, reads->get_sequences()[i], &parameters, owler_data);
 
     int mapped_state = STATE_UNMAPPED;
-    if (owler_data.out_lines.size() > 0) {
+    if (owler_data.overlaps.size() > 0) {
       mapped_state = STATE_MAPPED;
-
-      std::string out_line;
-      for (int32_t i=0; i<owler_data.out_lines.size(); i++) {
-        out_line += owler_data.out_lines[i] + "\n";
-      }
 
       #pragma omp critical
       {
-        fprintf (fp_out, "%s", out_line.c_str());
+        fprintf (fp_out, "%s", owler_data.overlap_lines.c_str());
       }
     }
 
