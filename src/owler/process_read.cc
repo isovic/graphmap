@@ -19,10 +19,11 @@
 
 int Owler::ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
   LOG_DEBUG_SPEC_NEWLINE;
-  LOG_DEBUG_SPEC("Entered function.\n");
+  LOG_DEBUG_SPEC("Entered function.\n\n");
 
   // If the read length is too short, call it unmapped.
   if (read->get_sequence_length() < parameters->min_read_len) {
+    LOG_DEBUG_SPEC("Read too short.\n");
     std::stringstream ss;
     ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << 80;
     owler_data.unmapped_reason += ss.str();
@@ -175,7 +176,7 @@ int Owler::ClusterHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
       }
 
       // Do a basic check on the sanity of an overlap.
-      if (CheckOverlap_(index, read, parameters, overlap) == true) {
+      if (CheckOverlapV1_(index, read, parameters, overlap) == true) {
         owler_data.overlaps.push_back(overlap);
       }
     }
@@ -220,7 +221,7 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
       }
 
       // Do a basic check on the sanity of an overlap.
-      if (CheckOverlap_(index, read, parameters, overlap) == true) {
+      if (CheckOverlapV1_(index, read, parameters, overlap) == true) {
         owler_data.overlaps.push_back(overlap);
       }
     }
@@ -234,7 +235,16 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
 void Owler::GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
   for (int64_t i=0; i<owler_data.overlaps.size(); i++) {
 //    std::string overlap_line = GenerateMHAPLine_(index, read, parameters, owler_data.overlaps[i]);
-    std::string overlap_line = GeneratePAFLine_(index, read, parameters, owler_data.overlaps[i]);
+    std::string overlap_line;
+
+    if (parameters->outfmt == "mhap") {
+      overlap_line = GenerateMHAPLine_(index, read, parameters, owler_data.overlaps[i]);
+    } else if (parameters->outfmt == "paf") {
+      overlap_line = GeneratePAFLine_(index, read, parameters, owler_data.overlaps[i]);
+    } else {
+      LOG_ALL("Unknown output format '%s'. Defaulting to PAF.\n", parameters->outfmt.c_str());
+      overlap_line = GeneratePAFLine_(index, read, parameters, owler_data.overlaps[i]);
+    }
 
     std::string debug_info;
 
@@ -249,7 +259,47 @@ void Owler::GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const Sin
 
 
 std::string Owler::GenerateMHAPLine_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap) {
-  std::stringstream ss;
+  std::stringstream ret;
+
+  int64_t read_id = overlap.qid;
+  std::string read_header = TrimToFirstSpace(read->get_header());
+  int64_t read_length = read->get_sequence_length();
+  int64_t read_start = overlap.query.start;
+  int64_t read_end = overlap.query.end;
+
+  int64_t ref_id = overlap.tid % index->get_num_sequences_forward();
+  std::string ref_header = TrimToFirstSpace(index->get_headers()[overlap.tid]);
+  int64_t ref_start = overlap.target.start;
+  int64_t ref_end = overlap.target.end;
+  int64_t ref_length = index->get_reference_lengths()[overlap.tid];
+
+  bool read_is_reverse = overlap.tid >= index->get_num_sequences_forward();
+  bool ref_is_reverse = false;
+  if (read_is_reverse) {
+    ref_start = ref_length - overlap.target.end;
+    ref_end = ref_length - overlap.target.start;
+  }
+
+  float jaccard_score = std::min(1.0f, ((float) overlap.cov_bases) / ((float) (overlap.target.end - overlap.target.start)));
+  int64_t shared_minmers = overlap.num_seeds;
+
+  ret << (read_id + 1) << " ";      /// read1_id
+  ret << (ref_id + 1) << " ";      /// read2_id
+  ret << jaccard_score << " ";      /// Jaccard score
+  ret << shared_minmers << " ";        /// Shared minmers
+  ret << (read_is_reverse ? 1 : 0) << " ";  /// A is reverse
+  ret << read_start << " ";
+  ret << read_end << " ";
+  ret << read_length << " ";
+  ret << (ref_is_reverse ? 1 : 0) << " ";
+  ret << ref_start << " ";
+  ret << ref_end << " ";
+  ret << ref_length;
+
+//  ret << "\tcov_bases = " << overlap.cov_bases;
+  return ret.str();
+
+//  std::stringstream ss;
 
 //  float jaccard_score = std::min(1.0f, ((float) overlap.cov_bases) / ((float) (overlap.target.end - overlap.target.start)));
 //  int64_t shared_minmers = overlap.num_seeds;
@@ -286,7 +336,7 @@ std::string Owler::GenerateMHAPLine_(std::shared_ptr<is::MinimizerIndex> index, 
 //
 ////  ss << "\tcov_bases = " << overlap.cov_bases;
 
-  return ss.str();
+//  return ss.str();
 }
 
 std::string Owler::GeneratePAFLine_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap) {

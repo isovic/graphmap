@@ -145,7 +145,6 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
 
   // Set up the starting and ending read index.
   int64_t start_i = (parameters.start_read >= 0)?((int64_t) parameters.start_read):0;
-  int64_t max_i = (parameters.num_reads_to_process >= 0) ? (start_i + (int64_t) parameters.num_reads_to_process) : num_reads;
 
   #ifndef RELEASE_VERSION
     if (parameters.debug_read >= 0)
@@ -161,6 +160,8 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
       }
     }
   #endif
+
+  int64_t max_i = (parameters.num_reads_to_process >= 0) ? (start_i + (int64_t) parameters.num_reads_to_process) : num_reads;
 
   // Initialize the counters.
   int64_t num_mapped=0, num_unmapped=0, num_ambiguous=0, num_errors=0;
