@@ -842,7 +842,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
 
     LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
-    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, curr_aln->ref_id + (curr_aln->is_reverse) ? index->get_num_sequences_forward() : 0, curr_aln->raw_pos_start) != 0) {
+    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, abs_ref_id, curr_aln->raw_pos_start) != 0) {
       curr_aln->is_aligned = false;
       LOG_DEBUG_SPEC("Alignment is insane!\n");
     } else {
