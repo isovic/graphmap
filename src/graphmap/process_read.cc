@@ -330,8 +330,7 @@ int GraphMap::ProcessRead2(MappingData *mapping_data, std::vector<std::shared_pt
   LOG_DEBUG_SPEC("regions.size() = %ld\n", regions.size());
 
   int64_t min_num_votes = std::max((int64_t) std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), min_allowed_bin_value);
-  int64_t max_num_regions = (max_num_regions < 0) ? (parameters->max_num_regions) : (regions.size());
-
+  int64_t max_num_regions = (parameters->max_num_regions < 0) ? (parameters->max_num_regions) : (regions.size());
 
   // Just verbose.
   LOG_DEBUG_SPEC("min_allowed_bin_value = %f, bin_value_threshold = %f\n", min_allowed_bin_value);
