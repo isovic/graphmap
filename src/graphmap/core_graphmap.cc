@@ -75,8 +75,11 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
   int64_t k = parameters->k_graph;
   int64_t num_links = parameters->num_links;
 
-  std::vector<uint128_t> hits;
-  int ret_search = index_read->FindAndJoin(kmer, k, false, hits);
+//  std::vector<uint128_t> hits;
+//  int ret_search = index_read->FindAndJoin(kmer, k, false, hits);
+  std::vector<const uint128_t*> hits_ptr;
+  std::vector<int64_t> num_hits_ptr;
+  int ret_search = index_read->Find(kmer, k, false, hits_ptr, num_hits_ptr);
 
   if (ret_search == 1) {      // There are no hits for the current kmer.
     return 1;
@@ -102,9 +105,9 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
 
 //  int64_t *hits_start_ptr = &hits[hits_start];
 
-  for (int64_t i = 0; i < (hits.size()); i++) {
+  for (int64_t i = 0; i < (num_hits_ptr[0]); i++) {
     // Each hit position is a location on the read. Reference position is passed through function parameter kmer_start.
-    int64_t hit = is::MinimizerIndex::seed_position(hits[i]);
+    int64_t hit = is::MinimizerIndex::seed_position(hits_ptr[0][i]);
     int64_t position = num_vertices - hit - 1;
     int64_t best_vertex_idx = -1;
 
