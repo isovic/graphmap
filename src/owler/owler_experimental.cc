@@ -238,6 +238,66 @@ bool Owler::CheckOverlapV2_(std::shared_ptr<is::MinimizerIndex> index, const Sin
   return true;
 }
 
+bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, PairwiseOverlap& overlap) {
+  int64_t tid = overlap.tid % index->get_num_sequences_forward();
+  std::string rev_suffix = (overlap.tid >= index->get_num_sequences_forward()) ? (std::string("-rev")) : (std::string("-fwd"));
+
+  if (overlap.num_seeds == 0) {
+    std::string temp = FormatString("[qid = %ld, tid = %ld%s] overlap.num_seeds = 0\n", overlap.qid, tid, rev_suffix.c_str());
+    overlap.reject_reason = temp;
+    LOG_DEBUG_SPEC_NO_HEADER("\t%s", temp.c_str());
+    return false;
+  }
+
+  if (overlap.num_seeds < 4) {
+    std::string temp = FormatString("[qid = %ld, tid = %ld%s] overlap.num_seeds < 4\n", overlap.qid, tid, rev_suffix.c_str());
+    overlap.reject_reason = temp;
+    LOG_DEBUG_SPEC_NO_HEADER("\t%s", temp.c_str());
+    return false;
+  }
+
+  double ratio = CalcRatio_(overlap);
+
+  if ((1.0 - ratio) > parameters->error_rate) {
+    std::string temp = FormatString("[qid = %ld, tid = %ld%s] (1.0 - ratio) = %f > %f\n", overlap.qid, tid, rev_suffix.c_str(), (1.0 - ratio), parameters->error_rate);
+    overlap.reject_reason = temp;
+    LOG_DEBUG_SPEC_NO_HEADER("\t%s", temp.c_str());
+    return false;
+  }
+
+  int64_t read_len = read->get_sequence_length();
+  int64_t margin_read = 0.15 * read_len;
+//  if (overlap.query.start > margin_read || (read_len - overlap.query.end) > margin_read) {
+//    return 1;
+//  }
+
+  int64_t target_len = index->get_reference_lengths()[overlap.tid];
+  int64_t margin_target = 0.15 * target_len;
+//  if (overlap.target.start > margin_target || (target_len - overlap.target.end) > margin_target) {
+//    return 1;
+//  }
+
+  if (overlap.query.start > margin_read && overlap.target.start > margin_target) {
+    std::string temp = FormatString("[qid = %ld, tid = %ld%s] margin start fail: overlap.query.start = %ld, margin_read = %ld, overlap.target.start = %ld, margin_target = %ld\n",
+                                    overlap.qid, tid, rev_suffix.c_str(), overlap.query.start, margin_read, overlap.target.start, margin_target);
+    overlap.reject_reason = temp;
+    LOG_DEBUG_SPEC_NO_HEADER("\t%s", temp.c_str());
+    return false;
+  }
+
+  if ((read_len - overlap.query.end) > margin_read && (target_len - overlap.target.end) > margin_target) {
+    std::string temp = FormatString("[qid = %ld, tid = %ld%s] margin end fail: (read_len - overlap.query.end) = %ld, margin_read = %ld, (target_len - overlap.target.end) = %ld, margin_target = %ld\n",
+                                    overlap.qid, tid, rev_suffix.c_str(), (read_len - overlap.query.end), margin_read, (target_len - overlap.target.end), margin_target);
+    overlap.reject_reason = temp;
+    LOG_DEBUG_SPEC_NO_HEADER("\t%s", temp.c_str());
+    return false;
+  }
+
+  LOG_DEBUG_SPEC_NO_HEADER("[qid = %ld, tid = %ld%s] Accepted!\n", overlap.qid, tid, rev_suffix.c_str());
+
+  return true;
+}
+
 int64_t Owler::CalcEditDist_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const PairwiseOverlap& overlap) {
 
   EdlibAlignTask task = EDLIB_TASK_DISTANCE;  // Calculate only edit distance.

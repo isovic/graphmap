@@ -238,7 +238,9 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
       }
 
       // Do a basic check on the sanity of an overlap.
-      if (CheckOverlapV1b_(index, read, parameters, overlap) == true) {
+//      if (CheckOverlapV1b_(index, read, parameters, overlap) == true) {
+      if (CheckOverlapV3_(index, read, parameters, overlap) == true)
+      {
         owler_data.overlaps.push_back(overlap);
       }
     }

@@ -32,6 +32,8 @@ class PairwiseOverlap {
   std::vector<int32_t> lcsk_indices;
   std::vector<int32_t> cluster_ids;
   int64_t lcsk_len;
+
+  std::string reject_reason;
 };
 
 class OwlerData {
