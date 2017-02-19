@@ -105,7 +105,8 @@ int Owler::BuildIndex_(ProgramParameters &parameters) {
                               parameters.num_threads :
                               std::min(24, ((int) omp_get_num_procs()) / 2);
 
-  std::vector<std::string> shapes_prim = {"1111110111111"};
+//  std::vector<std::string> shapes_prim = {"1111110111111"};
+  std::vector<std::string> shapes_prim = {parameters.index_shape};
   index_ = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
 
   std::string index_path = parameters.index_file + "owl";
@@ -118,7 +119,12 @@ int Owler::BuildIndex_(ProgramParameters &parameters) {
     index_->Load(index_path);
 
   } else {
-    LOG_ALL("Building the index.\n");
+    LOG_ALL("Building the index for shapes: ");
+    for (int32_t i=0; i<shapes_prim.size(); i++) {
+      if (i > 0) { LOG_NOHEADER(", "); }
+      LOG_NOHEADER("\"%s\"", shapes_prim[i].c_str());
+    }
+    LOG_NOHEADER(".\n");
 
     index_->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
 

@@ -273,6 +273,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddArgument(&parameters->max_error_rate, VALUE_TYPE_DOUBLE, "", "max-error", "1.0", "If an alignment has error rate (X+I+D) larger than this, it won't be taken into account. If >= 1.0, this filter is disabled.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "0", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "", "min-read-len", "80", "If a read is shorter than this, it will be skipped. This value can be lowered if the reads are known to be accurate.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->index_shape, VALUE_TYPE_STRING, "", "shape", "", "Seed shape which will be used for indexing and querying the sequences.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");

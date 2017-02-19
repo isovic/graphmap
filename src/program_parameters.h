@@ -118,6 +118,7 @@ struct ProgramParameters {
   bool threshold_hits = false;
   double frequency_percentil = 0.99;
   bool index_on_the_fly = false;
+  std::string index_shape = "1111110111111";
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);
