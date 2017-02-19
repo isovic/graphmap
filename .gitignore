@@ -1,5 +1,6 @@
 deprecated/
 temp/
+temp/*
 obj/
 obj_debug/
 obj_linux/
