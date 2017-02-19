@@ -256,6 +256,14 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
     return false;
   }
 
+  if (overlap.num_sv > 0) {
+    return false;
+  }
+
+//  if (overlap.query.dist() < 500 || overlap.target.dist() < 500) {
+//    return false;
+//  }
+
   double ratio = CalcRatio_(overlap);
 
   if ((1.0 - ratio) > parameters->error_rate) {
@@ -266,13 +274,13 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
   }
 
   int64_t read_len = read->get_sequence_length();
-  int64_t margin_read = 0.15 * read_len;
+  int64_t margin_read = 0.25 * read_len;
 //  if (overlap.query.start > margin_read || (read_len - overlap.query.end) > margin_read) {
 //    return 1;
 //  }
 
   int64_t target_len = index->get_reference_lengths()[overlap.tid];
-  int64_t margin_target = 0.15 * target_len;
+  int64_t margin_target = 0.25 * target_len;
 //  if (overlap.target.start > margin_target || (target_len - overlap.target.end) > margin_target) {
 //    return 1;
 //  }
