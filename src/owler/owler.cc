@@ -167,12 +167,6 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
   int64_t num_mapped=0, num_unmapped=0, num_ambiguous=0, num_errors=0;
   int64_t num_reads_processed_in_thread_0 = 0;
 
-  hits_.clear();
-  hits_.resize(num_threads);
-  for (int32_t i=0; i<num_threads; i++) {
-    hits_[i].reserve(10000*index_->count_cutoff());
-  }
-
   // Process all reads in parallel.
   #pragma omp parallel for num_threads(num_threads) firstprivate(num_reads_processed_in_thread_0) shared(reads, parameters, num_mapped, num_unmapped, num_ambiguous, num_errors, fp_out) schedule(dynamic, 1)
   for (int64_t i=start_i; i<max_i; i++) {
@@ -210,7 +204,7 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
     // The actual interesting part.
 
     OwlerData owler_data;
-    ProcessRead_(index_, reads->get_sequences()[i], &parameters, owler_data, thread_id);
+    ProcessRead_(index_, reads->get_sequences()[i], &parameters, owler_data);
 
     int mapped_state = STATE_UNMAPPED;
     if (owler_data.overlaps.size() > 0) {

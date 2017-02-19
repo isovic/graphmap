@@ -17,7 +17,7 @@
 
 
 
-int Owler::ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data, int32_t thread_id) {
+int Owler::ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
   LOG_DEBUG_SPEC_NEWLINE;
   LOG_DEBUG_SPEC("Entered function.\n\n");
 
@@ -34,15 +34,15 @@ int Owler::ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
 
   TicToc tt_collect;
   tt_collect.start();
-  CollectHits_(index_, read, parameters, owler_data, thread_id);
+  CollectHits_(index_, read, parameters, owler_data);
   tt_collect.stop();
-  LOG_DEBUG_SPEC("Time collecting hits: %f\n", tt_collect.get_msecs());
+  LOG_DEBUG_SPEC("Time collecting hits: %f sec\n", tt_collect.get_secs());
 
   TicToc tt_cluster;
   tt_cluster.start();
   ClusterHits2_(index, read, parameters, diag_epsilon, owler_data);
   tt_cluster.stop();
-  LOG_DEBUG_SPEC("Time clustering hits: %f\n", tt_cluster.get_msecs());
+  LOG_DEBUG_SPEC("Time clustering hits: %f sec\n", tt_cluster.get_secs());
 
   GenerateOutput_(index_, read, parameters, owler_data);
 
@@ -63,7 +63,7 @@ int Owler::ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
   return 0;
 }
 
-int Owler::CollectHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data, int32_t thread_id) {
+int Owler::CollectHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
   TicToc tt_collect;
 
   int64_t read_len = read->get_sequence_length();
@@ -82,26 +82,23 @@ int Owler::CollectHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
 //  index->CollectLookupSeeds(read->get_data(), read->get_quality(), read->get_sequence_length(), 0.0f, false, parameters->use_minimizers, parameters->minimizer_window, seeds);
   index->CollectIndexSeeds(read->get_data(), read->get_quality(), read->get_sequence_length(), 0.0f, false, parameters->use_minimizers, parameters->minimizer_window, seeds);
 
-//  owler_data.hits.clear();
-//  owler_data.hits.reserve(seeds.size() * index->avg_seed_occurrence());
-
-  hits_[thread_id].clear();
+  owler_data.hits.clear();
 
   for (int64_t j=0; j<seeds.size(); j++) {
-    AppendSeedHits_(seeds[j], index, parameters->threshold_hits, index->count_cutoff(), is_overlapper, qid, thread_id, hits_[thread_id]);
+    AppendSeedHits_(seeds[j], index, parameters->threshold_hits, index->count_cutoff(), is_overlapper, qid, owler_data.hits);
   }
-
-  owler_data.hits = hits_[thread_id];
 
   std::sort(owler_data.hits.begin(), owler_data.hits.end());
 
   return 0;
 }
 
-void Owler::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::MinimizerIndex> index, bool threshold_hits, double count_cutoff, bool is_overlapper, int64_t qid, int32_t thread_id, std::vector<uint128_t> &all_hits) {
+void Owler::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::MinimizerIndex> index, bool threshold_hits, double count_cutoff, bool is_overlapper, int64_t qid, std::vector<uint128_t> &all_hits) {
   int64_t key = is::MinimizerIndex::seed_key(seed);
   int32_t pos_read_int32 = is::MinimizerIndex::seed_position(seed);
   uint128_t pos_read = pos_read_int32;
+
+  int32_t num_targets_fwd = index->get_num_sequences_forward();
 
   const uint128_t *found_seeds = NULL;
   int64_t num_found_seeds = 0;
@@ -119,46 +116,33 @@ void Owler::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::Minimizer
     return;
   }
 
-//  all_hits.insert(all_hits.end(), num_found_seeds, 0);
-//  if ((all_hits.capacity() - all_hits.size()) < num_found_seeds) {
-//    all_hits.reserve(all_hits.capacity() + num_found_seeds + 1);
-//  }
+  all_hits.insert(all_hits.end(), num_found_seeds, 0);
 
   // Reformat the new hits. The key part is no longer needed,
   // but source position on read is.
-//  auto *phits = &all_hits[0] + (all_hits.size() - num_found_seeds);
-//  int64_t k_added = 0;
+  auto *phits = &all_hits[0] + (all_hits.size() - num_found_seeds);
+  int64_t k_added = 0;
 
   for (int64_t k=0; k<num_found_seeds; k++) {
     if (found_seeds[k] == kInvalidSeed) {
       continue;
     }
 
-//    printf ("seed: %s\n", is::PrintSeed(found_seeds[k]).c_str());
-//    fflush(stdout);
-
     int32_t seq_id_int32 = is::MinimizerIndex::seed_seq_id(found_seeds[k]);
+    int32_t seq_id_int32_fwd = seq_id_int32 % num_targets_fwd;
     uint128_t seq_id = seq_id_int32;
-//    if (is_overlapper && seq_id_int32 <= qid) {
-    if (is_overlapper && qid <= seq_id_int32) {
-//      printf ("  qid = %d, seq_id_int32 = %d\n", qid, seq_id_int32);
-//      fflush(stdout);
-      break;
-//      continue;
+    if (is_overlapper && seq_id_int32_fwd <= qid) {
+      continue;
     }
 
     int32_t pos_ref_int32 = is::MinimizerIndex::seed_position(found_seeds[k]);
     uint128_t diag = ((uint128_t) (pos_ref_int32 - pos_read_int32)) & kSeedMask32_1;      // Diagonals can be negative values.
     uint128_t pos_ref = pos_ref_int32;
 
-//    phits[k_added++] = MakeHit_(seq_id, diag, pos_ref, pos_read);
-    all_hits.emplace_back(MakeHit_(seq_id, diag, pos_ref, pos_read));
+    phits[k_added++] = MakeHit_(seq_id, diag, pos_ref, pos_read);
   }
 
-//  printf ("\n");
-//  fflush(stdout);
-
-//  all_hits.resize(all_hits.size() - num_found_seeds + k_added);
+  all_hits.resize(all_hits.size() - num_found_seeds + k_added);
 }
 
 int Owler::ClusterHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, int32_t diag_epsilon, OwlerData &owler_data) {
@@ -195,7 +179,7 @@ int Owler::ClusterHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
       }
 
       // Do a basic check on the sanity of an overlap.
-      if (CheckOverlapV1_(index, read, parameters, overlap) == true) {
+      if (CheckOverlapV1b_(index, read, parameters, overlap) == true) {
         owler_data.overlaps.push_back(overlap);
       }
     }
@@ -240,7 +224,7 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
       }
 
       // Do a basic check on the sanity of an overlap.
-      if (CheckOverlapV1_(index, read, parameters, overlap) == true) {
+      if (CheckOverlapV1b_(index, read, parameters, overlap) == true) {
         owler_data.overlaps.push_back(overlap);
       }
     }

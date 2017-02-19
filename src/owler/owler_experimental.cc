@@ -10,7 +10,7 @@
 
 
 
-bool Owler::CheckOverlapV1_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap) {
+bool Owler::CheckOverlapV1a_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap) {
   float min_perc_covered_bases = 0.10f;
   float min_perc_overlap_len = 0.0f;
   float max_overhang_percent = 0.33f;
@@ -49,13 +49,14 @@ bool Owler::CheckOverlapV1_(std::shared_ptr<is::MinimizerIndex> index, const Sin
 
   int64_t max_overhang_A = query_overlap_length * max_overhang_percent;
   int64_t max_overhang_B = ref_overlap_length * max_overhang_percent;
+  int64_t min_num_seeds = 5;
 
   if ((A_start > max_overhang_A && B_start > max_overhang_B) ||
       ((read_len - A_end) > max_overhang_A && (target_len - B_end) > max_overhang_B)) {
     overhang_ok = false;
   }
 
-  if (num_svs == 0 && overlap.num_seeds > 5 &&
+  if (num_svs == 0 && overlap.num_seeds > min_num_seeds &&
       query_overlap_length > min_perc_overlap_len*read_len && ref_overlap_length > min_perc_overlap_len*target_len &&
       size_diff < parameters->error_rate &&
       (perc_covered_bases_read > min_perc_covered_bases || perc_covered_bases_ref > min_perc_covered_bases) &&
@@ -64,20 +65,129 @@ bool Owler::CheckOverlapV1_(std::shared_ptr<is::MinimizerIndex> index, const Sin
   }
 
   if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read,
-                                        FormatString("[%ld] /bad/ (num_output_overlaps) current_ref_id=%ld, ref_id_fwd=%ld, overhang_ok = %d, num_svs = %d, lcskpp_indices.size() = %ld,"
-                                            "qlen = %ld, rlen = %ld\n\t° query_overlap_length = %ld, min_perc_overlap_len*read_len = %ld\n\t° ref_overlap_length = %ld, min_perc_overlap_len*ref_len = %ld\n\t° size_diff = %f, perc_covered_bases_read = %f, perc_covered_bases_ref = %f, min_perc_covered_bases = %f\n\t° cov_bases_read = %ld, cov_bases_ref = %ld\n",
-                                                     (0 + 1), overlap.tid, (overlap.tid % index->get_num_sequences_forward()), overhang_ok, num_svs, overlap.num_seeds, read_len, target_len,
-                                                     query_overlap_length, (int64_t) min_perc_overlap_len*read_len, ref_overlap_length, (int64_t) min_perc_overlap_len*target_len,
-                                                     size_diff, perc_covered_bases_read, perc_covered_bases_ref, min_perc_covered_bases, cov_bases_read, cov_bases_ref), "[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read,
-                                        FormatString("\t° A_start = %ld, A_end = %ld\n", A_start, A_end),"[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_absolute_id() == parameters->debug_read,
-                                        FormatString("\t° B_start = %ld, B_end = %ld\n", B_start, B_end),"[]");
+    LOG_DEBUG_SPEC_NO_HEADER("/bad/ (num_output_overlaps) current_ref_id=%ld, ref_id_fwd=%ld\n"
+                             "\t° overhang_ok = %d -> %s\n"
+                             "\t° num_svs = %d -> %s\n"
+                             "\t° overlap.num_seeds = %ld -> %s\n"
+                             ""
+                                            "\t° qlen = %ld, rlen = %ld\n"
+                                            "\t° query_overlap_length = %ld, min_perc_overlap_len*read_len = %ld -> %s\n"
+                                            "\t° ref_overlap_length = %ld, min_perc_overlap_len*ref_len = %ld -> %s\n"
+                                            "\t° size_diff = %f, error_rate = %f -> %s\n"
+                                            "\t° perc_covered_bases_read = %f, min_perc_covered_bases = %f -> %s\n"
+                                            "\t° perc_covered_bases_ref = %f, min_perc_covered_bases = %f -> %s\n"
+                                            "\t° cov_bases_read = %ld, cov_bases_ref = %ld\n",
+                                             overlap.tid, (overlap.tid % index->get_num_sequences_forward()),
+                                             overhang_ok, ((overhang_ok == true) ? "GOOD" : "BAD"),
+                                             num_svs, ((num_svs == 0) ? "GOOD" : "BAD"),
+                                             overlap.num_seeds, ((overlap.num_seeds > min_num_seeds) ? "GOOD" : "BAD"),
+                                             read_len, target_len,
+                                             query_overlap_length, (int64_t) min_perc_overlap_len*read_len, ((query_overlap_length > min_perc_overlap_len*read_len) ? "GOOD" : "BAD"),
+                                             ref_overlap_length, (int64_t) min_perc_overlap_len*target_len, ((ref_overlap_length > min_perc_overlap_len*target_len) ? "GOOD" : "BAD"),
+                                             size_diff, parameters->error_rate, ((size_diff < parameters->error_rate) ? "GOOD" : "BAD"),
+                                             perc_covered_bases_read, min_perc_covered_bases, ((perc_covered_bases_read > min_perc_covered_bases) ? "GOOD" : "BAD"),
+                                             perc_covered_bases_ref, min_perc_covered_bases, ((perc_covered_bases_ref > min_perc_covered_bases) ? "GOOD" : "BAD"), cov_bases_read, cov_bases_ref);
+    LOG_DEBUG_SPEC_NO_HEADER("\t° A_start = %ld, A_end = %ld, d = %ld, (A_len - A_end) = %ld, max_overhang_A = %ld -> start = %s, end = %s\n", A_start, A_end, (A_end - A_start), (read_len - A_end), max_overhang_A,
+                                             ((A_start <= max_overhang_A) ? "GOOD" : "BAD"), (((read_len - A_end) <= max_overhang_A) ? "GOOD" : "BAD"));
+    LOG_DEBUG_SPEC_NO_HEADER("\t° B_start = %ld, B_end = %ld, d = %ld, (B_len - B_end) = %ld, max_overhang_B = %ld -> start = %s, end = %s\n", B_start, B_end, (B_end - B_start), (target_len - B_end), max_overhang_B,
+                                            ((B_start <= max_overhang_B) ? "GOOD" : "BAD"), (((target_len - B_end) <= max_overhang_B) ? "GOOD" : "BAD"));
   }
 
   return false;
 }
+
+bool Owler::CheckOverlapV1b_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap) {
+  float min_perc_covered_bases = 0.10f;
+  float min_perc_overlap_len = 0.0f;
+  float max_overhang_percent;
+  int64_t min_num_hits = std::min(10.0f, 0.05f * read->get_sequence_length());
+
+  int64_t read_len = read->get_sequence_length();
+  int64_t seed_len = index->get_shape_max_width();
+  int64_t target_len = index->get_reference_lengths()[overlap.tid];
+
+  std::vector<int32_t> cluster_ids;
+  std::vector<int32_t> *cluster_ids_pntr = NULL;
+
+  int64_t A_start = overlap.query.start;
+  int64_t A_end = overlap.query.end;
+  int64_t query_overlap_length = overlap.query.dist();
+
+  int64_t B_start = overlap.target.start;
+  int64_t B_end = overlap.target.end;
+  int64_t ref_overlap_length = overlap.target.dist();
+
+  int64_t cov_bases_read = overlap.cov_bases;
+  int64_t cov_bases_ref = overlap.cov_bases;
+
+  int64_t num_svs = overlap.num_sv;
+
+  float size_diff = 1.0f - ((float) std::min(query_overlap_length, ref_overlap_length)) / ((float) std::max(query_overlap_length, ref_overlap_length));
+  float perc_covered_bases_read = (query_overlap_length > 0) ? (((float) cov_bases_read) / ((float) query_overlap_length)) : 0.0f;
+  float perc_covered_bases_ref = (ref_overlap_length > 0) ? (((float) cov_bases_ref) / ((float) ref_overlap_length)) : 0.0f;
+
+  /// Compensate for minimizers
+  perc_covered_bases_read *= parameters->minimizer_window;
+  perc_covered_bases_ref *= parameters->minimizer_window;
+  //////////////////////////////////////////////////////////////////////
+
+  bool overhang_ok = true;
+
+//  int64_t max_overhang_A = query_overlap_length * max_overhang_percent;
+//  int64_t max_overhang_B = ref_overlap_length * max_overhang_percent;
+  max_overhang_percent = 0.10f;
+  int64_t max_overhang_A = read_len * max_overhang_percent;
+  int64_t max_overhang_B = target_len * max_overhang_percent;
+  int64_t min_num_seeds = 5;
+
+  if ((A_start > max_overhang_A && B_start > max_overhang_B) ||
+      ((read_len - A_end) > max_overhang_A && (target_len - B_end) > max_overhang_B)) {
+    overhang_ok = false;
+  }
+
+  if (num_svs == 0 && overlap.num_seeds > min_num_seeds &&
+      query_overlap_length > min_perc_overlap_len*read_len && ref_overlap_length > min_perc_overlap_len*target_len &&
+      size_diff < parameters->error_rate &&
+      (perc_covered_bases_read > min_perc_covered_bases || perc_covered_bases_ref > min_perc_covered_bases) &&
+      overhang_ok == true) {
+
+    LOG_DEBUG_SPEC_NO_HEADER("/good/ (num_output_overlaps) current_ref_id=%ld, ref_id_fwd=%ld\n",
+                                                      overlap.tid, (overlap.tid % index->get_num_sequences_forward()));
+    return true;
+  }
+
+  if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
+    LOG_DEBUG_SPEC_NO_HEADER("/bad/ (num_output_overlaps) current_ref_id=%ld, ref_id_fwd=%ld\n"
+                             "\t° overhang_ok = %d -> %s\n"
+                             "\t° num_svs = %d -> %s\n"
+                             "\t° overlap.num_seeds = %ld -> %s\n"
+                             ""
+                                            "\t° qlen = %ld, rlen = %ld\n"
+                                            "\t° query_overlap_length = %ld, min_perc_overlap_len*read_len = %ld -> %s\n"
+                                            "\t° ref_overlap_length = %ld, min_perc_overlap_len*ref_len = %ld -> %s\n"
+                                            "\t° size_diff = %f, error_rate = %f -> %s\n"
+                                            "\t° perc_covered_bases_read = %f, min_perc_covered_bases = %f -> %s\n"
+                                            "\t° perc_covered_bases_ref = %f, min_perc_covered_bases = %f -> %s\n"
+                                            "\t° cov_bases_read = %ld, cov_bases_ref = %ld\n",
+                                             overlap.tid, (overlap.tid % index->get_num_sequences_forward()),
+                                             overhang_ok, ((overhang_ok == true) ? "GOOD" : "BAD"),
+                                             num_svs, ((num_svs == 0) ? "GOOD" : "BAD"),
+                                             overlap.num_seeds, ((overlap.num_seeds > min_num_seeds) ? "GOOD" : "BAD"),
+                                             read_len, target_len,
+                                             query_overlap_length, (int64_t) min_perc_overlap_len*read_len, ((query_overlap_length > min_perc_overlap_len*read_len) ? "GOOD" : "BAD"),
+                                             ref_overlap_length, (int64_t) min_perc_overlap_len*target_len, ((ref_overlap_length > min_perc_overlap_len*target_len) ? "GOOD" : "BAD"),
+                                             size_diff, parameters->error_rate, ((size_diff < parameters->error_rate) ? "GOOD" : "BAD"),
+                                             perc_covered_bases_read, min_perc_covered_bases, ((perc_covered_bases_read > min_perc_covered_bases) ? "GOOD" : "BAD"),
+                                             perc_covered_bases_ref, min_perc_covered_bases, ((perc_covered_bases_ref > min_perc_covered_bases) ? "GOOD" : "BAD"), cov_bases_read, cov_bases_ref);
+    LOG_DEBUG_SPEC_NO_HEADER("\t° A_start = %ld, A_end = %ld, d = %ld, (A_len - A_end) = %ld, max_overhang_A = %ld -> start = %s, end = %s\n", A_start, A_end, (A_end - A_start), (read_len - A_end), max_overhang_A,
+                                             ((A_start <= max_overhang_A) ? "GOOD" : "BAD"), (((read_len - A_end) <= max_overhang_A) ? "GOOD" : "BAD"));
+    LOG_DEBUG_SPEC_NO_HEADER("\t° B_start = %ld, B_end = %ld, d = %ld, (B_len - B_end) = %ld, max_overhang_B = %ld -> start = %s, end = %s\n", B_start, B_end, (B_end - B_start), (target_len - B_end), max_overhang_B,
+                                            ((B_start <= max_overhang_B) ? "GOOD" : "BAD"), (((target_len - B_end) <= max_overhang_B) ? "GOOD" : "BAD"));
+  }
+
+  return false;
+}
+
 
 bool Owler::CheckOverlapV2_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap) {
   int64_t tid = overlap.tid % index->get_num_sequences_forward();
@@ -129,6 +239,7 @@ bool Owler::CheckOverlapV2_(std::shared_ptr<is::MinimizerIndex> index, const Sin
 }
 
 int64_t Owler::CalcEditDist_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const PairwiseOverlap& overlap) {
+
   EdlibAlignTask task = EDLIB_TASK_DISTANCE;  // Calculate only edit distance.
   EdlibAlignMode edlib_mode = EDLIB_MODE_NW;
   char *ref = ((char *) index->get_data().data()) + index->get_reference_starting_pos()[overlap.tid];
@@ -136,7 +247,6 @@ int64_t Owler::CalcEditDist_(std::shared_ptr<is::MinimizerIndex> index, const Si
   EdlibAlignResult result = edlibAlign((const char *) read->get_data() + overlap.query.start, overlap.query.dist() + 1,
                                        ref + overlap.target.start, overlap.target.dist() + 1,
                                        edlibNewAlignConfig(-1, edlib_mode, task));
-
 
   int64_t edit_dist = result.editDistance;
 
@@ -190,7 +300,7 @@ bool Owler::CheckDistanceTooBig_(const std::vector<uint128_t> &hits, int64_t ind
   int64_t distance_ref = (Owler::HitPosRef_(hits[index_current]) + seed_length) - Owler::HitPosRef_(hits[index_last]);
   float max_length = ((float) std::max(distance_query, distance_ref));
   float min_length = ((float) std::min(distance_query, distance_ref));
-  if ((min_length == 0 && max_length != 0) || (min_length > 0 && (max_length / min_length - 1.0f) > error_rate)) {
+  if (max_length > 100 && ((min_length == 0 && max_length != 0) || (min_length > 0 && (max_length / min_length - 1.0f) > error_rate))) {
     return true;
   }
 
@@ -331,15 +441,40 @@ int Owler::FilterAnchorBreakpoints_(const std::vector<int32_t> &lcskpp_indices, 
 
 void Owler::FilterColinear_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters,
                             const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int64_t seed_len, const std::vector<int32_t> &raw_lcsk_indices,
-                            std::vector<int32_t> &lcsk_indices, std::vector<int32_t> *cluster_ids, int32_t &num_sv) {
+                            std::vector<int32_t> &lcsk_indices, std::vector<int32_t> *cluster_ids, PairwiseOverlap &overlap) {
 
 //  lcsk_indices = raw_lcsk_indices;
 //  return;
 
 
-
-  num_sv = FilterAnchorBreakpoints_(raw_lcsk_indices, begin_hit, end_hit, seed_len,
+  overlap.num_sv = FilterAnchorBreakpoints_(raw_lcsk_indices, begin_hit, end_hit, seed_len,
                                     0.01f*read->get_sequence_length(), 0.01f, hits, parameters, lcsk_indices, cluster_ids);
+
+//  if (lcsk_indices.size() == 0) {
+//    return;
+//  }
+//
+//  PairwiseOverlap temp_overlap(overlap.qid, overlap.tid);
+//  temp_overlap = overlap;
+//  int64_t back = begin_hit + lcsk_indices.front();
+//  int64_t front = begin_hit + lcsk_indices.back();
+//  temp_overlap.query.start = HitPosRead_(hits[back]);
+//  temp_overlap.query.end = HitPosRead_(hits[front]) + 1; // +1 means that the end is not inclusive. // + seed_len;  TODO: The end does not cover the last seed entirely!
+//  temp_overlap.target.start = HitPosRef_(hits[back]);
+//  temp_overlap.target.end = HitPosRef_(hits[front]) + 1; // + seed_len;
+//  temp_overlap.num_seeds = lcsk_indices.size();
+//
+//  int64_t edit_dist = CalcEditDist_(index, read, temp_overlap);
+//  double error_rate = ((double) edit_dist) / ((double) temp_overlap.target.dist());
+//  overlap.num_sv = 0;
+//  if (error_rate > parameters->error_rate) {
+//    overlap.num_sv = 1;
+//  }
+
+
+
+//  lcsk_indices = raw_lcsk_indices;
+
 
 
 

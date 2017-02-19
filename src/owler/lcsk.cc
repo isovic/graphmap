@@ -72,7 +72,7 @@ int Owler::LCSkFilter_(std::shared_ptr<is::MinimizerIndex> index, const SingleSe
   std::vector<int32_t> lcsk_indices;
   std::vector<int32_t> cluster_ids;
   int32_t num_sv = 0;
-  FilterColinear_(index, read, parameters, hits, begin_hit, end_hit, seed_len, raw_lcsk_indices, lcsk_indices, &cluster_ids, overlap.num_sv);
+  FilterColinear_(index, read, parameters, hits, begin_hit, end_hit, seed_len, raw_lcsk_indices, lcsk_indices, &cluster_ids, overlap);
   lcsk_len = std::max((int64_t) 0, lcsk_len - seed_len);     // Reduce the length by the size of a seed, because the end point
                                                              // Also do not include the last seed.
 
