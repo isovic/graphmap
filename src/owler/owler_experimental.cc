@@ -441,13 +441,15 @@ int Owler::FilterAnchorBreakpoints_(const std::vector<int32_t> &lcskpp_indices, 
 
 void Owler::FilterColinear_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters,
                             const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int64_t seed_len, const std::vector<int32_t> &raw_lcsk_indices,
-                            std::vector<int32_t> &lcsk_indices, std::vector<int32_t> *cluster_ids, PairwiseOverlap &overlap) {
+                            std::vector<int32_t> &lcsk_indices, std::vector<int32_t> *cluster_ids, int32_t &num_sv) {
 
 //  lcsk_indices = raw_lcsk_indices;
-//  return;
+//  std::reverse(lcsk_indices.begin(), lcsk_indices.end());
+//  num_sv = 0;
+//  cluster_ids->clear();
+//  cluster_ids->resize(lcsk_indices.size(), 0);
 
-
-  overlap.num_sv = FilterAnchorBreakpoints_(raw_lcsk_indices, begin_hit, end_hit, seed_len,
+  num_sv = FilterAnchorBreakpoints_(raw_lcsk_indices, begin_hit, end_hit, seed_len,
                                     0.01f*read->get_sequence_length(), 0.01f, hits, parameters, lcsk_indices, cluster_ids);
 
 //  if (lcsk_indices.size() == 0) {

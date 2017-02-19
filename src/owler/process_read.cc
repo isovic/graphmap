@@ -144,51 +144,51 @@ void Owler::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::Minimizer
 
   all_hits.resize(all_hits.size() - num_found_seeds + k_added);
 }
-
-int Owler::ClusterHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, int32_t diag_epsilon, OwlerData &owler_data) {
-
-  int64_t max_shape_width = index->get_shape_max_width();
-
-  int64_t begin_hit = 0;
-  int64_t total_num_hits = owler_data.hits.size();
-
-  for (int64_t end_hit=0; end_hit<total_num_hits; end_hit++) {
-    if ((end_hit + 1) == total_num_hits ||
-        HitSeqId_(owler_data.hits[end_hit+1]) != HitSeqId_(owler_data.hits[end_hit]) ||
-        (HitDiag_(owler_data.hits[end_hit+1]) - HitDiag_(owler_data.hits[end_hit])) >= diag_epsilon) {
-
-      Range rhits(begin_hit, end_hit);     // Store the current range of hits.
-      begin_hit = end_hit + 1;                // Update the beginning of the range right away in case there will be any 'continue' statements.
-
-      int64_t num_hits = rhits.end - rhits.start + 1;
-      int64_t cov_bases_estimate = num_hits * max_shape_width;
-
-      if (cov_bases_estimate < 100) { continue; }
-
-      // Add a cluster.
-      int64_t ref_id = HitSeqId_(owler_data.hits[rhits.end]);
-      int64_t ref_start = index->get_reference_starting_pos()[ref_id];
-      int64_t ref_len = index->get_reference_lengths()[ref_id];
-      int64_t read_len = read->get_sequence_length();
-
-      PairwiseOverlap overlap(read->get_sequence_id(), ref_id);
-      int rv_lcsk = LCSkFilter_(index, read, parameters, owler_data.hits, rhits.start, rhits.end, max_shape_width, overlap);
-
-      if (rv_lcsk) {      // Nothing survived the filter.
-        continue;
-      }
-
-      // Do a basic check on the sanity of an overlap.
-      if (CheckOverlapV1b_(index, read, parameters, overlap) == true) {
-        owler_data.overlaps.push_back(overlap);
-      }
-    }
-  }
-
-  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return o1.num_seeds > o2.num_seeds; });
-
-  return 0;
-}
+//
+//int Owler::ClusterHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, int32_t diag_epsilon, OwlerData &owler_data) {
+//
+//  int64_t max_shape_width = index->get_shape_max_width();
+//
+//  int64_t begin_hit = 0;
+//  int64_t total_num_hits = owler_data.hits.size();
+//
+//  for (int64_t end_hit=0; end_hit<total_num_hits; end_hit++) {
+//    if ((end_hit + 1) == total_num_hits ||
+//        HitSeqId_(owler_data.hits[end_hit+1]) != HitSeqId_(owler_data.hits[end_hit]) ||
+//        (HitDiag_(owler_data.hits[end_hit+1]) - HitDiag_(owler_data.hits[end_hit])) >= diag_epsilon) {
+//
+//      Range rhits(begin_hit, end_hit);     // Store the current range of hits.
+//      begin_hit = end_hit + 1;                // Update the beginning of the range right away in case there will be any 'continue' statements.
+//
+//      int64_t num_hits = rhits.end - rhits.start + 1;
+//      int64_t cov_bases_estimate = num_hits * max_shape_width;
+//
+//      if (cov_bases_estimate < 100) { continue; }
+//
+//      // Add a cluster.
+//      int64_t ref_id = HitSeqId_(owler_data.hits[rhits.end]);
+//      int64_t ref_start = index->get_reference_starting_pos()[ref_id];
+//      int64_t ref_len = index->get_reference_lengths()[ref_id];
+//      int64_t read_len = read->get_sequence_length();
+//
+//      PairwiseOverlap overlap(read->get_sequence_id(), ref_id);
+//      int rv_lcsk = LCSkFilter_(index, read, parameters, owler_data.hits, rhits.start, rhits.end, max_shape_width, overlap);
+//
+//      if (rv_lcsk) {      // Nothing survived the filter.
+//        continue;
+//      }
+//
+//      // Do a basic check on the sanity of an overlap.
+//      if (CheckOverlapV1b_(index, read, parameters, overlap) == true) {
+//        owler_data.overlaps.push_back(overlap);
+//      }
+//    }
+//  }
+//
+//  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return o1.num_seeds > o2.num_seeds; });
+//
+//  return 0;
+//}
 
 int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, int32_t diag_epsilon, OwlerData &owler_data) {
 
@@ -217,7 +217,21 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
       int64_t read_len = read->get_sequence_length();
 
       PairwiseOverlap overlap(read->get_sequence_id(), ref_id);
-      int rv_lcsk = LCSkFilter_(index, read, parameters, owler_data.hits, rhits.start, rhits.end, max_shape_width, overlap);
+      int rv_lcsk = WrapLCSk_(index, read, parameters, owler_data.hits, rhits.start, rhits.end, max_shape_width, overlap);
+
+      // Set the overlap bounds.
+      if (overlap.lcsk_indices.size() > 0) {
+        // TODO: FilterAnchorBreakpoints_ inverts the list to a normal, ascending form.
+        int64_t back = rhits.start + overlap.lcsk_indices.front();
+        int64_t front = rhits.start + overlap.lcsk_indices.back();
+
+        overlap.query.start = HitPosRead_(owler_data.hits[back]);
+        overlap.query.end = HitPosRead_(owler_data.hits[front]) + 1; // +1 means that the end is not inclusive. // + seed_len;  TODO: The end does not cover the last seed entirely!
+        overlap.target.start = HitPosRef_(owler_data.hits[back]);
+        overlap.target.end = HitPosRef_(owler_data.hits[front]) + 1; // + seed_len;
+        overlap.num_seeds = overlap.lcsk_indices.size();
+        overlap.cov_bases = overlap.lcsk_len;
+      }
 
       if (rv_lcsk) {      // Nothing survived the filter.
         continue;

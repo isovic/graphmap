@@ -21,13 +21,17 @@
 class PairwiseOverlap {
  public:
 //  PairwiseOverlap() : qid(0), tid(0), num_seeds(0), cov_bases(0), num_sv(0) { }
-  PairwiseOverlap(int64_t _qid, int64_t _tid) : qid(_qid), tid(_tid), num_seeds(0), cov_bases(0), num_sv(0) { }
+  PairwiseOverlap(int64_t _qid, int64_t _tid) : qid(_qid), tid(_tid), num_seeds(0), cov_bases(0), num_sv(0), lcsk_len(0) { }
 
   Range query, target;
   int64_t qid, tid;
   int64_t num_seeds;
   int64_t cov_bases;
   int32_t num_sv;
+
+  std::vector<int32_t> lcsk_indices;
+  std::vector<int32_t> cluster_ids;
+  int64_t lcsk_len;
 };
 
 class OwlerData {

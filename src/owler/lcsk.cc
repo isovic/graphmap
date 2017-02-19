@@ -48,20 +48,12 @@ void Owler::WriteHits_(std::string out_path, const std::vector<uint128_t> &hits,
 // Otherwise, all vertices will be used.
 // The L1 line is specified with k = 1 and l parameters (y = k*x + l).
 //void Owler::CalcLCSFromLocalScoresCacheFriendly2_(OwlerData* owler_data, int64_t ref_hits_start, int64_t ref_hits_end, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices) {
-int Owler::LCSkFilter_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters,
+int Owler::WrapLCSk_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters,
                        const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int32_t seed_len, PairwiseOverlap &overlap) {
   std::vector<uint128_t> events;
   std::vector<uint64_t> matches_starts;
   std::vector<uint64_t> matches_indices;
   int64_t max_seq_len = 0;
-
-//  printf ("(1) LCSk:\n");
-//  for (int32_t i=0; i<hits.size(); i++) {
-//    int32_t p = i;
-//    printf ("HitPosRead_[%d] = %d, HitPosRef_[%d] = %d, p = %d, hits[p] = %s\n", i, HitPosRead_(hits[p]), i, HitPosRef_(hits[p]), p, is::PrintSeed(hits[p]).c_str());
-//  }
-//  printf ("\n");
-//  fflush(stdout);
 
   PrepareEvents_(hits, begin_hit, end_hit, seed_len, events, matches_starts, matches_indices, max_seq_len);
 
@@ -69,16 +61,18 @@ int Owler::LCSkFilter_(std::shared_ptr<is::MinimizerIndex> index, const SingleSe
   std::vector<int32_t> raw_lcsk_indices;
   LCSk_(events, max_seq_len, seed_len, matches_starts, matches_indices, raw_lcsk_indices, lcsk_len);
 
-  std::vector<int32_t> lcsk_indices;
-  std::vector<int32_t> cluster_ids;
-  int32_t num_sv = 0;
-  FilterColinear_(index, read, parameters, hits, begin_hit, end_hit, seed_len, raw_lcsk_indices, lcsk_indices, &cluster_ids, overlap);
-  lcsk_len = std::max((int64_t) 0, lcsk_len - seed_len);     // Reduce the length by the size of a seed, because the end point
-                                                             // Also do not include the last seed.
+//  std::vector<int32_t> lcsk_indices;
+//  std::vector<int32_t> cluster_ids;
+//  int32_t num_sv = 0;
+  FilterColinear_(index, read, parameters, hits, begin_hit, end_hit, seed_len, raw_lcsk_indices, overlap.lcsk_indices, &(overlap.cluster_ids), overlap.num_sv);
 
+  overlap.lcsk_len = std::max((int64_t) 0, lcsk_len - seed_len);     // Reduce the length by the size of a seed, because the end point
+                                                                     // Also do not include the last seed.
+
+  // Debug output.
   #ifndef RELEASE_VERSION
       if (parameters->verbose_level > 5 && read->get_sequence_absolute_id() == parameters->debug_read) {
-        std::vector<int32_t> *cluster_ids_pntr = (cluster_ids.size() > 0) ? (&cluster_ids) : (NULL);
+        std::vector<int32_t> *cluster_ids_pntr = (overlap.cluster_ids.size() > 0) ? (&(overlap.cluster_ids)) : (NULL);
 
         std::string reference_header = index->get_headers()[(overlap.tid % index->get_num_sequences_forward())];
 
@@ -93,55 +87,16 @@ int Owler::LCSkFilter_(std::shared_ptr<is::MinimizerIndex> index, const SingleSe
                   std::string(read->get_header()), read->get_sequence_length(), reference_header, index->get_reference_lengths()[overlap.tid], &raw_lcsk_indices, NULL);
         // After LCSk and clustering.
         WriteHits_(FormatString("temp/overlaps/LCSL1-%ld%s.csv", tid, rev_suffix.c_str()), hits, begin_hit, end_hit, overlap.tid,
-                  std::string(read->get_header()), read->get_sequence_length(), reference_header, index->get_reference_lengths()[overlap.tid], &lcsk_indices, cluster_ids_pntr);
+                  std::string(read->get_header()), read->get_sequence_length(), reference_header, index->get_reference_lengths()[overlap.tid], &(overlap.lcsk_indices), cluster_ids_pntr);
         // Just a space filler. Same as before.
         WriteHits_(FormatString("temp/overlaps/double_LCS-%ld%s.csv", tid, rev_suffix.c_str()), hits, begin_hit, end_hit, overlap.tid,
-                  std::string(read->get_header()), read->get_sequence_length(), reference_header, index->get_reference_lengths()[overlap.tid], &lcsk_indices, cluster_ids_pntr);
+                  std::string(read->get_header()), read->get_sequence_length(), reference_header, index->get_reference_lengths()[overlap.tid], &(overlap.lcsk_indices), cluster_ids_pntr);
       }
   #endif
 
-  if (lcsk_indices.size() == 0) {
+  if (overlap.lcsk_indices.size() == 0) {
     return 1;
   }
-
-//  printf ("(2) LCSk:\n");
-//  for (int32_t i=begin_hit; i<(end_hit-begin_hit); i++) {
-//    int32_t p = i;
-//    printf ("HitPosRead_[%d] = %d, HitPosRef_[%d] = %d, p = %d, hits[p] = %s\n", i, HitPosRead_(hits[p]), i, HitPosRef_(hits[p]), p, is::PrintSeed(hits[p]).c_str());
-//  }
-//  printf ("\n");
-//  fflush(stdout);
-//
-//  printf ("(3) LCSk indices (size = %ld):\n", lcsk_indices.size());
-//  for (int32_t i=0; i<lcsk_indices.size(); i++) {
-//    int32_t p = begin_hit + lcsk_indices[i];
-////    p = i;
-//    printf ("HitPosRead_[%d] = %d, HitPosRef_[%d] = %d, p = %d, hits[p] = %s\n", i, HitPosRead_(hits[p]), i, HitPosRef_(hits[p]), p, is::PrintSeed(hits[p]).c_str());
-//  }
-//  printf ("\n");
-//  printf ("qid = %ld, tid = %ld\n", qid, tid);
-//  fflush(stdout);
-//
-//  if (tid > 0)
-//    exit(1);
-
-//  int64_t front = begin_hit + lcsk_indices.front();
-//  int64_t back = begin_hit + lcsk_indices.back();
-
-  // TODO: FilterAnchorBreakpoints_ adds the begin_hit to every index, when the rest of this function actually doesn't but expects the indices to be normalized to 0.
-  // It also inverts the list to a normal, ascending form.
-  int64_t back = begin_hit + lcsk_indices.front();
-  int64_t front = begin_hit + lcsk_indices.back();
-
-  overlap.query.start = HitPosRead_(hits[back]);
-  overlap.query.end = HitPosRead_(hits[front]) + 1; // +1 means that the end is not inclusive. // + seed_len;  TODO: The end does not cover the last seed entirely!
-  overlap.target.start = HitPosRef_(hits[back]);
-  overlap.target.end = HitPosRef_(hits[front]) + 1; // + seed_len;
-  overlap.num_seeds = lcsk_indices.size();
-  overlap.cov_bases = lcsk_len;
-
-//  printf ("\t\toverlap.query.start = %ld, overlap.query.end = %ld\n", overlap.query.start, overlap.query.end);
-//  fflush(stdout);
 
   return 0;
 }
