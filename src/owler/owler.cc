@@ -16,7 +16,7 @@
 
 
 
-Owler::Owler() {
+Owler::Owler() : run_begin_time_(clock()), run_end_time_(clock()) {
 
 }
 
@@ -24,6 +24,8 @@ Owler::~Owler() {
 }
 
 void Owler::Run(ProgramParameters& parameters) {
+  run_begin_time_ = clock();
+
   // Set the verbose level for the execution of this program.
   LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
 
@@ -65,10 +67,14 @@ void Owler::Run(ProgramParameters& parameters) {
 
   tt_processing.stop();
 
+  run_end_time_ = clock();
+
   LOG_NEWLINE;
-  LOG_ALL("All reads processed in %.2f sec (or %.2f CPU min).\n", tt_processing.get_secs(), tt_processing.get_secs() / 60.0f);
-
-
+  LOG_ALL("All reads processed in %.2f sec (%.2f CPU min, %.2f real min).\n",
+          (((float) (run_end_time_ - run_begin_time_))/CLOCKS_PER_SEC),
+          (((float) (run_end_time_ - run_begin_time_))/CLOCKS_PER_SEC) / 60.0f,
+          tt_processing.get_secs() / 60.0f);
+  LOG_ALL("Memory consumption: %s\n", FormatMemoryConsumptionAsString().c_str());
 }
 
 //int Owler::BuildIndex_(ProgramParameters &parameters) {
@@ -184,7 +190,7 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
         if (parameters.verbose_level > 6 && parameters.num_threads == 1)
               ss << "\n";
         ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld], length = %ld, qname: ",
-                           tt_all.get_secs_current(), getCurrentRSS()/(1024*1024),
+                           (((float) (clock() - (run_begin_time_)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
                            i, reads->get_sequences().size(), ((float) i) / ((float) reads->get_sequences().size()) * 100.0f,
                            num_mapped, num_unmapped,
                            reads->get_sequences()[i]->get_data_length()) << reads->get_sequences()[i]->get_header();

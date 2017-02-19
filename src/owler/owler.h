@@ -49,6 +49,8 @@ class Owler {
   std::shared_ptr<SequenceFile> ref_;
   std::shared_ptr<SequenceFile> reads_;
   std::shared_ptr<is::MinimizerIndex> index_;
+  clock_t run_begin_time_;
+  clock_t run_end_time_;
 
   // Opens the output SAM file for writing if the path is specified. If the path is empty, then output is set to STDOUT.
   FILE* OpenOutFile_(std::string out_sam_path="");
