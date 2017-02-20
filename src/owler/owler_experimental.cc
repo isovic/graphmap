@@ -260,7 +260,10 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
 //    return false;
 //  }
 
-  double perc_cov_bases = ((double) overlap.num_seeds * index->get_shape_max_width()) / ((double) overlap.query.dist());
+  double perc_cov_bases_q = ((double) overlap.num_seeds * index->get_shape_max_width()) / ((double) overlap.query.dist());
+  double perc_cov_bases_t = ((double) overlap.num_seeds * index->get_shape_max_width()) / ((double) overlap.target.dist());
+  double perc_cov_bases = std::max(perc_cov_bases_q, perc_cov_bases_t);
+
   if (perc_cov_bases < 0.05) {
     return false;
   }

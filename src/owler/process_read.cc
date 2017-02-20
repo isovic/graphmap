@@ -25,7 +25,7 @@ int Owler::ProcessRead_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
   if (read->get_sequence_length() < parameters->min_read_len) {
     LOG_DEBUG_SPEC("Read too short.\n");
     std::stringstream ss;
-    ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << 80;
+    ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << parameters->min_read_len;
     owler_data.unmapped_reason += ss.str();
     return 0;
   }
