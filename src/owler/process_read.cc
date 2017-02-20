@@ -248,12 +248,13 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
   }
 
 //  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return o1.num_seeds > o2.num_seeds; });
-  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return ((o1.tid_fwd < o2.tid_fwd) || (o1.tid_fwd == o2.tid_fwd && o1.num_seeds > o2.num_seeds)); });
 
   return 0;
 }
 
 void Owler::GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
+  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return ((o1.tid_fwd < o2.tid_fwd) || (o1.tid_fwd == o2.tid_fwd && o1.num_seeds > o2.num_seeds)); });
+
   for (int64_t i=0; i<owler_data.overlaps.size(); i++) {
     std::string overlap_line;
 
