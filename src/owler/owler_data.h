@@ -21,10 +21,10 @@
 class PairwiseOverlap {
  public:
 //  PairwiseOverlap() : qid(0), tid(0), num_seeds(0), cov_bases(0), num_sv(0) { }
-  PairwiseOverlap(int64_t _qid, int64_t _tid) : qid(_qid), tid(_tid), num_seeds(0), cov_bases(0), num_sv(0), lcsk_len(0) { }
+  PairwiseOverlap(int64_t _qid, int64_t _tid, int64_t _tid_fwd) : qid(_qid), tid(_tid), tid_fwd(_tid_fwd), num_seeds(0), cov_bases(0), num_sv(0), lcsk_len(0) { }
 
   Range query, target;
-  int64_t qid, tid;
+  int64_t qid, tid, tid_fwd;
   int64_t num_seeds;
   int64_t cov_bases;
   int32_t num_sv;

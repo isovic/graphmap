@@ -256,7 +256,12 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
     return false;
   }
 
-  if (overlap.num_sv > 0) {
+//  if (overlap.num_sv > 0) {
+//    return false;
+//  }
+
+  double perc_cov_bases = ((double) overlap.num_seeds * index->get_shape_max_width()) / ((double) overlap.query.dist());
+  if (perc_cov_bases < 0.05) {
     return false;
   }
 

@@ -212,11 +212,12 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
 
       // Add a cluster.
       int64_t ref_id = HitSeqId_(owler_data.hits[rhits.end]);
+      int64_t ref_id_fwd = ref_id % index->get_num_sequences_forward();
       int64_t ref_start = index->get_reference_starting_pos()[ref_id];
       int64_t ref_len = index->get_reference_lengths()[ref_id];
       int64_t read_len = read->get_sequence_length();
 
-      PairwiseOverlap overlap(read->get_sequence_id(), ref_id);
+      PairwiseOverlap overlap(read->get_sequence_id(), ref_id, ref_id_fwd);
       int rv_lcsk = WrapLCSk_(index, read, parameters, owler_data.hits, rhits.start, rhits.end, max_shape_width, overlap);
 
       // Set the overlap bounds.
@@ -246,14 +247,14 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
     }
   }
 
-  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return o1.num_seeds > o2.num_seeds; });
+//  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return o1.num_seeds > o2.num_seeds; });
+  std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return ((o1.tid_fwd < o2.tid_fwd) || (o1.tid_fwd == o2.tid_fwd && o1.num_seeds > o2.num_seeds)); });
 
   return 0;
 }
 
 void Owler::GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
   for (int64_t i=0; i<owler_data.overlaps.size(); i++) {
-//    std::string overlap_line = GenerateMHAPLine_(index, read, parameters, owler_data.overlaps[i]);
     std::string overlap_line;
 
     if (parameters->outfmt == "mhap") {
@@ -271,7 +272,9 @@ void Owler::GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const Sin
       debug_info = "\t-> " + GenerateDebugInfo_(index, read, parameters, owler_data.overlaps[i]);
     }
 
-    owler_data.overlap_lines += overlap_line + debug_info + "\n";
+    if (i == 0 || owler_data.overlaps[i].tid_fwd != owler_data.overlaps[i-1].tid_fwd) {
+      owler_data.overlap_lines += overlap_line + debug_info + "\n";
+    }
   }
 }
 
