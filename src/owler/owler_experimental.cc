@@ -31,8 +31,8 @@ bool Owler::CheckOverlapV1a_(std::shared_ptr<is::MinimizerIndex> index, const Si
   int64_t B_end = overlap.target.end;
   int64_t ref_overlap_length = overlap.target.dist();
 
-  int64_t cov_bases_read = overlap.cov_bases;
-  int64_t cov_bases_ref = overlap.cov_bases;
+  int64_t cov_bases_read = overlap.cov_bases_query;
+  int64_t cov_bases_ref = overlap.cov_bases_target;
 
   int64_t num_svs = overlap.num_sv;
 
@@ -117,8 +117,8 @@ bool Owler::CheckOverlapV1b_(std::shared_ptr<is::MinimizerIndex> index, const Si
   int64_t B_end = overlap.target.end;
   int64_t ref_overlap_length = overlap.target.dist();
 
-  int64_t cov_bases_read = overlap.cov_bases;
-  int64_t cov_bases_ref = overlap.cov_bases;
+  int64_t cov_bases_read = overlap.cov_bases_query;
+  int64_t cov_bases_ref = overlap.cov_bases_target;
 
   int64_t num_svs = overlap.num_sv;
 
@@ -198,7 +198,7 @@ bool Owler::CheckOverlapV2_(std::shared_ptr<is::MinimizerIndex> index, const Sin
     return false;
   }
 
-  if (overlap.cov_bases < 50) {
+  if (overlap.cov_bases_query < 50 || overlap.cov_bases_target < 50) {
     LOG_DEBUG_SPEC_NO_HEADER("\t[qid = %ld, tid = %ld%s] cov_bases < 50\n", overlap.qid, tid, rev_suffix.c_str());
     return false;
   }
@@ -260,11 +260,11 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
 //    return false;
 //  }
 
-  double perc_cov_bases_q = ((double) overlap.num_seeds * index->get_shape_max_width()) / ((double) overlap.query.dist());
-  double perc_cov_bases_t = ((double) overlap.num_seeds * index->get_shape_max_width()) / ((double) overlap.target.dist());
+  double perc_cov_bases_q = ((double) overlap.cov_bases_query) / ((double) overlap.query.dist());
+  double perc_cov_bases_t = ((double) overlap.cov_bases_target) / ((double) overlap.target.dist());
   double perc_cov_bases = std::max(perc_cov_bases_q, perc_cov_bases_t);
 
-  if (perc_cov_bases < 0.05) {
+  if (perc_cov_bases < 0.03) {
     return false;
   }
 
@@ -309,7 +309,7 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
     return false;
   }
 
-  LOG_DEBUG_SPEC_NO_HEADER("[qid = %ld, tid = %ld%s] Accepted!\n", overlap.qid, tid, rev_suffix.c_str());
+  LOG_DEBUG_SPEC_NO_HEADER("[qid = %ld, tid = %ld%s] Accepted!\n\n", overlap.qid, tid, rev_suffix.c_str());
 
   return true;
 }
@@ -348,7 +348,7 @@ std::string Owler::GenerateDebugInfo_(std::shared_ptr<is::MinimizerIndex> index,
   int64_t edit_dist = 0;
 //  edit_dist = CalcEditDist_(index, read, overlap);
 
-  ss << "cov_bases = " << overlap.cov_bases << ", d_query = " << overlap.query.dist() << ", d_target = " << overlap.target.dist() << ", ratio = " << ratio << ", edit_dist = " << edit_dist << ", error_rate = " << (edit_dist / dist_target);
+  ss << "cov_bases_target = " << overlap.cov_bases_target << ", d_query = " << overlap.query.dist() << ", d_target = " << overlap.target.dist() << ", ratio = " << ratio << ", edit_dist = " << edit_dist << ", error_rate = " << (edit_dist / dist_target);
 
   return ss.str();
 }

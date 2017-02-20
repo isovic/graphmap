@@ -231,7 +231,7 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
         overlap.target.start = HitPosRef_(owler_data.hits[back]);
         overlap.target.end = HitPosRef_(owler_data.hits[front]) + 1; // + seed_len;
         overlap.num_seeds = overlap.lcsk_indices.size();
-        overlap.cov_bases = overlap.lcsk_len;
+        overlap.num_hits = overlap.num_seeds;
       }
 
       if (rv_lcsk) {      // Nothing survived the filter.
@@ -303,7 +303,7 @@ std::string Owler::GenerateMHAPLine_(std::shared_ptr<is::MinimizerIndex> index, 
     ref_end = ref_length - overlap.target.start;
   }
 
-  float jaccard_score = std::min(1.0f, ((float) overlap.cov_bases) / ((float) (overlap.target.end - overlap.target.start)));
+  float jaccard_score = std::min(1.0f, ((float) overlap.cov_bases_target) / ((float) (overlap.target.end - overlap.target.start)));
   int64_t shared_minmers = overlap.num_seeds;
 
   ret << (read_id + 1) << " ";      /// read1_id
@@ -393,7 +393,8 @@ std::string Owler::GeneratePAFLine_(std::shared_ptr<is::MinimizerIndex> index, c
   }
 
 //  int64_t shared_minmers = overlap.num_seeds * parameters->minimizer_window;
-  int64_t shared_minmers = overlap.num_seeds; // * parameters->minimizer_window;
+//  int64_t shared_minmers = overlap.num_seeds; // * parameters->minimizer_window;
+  int64_t shared_minmers = overlap.num_hits;
 
   ret << read_header << "\t";
   ret << read_length << "\t";
@@ -407,7 +408,7 @@ std::string Owler::GeneratePAFLine_(std::shared_ptr<is::MinimizerIndex> index, c
   ret << ref_end + 0 << "\t";
 
 //  ret << overlap.cov_bases * parameters->minimizer_window << "\t";
-  ret << overlap.cov_bases << "\t";
+  ret << overlap.cov_bases_target << "\t";
   ret << (ref_end - ref_start) << "\t";
 
   ret << "255" << "\t";

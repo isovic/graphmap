@@ -286,7 +286,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->debug_read_by_qname, VALUE_TYPE_STRING, "Y", "debug-qname", "", "QNAME of the read to give the detailed verbose output. Has precedence over -y. Use quotes to specify.", 0, "Debug options");
 
   argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from. If equal to 1, minimizers will be turned off.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentil", "0.99", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentil", "0.999", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
 
   argparser.ProcessArguments(argc, argv);
 

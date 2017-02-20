@@ -21,12 +21,14 @@
 class PairwiseOverlap {
  public:
 //  PairwiseOverlap() : qid(0), tid(0), num_seeds(0), cov_bases(0), num_sv(0) { }
-  PairwiseOverlap(int64_t _qid, int64_t _tid, int64_t _tid_fwd) : qid(_qid), tid(_tid), tid_fwd(_tid_fwd), num_seeds(0), cov_bases(0), num_sv(0), lcsk_len(0) { }
+  PairwiseOverlap(int64_t _qid, int64_t _tid, int64_t _tid_fwd) : qid(_qid), tid(_tid), tid_fwd(_tid_fwd), num_seeds(0), num_hits(0), cov_bases_query(0), cov_bases_target(0), num_sv(0), lcsk_len(0) { }
 
   Range query, target;
   int64_t qid, tid, tid_fwd;
-  int64_t num_seeds;
-  int64_t cov_bases;
+  int64_t num_seeds;                // Number of seed hits which survived all LCSk filters.
+  int64_t num_hits;                 // Number of raw seed hits, without any sort of LCSk filtering.
+  int64_t cov_bases_query;
+  int64_t cov_bases_target;
   int32_t num_sv;
 
   std::vector<int32_t> lcsk_indices;

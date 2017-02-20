@@ -43,6 +43,37 @@ void Owler::WriteHits_(std::string out_path, const std::vector<uint128_t> &hits,
   }
 }
 
+int Owler::CalcCoveredBases_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters,
+                            const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int64_t seed_len, PairwiseOverlap &overlap) {
+
+  int64_t cov_bases_A = 0, cov_bases_B = 0;
+
+  int64_t A_end_prev = -1;
+  int64_t B_end_prev = -1;
+  for (int64_t i = 0; i < overlap.lcsk_indices.size(); i++) {
+    int64_t A_start = Owler::HitPosRead_(hits[begin_hit+overlap.lcsk_indices[i]]);
+    int64_t A_end = A_start + seed_len - 1;
+    int64_t B_start = Owler::HitPosRef_(hits[begin_hit+overlap.lcsk_indices[i]]);
+    int64_t B_end = B_start + seed_len - 1;
+
+    cov_bases_A += std::min((A_end - A_end_prev), seed_len);
+    cov_bases_B += std::min((B_end - B_end_prev), seed_len);
+
+    if (cov_bases_A < 0 || cov_bases_B < 0) {
+      LOG_DEBUG("ERROR: Number of covered bases should not be less than 0! i = %ld, std::min((A_end - A_end_prev), seed_length) = %ld < 0, A_end = %ld, A_end_prev = %ld, B_end = %ld, B_end_prev = %ld, seed_length = %ld\n", i, std::min((A_end - A_end_prev), seed_len), A_end, A_end_prev, B_end, B_end_prev, seed_len);
+    }
+
+    A_end_prev = A_end;
+    B_end_prev = B_end;
+  }
+
+  overlap.cov_bases_query = cov_bases_A;
+  overlap.cov_bases_target = cov_bases_B;
+
+  return 0;
+}
+
+
 // Assumes vertices are sorted.
 // If use_l1_filtering is true, then all vertices/anchors that have coordinates further than allowed_dist from the L1 line are filtered out.
 // Otherwise, all vertices will be used.
@@ -55,19 +86,29 @@ int Owler::WrapLCSk_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequ
   std::vector<uint64_t> matches_indices;
   int64_t max_seq_len = 0;
 
-  PrepareEvents_(hits, begin_hit, end_hit, seed_len, events, matches_starts, matches_indices, max_seq_len);
+  LOG_DEBUG_SPEC("qid = %ld, tid = %ld, tid_fwd = %ld\n", overlap.qid, overlap.tid, overlap.tid_fwd);
+  LOG_DEBUG_SPEC("num_hits = %ld\n", end_hit - begin_hit + 1);
+
+  PrepareEvents_(hits, begin_hit, end_hit, 1, events, matches_starts, matches_indices, max_seq_len);
 
   int64_t lcsk_len = 0;
   std::vector<int32_t> raw_lcsk_indices;
-  LCSk_(events, max_seq_len, seed_len, matches_starts, matches_indices, raw_lcsk_indices, lcsk_len);
+  LCSk_(events, max_seq_len, 1, matches_starts, matches_indices, raw_lcsk_indices, lcsk_len);
+
+  LOG_DEBUG_SPEC("raw_lcsk_indices.size() = %ld\n", raw_lcsk_indices.size());
 
 //  std::vector<int32_t> lcsk_indices;
 //  std::vector<int32_t> cluster_ids;
 //  int32_t num_sv = 0;
   FilterColinear_(index, read, parameters, hits, begin_hit, end_hit, seed_len, raw_lcsk_indices, overlap.lcsk_indices, &(overlap.cluster_ids), overlap.num_sv);
 
-  overlap.lcsk_len = std::max((int64_t) 0, lcsk_len - seed_len);     // Reduce the length by the size of a seed, because the end point
-                                                                     // Also do not include the last seed.
+//  overlap.lcsk_len = std::max((int64_t) 0, lcsk_len - seed_len);     // Reduce the length by the size of a seed, because the end point
+//                                                                     // Also do not include the last seed.
+
+  CalcCoveredBases_(index, read, parameters, hits, begin_hit, end_hit, seed_len, overlap);
+  overlap.lcsk_len = overlap.cov_bases_target;
+
+  LOG_DEBUG_SPEC("lcsk_indices.size() = %ld\n", overlap.lcsk_indices.size());
 
   // Debug output.
   #ifndef RELEASE_VERSION
@@ -197,7 +238,7 @@ void Owler::LCSk_(std::vector<uint128_t> &events, int64_t n, int64_t k, std::vec
     bool is_beginning = (raw_idx >= num_matches);
     uint64_t i = (uint64_t) ((events[current_event] >> (8 * 8)) & (0x00000000FFFFFFFF));
     uint64_t j = (uint64_t) ((events[current_event] >> (4 * 8)) & (0x00000000FFFFFFFF));
-    int primary_diagonal = n - 1 + i - j;
+//    int primary_diagonal = n - 1 + i - j;
 
     if (is_beginning) { // begin
       std::pair<int, int> prev_dp = dp_col_max.get(j);
