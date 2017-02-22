@@ -334,7 +334,7 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
 //  int64_t reference_id = region_results->get_region_data().reference_id;
 //  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
 //  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
-  int64_t reference_start = 0;
+  int64_t reference_start = ref_start;
   int64_t reference_length = ref_len;
 
   LOG_DEBUG_SPEC("Aligning the end of the read (overhang).\n");
@@ -361,8 +361,8 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
     if (clip_count_back == 0) {
     }
 
-    LOG_DEBUG_SPEC("clip_count_back = %ld, ref_len_for_aln = %ld\n", clip_count_back, ref_len_for_aln);
-
+//    LOG_DEBUG_SPEC("clip_count_back = %ld, ref_len_for_aln = %ld\n", clip_count_back, ref_len_for_aln);
+	LOG_DEBUG_SPEC("clip_count_back = %ld, ref_len_for_aln = %ld, reference_length = %ld, alignment_position_end = %ld\n", clip_count_back, ref_len_for_aln, reference_length, alignment_position_end);
     int64_t bandwidth = -1;
 //    bandwidth = 0.30f*read->get_sequence_length();
 
