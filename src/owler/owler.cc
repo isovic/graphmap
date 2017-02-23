@@ -105,20 +105,33 @@ int Owler::BuildIndex_(ProgramParameters &parameters) {
                               parameters.num_threads :
                               std::min(24, ((int) omp_get_num_procs()) / 2);
 
-//  std::vector<std::string> shapes_prim = {"1111110111111"};
   std::vector<std::string> shapes_prim = {parameters.index_shape};
   index_ = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
 
-  std::string index_path = parameters.index_file + "owl";
+  std::string index_path = parameters.index_file; // + "owl";
 
-  bool load = !parameters.index_on_the_fly && (!parameters.rebuild_index && FileExists(index_path));
+  bool load = parameters.load_index && FileExists(index_path);
+  bool store = parameters.store_index;
 
   if (load) {
     LOG_ALL("Loading the index from file.\n");
 
-    index_->Load(index_path);
+    int ret_load = index_->Load(index_path);
 
-  } else {
+    if (ret_load) {
+      LOG_DEBUG("Problems loading index: index is of wrong version or index file corrupt.\n");
+
+      if (parameters.rebuild_index) {
+        LOG_ALL("Rebuilding the index.\n");
+        load = false;
+      } else {
+        FATAL_REPORT(ERR_FILE_DEFORMED_FORMAT, "Not rebuilding the index automatically (specify --rebuild-index).");
+      }
+    }
+  }
+
+  // Separate if because there can be a fallthrough case when index needs to be rebuilt.
+  if (!load) {
     LOG_ALL("Building the index for shapes: ");
     for (int32_t i=0; i<shapes_prim.size(); i++) {
       if (i > 0) { LOG_NOHEADER(", "); }
@@ -128,7 +141,8 @@ int Owler::BuildIndex_(ProgramParameters &parameters) {
 
     index_->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
 
-    if (!parameters.index_on_the_fly) {
+    if (store) {
+      LOG_ALL("Storing the index to file: '%s'.\n", index_path.c_str());
       index_->Store(index_path);
     }
   }
@@ -253,7 +267,8 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
                                reads->get_sequences().size(), reads->get_sequences().size(), 100.0f,
                                num_mapped, num_unmapped);
   string_buffer = FormatStringToLength(string_buffer, 140);
-  LOG_ALL("%s\n", string_buffer.c_str());
+//  LOG_ALL("%s\n", string_buffer.c_str());
+  LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
 
   if (parameters.outfmt == "dot") {
     fprintf (fp_out, "}\n");

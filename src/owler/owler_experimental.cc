@@ -249,7 +249,7 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
     return false;
   }
 
-  if (overlap.num_seeds < 4) {
+  if (overlap.num_seeds < parameters->min_num_seeds) {
     std::string temp = FormatString("[qid = %ld, tid = %ld%s] overlap.num_seeds < 4\n", overlap.qid, tid, rev_suffix.c_str());
     overlap.reject_reason = temp;
     LOG_DEBUG_SPEC_NO_HEADER("\t%s", temp.c_str());
@@ -264,7 +264,7 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
   double perc_cov_bases_t = ((double) overlap.cov_bases_target) / ((double) overlap.target.dist());
   double perc_cov_bases = std::max(perc_cov_bases_q, perc_cov_bases_t);
 
-   if (perc_cov_bases < 0.01) {
+   if (perc_cov_bases < parameters->min_percent_cov_bases) {
      return false;
   }
 
@@ -280,11 +280,13 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
   int64_t read_len = read->get_sequence_length();
   int64_t target_len = index->get_reference_lengths()[overlap.tid];
 
-  double max_overhang = 1000.0;
-  double overhang_percent = 0.20;
-  int64_t min_overlap_len = 100;
-  int64_t min_read_len = 500;
-  int64_t min_cov_bases = 50;
+  double max_overhang = (parameters->max_allowed_overhang >= 0) ? (parameters->max_allowed_overhang) : (std::max(read_len, target_len));
+  double overhang_percent = parameters->overhang_percent;
+  int64_t min_overlap_len = parameters->min_overlap_len;
+  int64_t min_read_len = parameters->min_read_len;
+  int64_t min_cov_bases = parameters->min_num_anchor_bases;
+  int64_t margin_read = std::min(max_overhang, overhang_percent * read_len);
+  int64_t margin_target = std::min(max_overhang, overhang_percent * target_len);
 
   if (overlap.cov_bases_query < min_cov_bases || overlap.cov_bases_target < min_cov_bases) {
     return false;
@@ -297,16 +299,6 @@ bool Owler::CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const Sin
   if (overlap.query.dist() < min_overlap_len || overlap.target.dist() < min_overlap_len) {
     return false;
   }
-
-  int64_t margin_read = std::min(max_overhang, overhang_percent * read_len);
-//  if (overlap.query.start > margin_read || (read_len - overlap.query.end) > margin_read) {
-//    return 1;
-//  }
-
-  int64_t margin_target = std::min(max_overhang, overhang_percent * target_len);
-//  if (overlap.target.start > margin_target || (target_len - overlap.target.end) > margin_target) {
-//    return 1;
-//  }
 
   if (overlap.query.start > margin_read && overlap.target.start > margin_target) {
     std::string temp = FormatString("[qid = %ld, tid = %ld%s] margin start fail: overlap.query.start = %ld, margin_read = %ld, overlap.target.start = %ld, margin_target = %ld\n",

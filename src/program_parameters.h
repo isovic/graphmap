@@ -119,6 +119,13 @@ struct ProgramParameters {
   double frequency_percentil = 0.99;
   bool index_on_the_fly = false;
   std::string index_shape = "1111110111111";
+  bool load_index = false;
+  bool store_index = false;
+  int64_t min_overlap_len = 100;
+  double overhang_percent = 0.20;
+  int64_t max_allowed_overhang = 1000;
+  double min_percent_cov_bases = 0.01;
+  int64_t min_num_seeds = 4;
 };
 
 int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters);
