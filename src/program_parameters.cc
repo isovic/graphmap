@@ -31,7 +31,8 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.\n mhap - MHAP overlap format (use with '-w owler').\n paf  - PAF (Minimap) overlap format (use with '-w owler').", 0, "Input/Output options");
   argparser.AddArgument(&parameters->outfmt, VALUE_TYPE_STRING, "L", "out-fmt", "sam", "Format in which to output results. Options are:\n sam  - Standard SAM output (in normal and '-w overlap' modes).\n m5   - BLASR M5 format.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->calc_only_index, VALUE_TYPE_BOOL, "I", "index-only", "0", "Build only the index from the given reference and exit. If not specified, index will automatically be built if it does not exist, or loaded from file otherwise.", 0, "Input/Output options");
-  argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Rebuild index even if it already exists in given path.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->rebuild_index, VALUE_TYPE_BOOL, "", "rebuild-index", "0", "Always rebuild index even if it already exists in given path.", 0, "Input/Output options");
+  argparser.AddArgument(&parameters->auto_rebuild_index, VALUE_TYPE_BOOL, "", "auto-rebuild-index", "0", "Rebuild index only if an existing index is of an older version or corrupt.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->output_in_original_order, VALUE_TYPE_BOOL, "u", "ordered", "0", "SAM alignments will be output after the processing has finished, in the order of input reads.", 0, "Input/Output options");
   argparser.AddArgument(&parameters->batch_size_in_mb, VALUE_TYPE_INT64, "B", "batch-mb", "1024", "Reads will be loaded in batches of the size specified in megabytes. Value <= 0 loads the entire file.", 0, "Input/Output options");
   //    argparser.AddArgument(&parameters->reads_folder, VALUE_TYPE_STRING, "D", "readsfolder", "", "Path to a folder containing read files (in fastq or fasta format) to process. Cannot be used in combination with '-d' or '-o'.", 0, "Input/Output options");
@@ -419,6 +420,16 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
     VerboseShortHelpAndExit(argc, argv);
   } else {
     parameters->threshold_hits = (parameters->frequency_percentil < 1.0);
+  }
+
+  if (parameters->overhang_percent < 0.0 || parameters->overhang_percent > 1.0) {
+    fprintf (stderr, "Parameter --overhang should be in range [0.0, 1.0].\n");
+    VerboseShortHelpAndExit(argc, argv);
+  }
+
+  if (parameters->min_percent_cov_bases < 0.0 || parameters->min_percent_cov_bases > 1.0) {
+    fprintf (stderr, "Parameter --min-perc-coverage should be in range [0.0, 1.0].\n");
+    VerboseShortHelpAndExit(argc, argv);
   }
 
 #ifndef RELEASE_VERSION

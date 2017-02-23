@@ -113,6 +113,8 @@ struct ProgramParameters {
   std::string gtf_path;
   bool is_transcriptome = false;
 
+  bool auto_rebuild_index = false;
+
   bool use_minimizers = false;
   int64_t minimizer_window = 5;
   bool threshold_hits = false;

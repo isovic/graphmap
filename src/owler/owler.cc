@@ -209,10 +209,14 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
         std::stringstream ss;
         if (parameters.verbose_level > 6 && parameters.num_threads == 1)
               ss << "\n";
-        ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld], length = %ld, qname: ",
+//        ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld], length = %ld, qname: ",
+//                           (((float) (clock() - (run_begin_time_)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
+//                           i, reads->get_sequences().size(), ((float) i) / ((float) reads->get_sequences().size()) * 100.0f,
+//                           num_mapped, num_unmapped,
+//                           reads->get_sequences()[i]->get_data_length()) << reads->get_sequences()[i]->get_header();
+        ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%), length = %ld, qname: ",
                            (((float) (clock() - (run_begin_time_)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
                            i, reads->get_sequences().size(), ((float) i) / ((float) reads->get_sequences().size()) * 100.0f,
-                           num_mapped, num_unmapped,
                            reads->get_sequences()[i]->get_data_length()) << reads->get_sequences()[i]->get_header();
         std::string string_buffer = FormatStringToLength(ss.str(), 140);
         LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");
@@ -262,10 +266,9 @@ int Owler::ProcessSequenceFileInParallel_(ProgramParameters &parameters, std::sh
   }
 
   // Verbose the final processing info.
-  std::string string_buffer = FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld]",
+  std::string string_buffer = FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%)",
                                tt_all.get_secs_current(), getCurrentRSS()/(1024*1024),
-                               reads->get_sequences().size(), reads->get_sequences().size(), 100.0f,
-                               num_mapped, num_unmapped);
+                               reads->get_sequences().size(), reads->get_sequences().size(), 100.0f);
   string_buffer = FormatStringToLength(string_buffer, 140);
 //  LOG_ALL("%s\n", string_buffer.c_str());
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL, true, string_buffer, "ProcessReads");

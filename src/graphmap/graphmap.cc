@@ -33,7 +33,7 @@ void GraphMap::Run(ProgramParameters& parameters) {
   LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
 
   // Check if the index exists, and build it if it doesn't.
-  BuildIndex(parameters);
+  BuildIndexes(parameters);
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Memory consumption: %s\n\n", FormatMemoryConsumptionAsString().c_str()), "Index");
   last_time = clock();
 
@@ -170,77 +170,95 @@ void GraphMap::Run(ProgramParameters& parameters) {
   }
 }
 
-int GraphMap::BuildIndex(ProgramParameters &parameters) {
+std::shared_ptr<is::MinimizerIndex> GraphMap::SetupIndex_(std::shared_ptr<SequenceFile> ref, const std::string &index_path, const std::string &shape,
+                          const ProgramParameters &parameters, int64_t num_threads) const {
+
+  std::vector<std::string> shapes = {shape};
+  auto index = is::createMinimizerIndex(shapes, parameters.frequency_percentil);
+
+  bool load = !parameters.rebuild_index && FileExists(index_path);
+  bool store = !parameters.index_on_the_fly;
+
+  if (load) {
+    LOG_ALL("Loading index from file: '%s'.\n", index_path.c_str());
+
+    int ret_load = index->Load(index_path);
+
+    if (ret_load) {
+      LOG_DEBUG("Problems loading index: index is of wrong version or index file corrupt.\n");
+
+      if (parameters.auto_rebuild_index) {
+        LOG_ALL("Rebuilding the index.\n");
+        load = false;
+      } else {
+        FATAL_REPORT(ERR_GENERIC, "Not rebuilding the index automatically (specify --auto-rebuild-index).");
+      }
+    }
+  }
+
+  // Separate 'if' because there can be a fallthrough case when index needs to be rebuilt.
+  if (!load) {
+    LOG_ALL("Building the index for shape: '%s'.\n", shape.c_str());
+
+    index->Create(*ref, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
+
+    if (store) {
+      LOG_ALL("Storing the index to file: '%s'.\n", index_path.c_str());
+      index->Store(index_path);
+    }
+  }
+
+  if (index == nullptr) {
+    FATAL_REPORT(ERR_GENERIC, "No index was generated! Exiting.");
+  }
+
+  return index;
+}
+
+int GraphMap::BuildIndexes(ProgramParameters &parameters) {
+
+  // Division by 2 to to avoid hyperthreading cores, and limit
+  // to 24 to avoid clogging a shared SMP.
+  int64_t num_threads = (parameters.num_threads > 0) ?
+                              parameters.num_threads :
+                              std::min(24, ((int) omp_get_num_procs()) / 2);
+
   indexes_.clear();
   transcriptome_ = is::createTranscriptome();
+
+  if (parameters.index_on_the_fly) {
+    LOG_ALL("Index will be generated on the fly (won't be stored to disk). However, if it already exists it will be loaded from disk.\n");
+  }
 
   if (parameters.is_transcriptome) {
     LOG_ALL("Loading GTF annotations.\n");
     transcriptome_->LoadGTF(parameters.gtf_path);
   }
 
-  if (parameters.index_on_the_fly) {
-    LOG_ALL("Index will be generated on the fly (won't be stored to disk). However, if it already exists it will be loaded from disk.\n");
+  // Either load genomic sequence or generate a transcriptome.
+  std::shared_ptr<SequenceFile> refs = nullptr;
+  if (!parameters.is_transcriptome) {
+    LOG_ALL("Loading reference sequences.\n");
+    refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
+  } else {
+    LOG_ALL("Loading genomic sequences.\n");
+    auto genomic = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
+    LOG_ALL("Generating the transcriptome.\n");
+    refs = transcriptome_->GenerateTranscriptomeSeqs(genomic);
   }
 
+  // Construct the primary index.
   std::string prim_index_path = parameters.index_file;
-  std::string sec_index_path = parameters.index_file + std::string("sec");
+  auto index_prim = SetupIndex_(refs, prim_index_path, "11110111101111", parameters, num_threads);
+  indexes_.push_back(index_prim);
 
-  bool exists = FileExists(prim_index_path) && (!parameters.use_double_index || FileExists(sec_index_path));
-  bool rebuild_index = !exists || parameters.rebuild_index || parameters.calc_only_index;
-
-  if (rebuild_index) {
-    LOG_ALL("Building the index.\n");
-
-    // Either load genomic sequence or generate a transcriptome.
-    std::shared_ptr<SequenceFile> refs = nullptr;
-    if (!parameters.is_transcriptome) {
-      LOG_ALL("Loading reference sequences.\n");
-      refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
-    } else {
-      LOG_ALL("Loading genomic sequences.\n");
-      auto genomic = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path));
-      LOG_ALL("Generating the transcriptome.\n");
-      refs = transcriptome_->GenerateTranscriptomeSeqs(genomic);
-    }
-
-    LOG_ALL("Constructing the primary index.\n");
-    std::vector<std::string> shapes_prim = {"11110111101111"};
-    auto index_prim = is::createMinimizerIndex(shapes_prim, parameters.frequency_percentil);
-
-    index_prim->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
-
-    LOG_ALL("Storing the primary index to file: '%s'.\n", prim_index_path.c_str());
-    if (parameters.index_on_the_fly == false) {
-      index_prim->Store(prim_index_path);
-    }
-    indexes_.push_back(index_prim);
-
-    if (parameters.use_double_index) {
-      LOG_ALL("Sensitive mode selected.\n");
-      LOG_ALL("Constructing the secondary index.\n");
-      std::vector<std::string> shapes_sec = {"1111110111111"};
-      auto index_sec = is::createMinimizerIndex(shapes_sec, parameters.frequency_percentil);
-
-      index_sec->Create(*refs, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, parameters.num_threads, true);
-
-      LOG_ALL("Storing the secondary index to file: '%s'.\n", sec_index_path.c_str());
-      if (parameters.index_on_the_fly == false) {
-        index_sec->Store(sec_index_path);
-      }
-      indexes_.push_back(index_sec);
-    }
-
-  } else {      // Load the index.
-    LOG_ALL("Loading the primary index.\n");
-    auto index_prim = is::createMinimizerIndex(prim_index_path, parameters.frequency_percentil);
-    indexes_.push_back(index_prim);
-
-    if (parameters.use_double_index) {
-      LOG_ALL("Loading the secondary index.\n");
-      auto index_sec = is::createMinimizerIndex(sec_index_path, parameters.frequency_percentil);
-      indexes_.push_back(index_sec);
-    }
+  // Construct the secondary index.
+  if (parameters.use_double_index) {
+    LOG_ALL("Sensitive mode selected.\n");
+    LOG_ALL("Constructing the secondary index.\n");
+    std::string sec_index_path = parameters.index_file + std::string("sec");
+    auto index_sec = SetupIndex_(refs, sec_index_path, "1111110111111", parameters, num_threads);
+    indexes_.push_back(index_sec);
   }
 
   return 0;

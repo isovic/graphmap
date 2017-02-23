@@ -42,7 +42,7 @@ class GraphMap {
   void Run(ProgramParameters &parameters);
 
   // Generates or loads the index of the reference genome.
-  int BuildIndex(ProgramParameters &parameters);
+  int BuildIndexes(ProgramParameters &parameters);
 
   // Loads reads from a file in batches of given size (in MiB), or all at once.
   void ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out);
@@ -80,6 +80,9 @@ class GraphMap {
 
   // Calculates the LCSk of the anchors using the Fenwick tree.
   void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
+
+  std::shared_ptr<is::MinimizerIndex> SetupIndex_(std::shared_ptr<SequenceFile> ref, const std::string &index_path, const std::string &shape,
+                  const ProgramParameters &parameters, int64_t num_threads) const;
 
   // Count gapped spaced seed hits to regions on the reference.
   int RegionSelectionNoCopy_(int64_t bin_size, MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
