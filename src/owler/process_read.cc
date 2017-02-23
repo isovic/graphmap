@@ -253,29 +253,37 @@ int Owler::ClusterHits2_(std::shared_ptr<is::MinimizerIndex> index, const Single
 }
 
 void Owler::GenerateOutput_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, OwlerData &owler_data) {
+  std::vector<PairwiseOverlap> filtered;
+
   std::sort(owler_data.overlaps.begin(), owler_data.overlaps.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return ((o1.tid_fwd < o2.tid_fwd) || (o1.tid_fwd == o2.tid_fwd && o1.num_seeds > o2.num_seeds)); });
 
   for (int64_t i=0; i<owler_data.overlaps.size(); i++) {
+    if (i == 0 || owler_data.overlaps[i].tid_fwd != owler_data.overlaps[i-1].tid_fwd) {
+      filtered.push_back(owler_data.overlaps[i]);
+    }
+  }
+
+  std::sort(filtered.begin(), filtered.end(), [](const PairwiseOverlap& o1, const PairwiseOverlap& o2) { return (o1.cov_bases_target > o2.cov_bases_target); });
+
+  for (int64_t i=0; i<filtered.size(); i++) {
     std::string overlap_line;
 
     if (parameters->outfmt == "mhap") {
-      overlap_line = GenerateMHAPLine_(index, read, parameters, owler_data.overlaps[i]);
+      overlap_line = GenerateMHAPLine_(index, read, parameters, filtered[i]);
     } else if (parameters->outfmt == "paf") {
-      overlap_line = GeneratePAFLine_(index, read, parameters, owler_data.overlaps[i]);
+      overlap_line = GeneratePAFLine_(index, read, parameters, filtered[i]);
     } else {
       LOG_ALL("Unknown output format '%s'. Defaulting to PAF.\n", parameters->outfmt.c_str());
-      overlap_line = GeneratePAFLine_(index, read, parameters, owler_data.overlaps[i]);
+      overlap_line = GeneratePAFLine_(index, read, parameters, filtered[i]);
     }
 
     std::string debug_info;
 
     if (parameters->verbose_sam_output > 0) {
-      debug_info = "\t-> " + GenerateDebugInfo_(index, read, parameters, owler_data.overlaps[i]);
+      debug_info = "\t-> " + GenerateDebugInfo_(index, read, parameters, filtered[i]);
     }
 
-    if (i == 0 || owler_data.overlaps[i].tid_fwd != owler_data.overlaps[i-1].tid_fwd) {
-      owler_data.overlap_lines += overlap_line + debug_info + "\n";
-    }
+    owler_data.overlap_lines += overlap_line + debug_info + "\n";
   }
 }
 
