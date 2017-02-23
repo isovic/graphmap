@@ -87,10 +87,7 @@ class Owler {
   int CalcCoveredBases_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters,
                               const std::vector<uint128_t> &hits, int64_t begin_hit, int64_t end_hit, int64_t seed_len, PairwiseOverlap &overlap);
 
-  bool CheckOverlapV1a_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap);
-  bool CheckOverlapV1b_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap);
-  bool CheckOverlapV2_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, const PairwiseOverlap& overlap);
-  bool CheckOverlapV3_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, PairwiseOverlap& overlap);
+  bool CheckOverlap_(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read, const ProgramParameters *parameters, PairwiseOverlap& overlap);
 
 
 
