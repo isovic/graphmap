@@ -50,10 +50,12 @@ class MappingData {
   MappingData();
   ~MappingData();
 
+  void clear();
+
   Vertices vertices;
   std::vector<ChromosomeBin> bins;
   std::vector<PathGraphEntry *> intermediate_mappings;
-  std::vector<PathGraphEntry *> final_mapping_ptrs;
+  std::vector<PathGraphEntry *> final_mapping_ptrs;         // Do not free the pointers here! Bad design. These point to intermediate_mappings pointers, which will be freed upon destruction.
 
   int64_t bin_size;
   int64_t num_seeds_over_limit;

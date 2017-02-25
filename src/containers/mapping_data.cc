@@ -43,18 +43,7 @@ MappingData::MappingData() {
 }
 
 MappingData::~MappingData() {
-  vertices.Clear();
-  bins.clear();
-  for (int64_t i = 0; i < intermediate_mappings.size(); i++) {
-    if (intermediate_mappings[i])
-      delete intermediate_mappings[i];
-    intermediate_mappings[i] = NULL;
-  }
-  intermediate_mappings.clear();
-  unmapped_reason = std::string("");
-  num_region_iterations = 0;
-  mapping_quality = 0;
-  metagen_alignment_score = 0;
+  clear();
 }
 
 bool MappingData::IsMapped() {
@@ -137,4 +126,19 @@ std::string MappingData::VerboseFinalMappingsToString(std::shared_ptr<is::Minimi
 
 std::string MappingData::VerboseIntermediateMappingsToString(std::shared_ptr<is::MinimizerIndex> index, const SingleSequence *read) const {
   return VerboseMappingDataToString_(&intermediate_mappings, index, read);
+}
+
+void MappingData::clear() {
+  vertices.Clear();
+  bins.clear();
+  for (int64_t i = 0; i < intermediate_mappings.size(); i++) {
+    if (intermediate_mappings[i])
+      delete intermediate_mappings[i];
+    intermediate_mappings[i] = NULL;
+  }
+  intermediate_mappings.clear();
+  unmapped_reason = std::string("");
+  num_region_iterations = 0;
+  mapping_quality = 0;
+  metagen_alignment_score = 0;
 }

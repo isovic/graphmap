@@ -433,7 +433,7 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   reads.CloseFileAfterBatchLoading();
 }
 
-int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
+int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
   int64_t num_reads = reads->get_sequences().size();
   std::vector<std::string> sam_lines;
 
@@ -489,6 +489,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
           ((LogSystem::GetInstance().PROGRAM_VERBOSE_LEVEL & VERBOSE_FREQ_HIGH))) {
 
         std::stringstream ss;
+        ss << "\n";
         ss << FormatString("\r[CPU time: %.2f sec, RSS: %ld MB] Read: %lu/%lu (%.2f%%) [m: %ld, u: %ld], length = %ld, qname: ",
                            (((float) (clock() - (*last_time)))/CLOCKS_PER_SEC), getCurrentRSS()/(1024*1024),
                            i, reads->get_sequences().size(), ((float) i) / ((float) reads->get_sequences().size()) * 100.0f,
@@ -507,15 +508,16 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, Seque
       }
     }
 
-    // The actual interesting part.
+    int mapped_state = STATE_UNMAPPED;
     std::string sam_line = "";
-    MappingData mapping_data;
-    ProcessRead(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
+    // The actual interesting part.
+    auto mapping_data = std::unique_ptr<MappingData>(new MappingData);
+    ProcessRead(&(*mapping_data), reads->get_sequences()[i], parameters, evalue_params);
 //    ProcessRead2(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
 
-    // Generate the output.
-    int mapped_state = STATE_UNMAPPED;
-    mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &mapping_data, sam_line);
+      // Generate the output.
+      mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &(*mapping_data), sam_line);
+      mapping_data.reset();
 
     // Keep the counts.
     if (mapped_state == STATE_MAPPED) {
