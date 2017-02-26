@@ -445,6 +445,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 //  int64_t num_threads = std::min(24, ((int) omp_get_num_procs()) / 2);
 //
 //  if (parameters->num_threads > 0)
+
   int64_t num_threads = (int64_t) parameters->num_threads;
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.\n", num_threads), "ProcessReads");
 
@@ -517,6 +518,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 
       // Generate the output.
       mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &(*mapping_data), sam_line);
+      mapping_data->clear();
       mapping_data.reset();
 
     // Keep the counts.

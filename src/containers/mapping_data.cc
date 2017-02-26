@@ -137,6 +137,7 @@ void MappingData::clear() {
     intermediate_mappings[i] = NULL;
   }
   intermediate_mappings.clear();
+  final_mapping_ptrs.clear();
   unmapped_reason = std::string("");
   num_region_iterations = 0;
   mapping_quality = 0;
