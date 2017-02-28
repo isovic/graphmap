@@ -136,6 +136,9 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
         Cluster mapping_cluster;
         mapping_cluster.query = clusters[i]->query;
         mapping_cluster.ref = clusters[i]->ref;
+        mapping_cluster.coverage = clusters[i]->coverage;
+        mapping_cluster.num_anchors = clusters[i]->num_anchors;
+        mapping_cluster.valid = true;
         mapping_info.clusters.push_back(mapping_cluster);
       #ifndef RELEASE_VERSION
         int64_t reference_start = indexes[0]->get_reference_starting_pos()[local_score->get_region().reference_id];
@@ -191,7 +194,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
         LOG_DEBUG_SPEC_NO_HEADER("[%ld] query.start = %ld, query.end = %ld, ref.start = %ld, ref.end = %ld\n", i, mapping_info.clusters[i].query.start, mapping_info.clusters[i].query.end, mapping_info.clusters[i].ref.start, mapping_info.clusters[i].ref.end);
       }
       LOG_DEBUG_SPEC_NEWLINE;
-      VerboseClustersToFile_(FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id()), local_score, mapping_data, indexes, read, parameters, clusters);
+//      VerboseClustersToFile_(FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id()), local_score, mapping_data, indexes, read, parameters, clusters);
     }
     LOG_DEBUG_SPEC("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024));
   #endif

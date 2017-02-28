@@ -96,6 +96,10 @@ class GraphMap {
   int SemiglobalPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
   int AnchoredPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
 
+  // Performs a knapsack algorithm implementation on the set of clusters, to determine the most likely RNA-seq alignment. Clusters will be marked as valid or invalid. Valid should stay in play, but invalid filtered out.
+  int RNAFilterClusters_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
+  int CleanupIntermediateMappings_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
+
   //
   int EvaluateMappings_(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);
   int GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);

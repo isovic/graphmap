@@ -18,6 +18,9 @@
 typedef struct Cluster {
   Range query;
   Range ref;
+  int32_t num_anchors = 0;
+  int32_t coverage = 0;
+  bool valid = false;
 } Cluster;
 
 typedef struct MappingResults {

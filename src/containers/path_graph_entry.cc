@@ -246,6 +246,10 @@ void PathGraphEntry::set_l1_data(L1Results& l1Data) {
   l1_info_ = l1Data;
 }
 
+MappingResults& PathGraphEntry::mapping_data() {
+  return mapping_info_;
+}
+
 const MappingResults& PathGraphEntry::get_mapping_data() const {
   return mapping_info_;
 }
@@ -266,6 +270,10 @@ void PathGraphEntry::set_mapping_data(MappingResults& mappingData) {
   fpfilter_std_ = CalcFPFactorStd_(std, read_length, error_rate);
   fpfilter_read_len_ = CalcFPFactorReadLength_(read_length, db_size);
   fpfilter_ = CalcFPFilter();
+}
+
+Region& PathGraphEntry::region_data() {
+  return region_info_;
 }
 
 const Region& PathGraphEntry::get_region_data() const {

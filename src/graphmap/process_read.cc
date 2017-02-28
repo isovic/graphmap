@@ -134,18 +134,20 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
     }
   }
 
-#ifndef RELEASE_VERSION
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-
-    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
-    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
-    if (fp_cluster_path) {
-      fclose(fp_cluster_path);
-    }
-  }
-#endif
+//#ifndef RELEASE_VERSION
+//  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//
+//    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
+//    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
+//    if (fp_cluster_path) {
+//      fclose(fp_cluster_path);
+//    }
+//  }
+//#endif
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
+
+//  std::vector<ScoreRegistry *> all_local_scores;
 
   int64_t num_regions_processed = 0;
   // Process regions one by one.
@@ -177,6 +179,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
 
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
+//    all_local_scores.push_back(local_score);
 
     bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
@@ -191,13 +194,18 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, mapping_data->bins.size(), local_score.get_registry_entries().num_vertices), "ProcessRead");
     }
 
-    if (parameters->alignment_algorithm == "sg" || parameters->alignment_algorithm == "sggotoh") {
-      int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
-    } else {
+    if (parameters->composite_parameters == "rnaseq" || (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh")) {
       int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+    } else {
+      int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
     }
 
-    local_score.Clear();
+//    // Unless we are mapping RNA-seq data, we've taken all we need from the local scores.
+//    if (parameters->composite_parameters != "rnaseq") {
+//    local_score->Clear();
+//    if (local_score) { delete local_score; }
+//    all_local_scores.clear();
+//    }
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("-----\n\n"), "ProcessRead");
@@ -206,9 +214,18 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Last region processed: num_regions_processed = %ld.\n", num_regions_processed), "ProcessRead");
 
-//  if (index_read)
-//    delete index_read;
-//  index_read = NULL;
+  if (parameters->composite_parameters == "rnaseq") {
+    LOG_DEBUG_SPEC("Processing local scores for RNA-seq.\n");
+
+    int ret_value_rna_filt = RNAFilterClusters_(mapping_data, indexes, read, parameters);
+    int ret_value_rna_fin = CleanupIntermediateMappings_(mapping_data, indexes, read, parameters);
+
+//    for (int32_t i=0; i<all_local_scores.size(); i++) {
+//      if (all_local_scores[i]) { delete all_local_scores[i]; }
+//    }
+//    all_local_scores.clear();
+  }
+
   mapping_data->vertices.Clear();
 
   end_clock = clock();
@@ -907,4 +924,52 @@ std::string GraphMap::GenerateUnmappedSamLine_(const SingleSequence *read, const
   }
 
   return ss.str();
+}
+
+int GraphMap::CleanupIntermediateMappings_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+
+  std::vector<PathGraphEntry *> new_intermediate_mappings;
+
+  // Clusters are stored in the intermediate mappings. Intermediate mapping corresponds to one processed region on the reference.
+  for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
+    // All info about the region is given here (such as: reference_id, start and end coordinates of the region, etc.).
+    Region& region = mapping_data->intermediate_mappings[i]->region_data();
+    int64_t ref_id = region.reference_id % indexes[0]->get_num_sequences_forward();     // If there are N indexed sequences, then the index contains 2*N sequences: first N are the forward strand, followed by the same N sequences reverse-complemented. The reference_id is then the absolute reference ID in the index, which means that if it refers to the reverse complement of the sequence, reference_id will be > N. Modulo needs to be taken.
+    int64_t ref_len = indexes[0]->get_reference_lengths()[region.reference_id];
+
+    int32_t num_invalid_clusters = 0;
+
+    // Each intermediate mapping contains a vector of clusters.
+    MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->mapping_data();
+    auto& cluster_vector = mapping_results.clusters;
+
+    // Filtered clusters will hold all non-invalid clusters.
+    std::vector<Cluster> filtered_clusters;
+    filtered_clusters.reserve(cluster_vector.size());
+
+    // Count the number of faulty clusters. Compile a list of good ones.
+    for (int32_t j=0; j<cluster_vector.size(); j++) {
+      Cluster& cluster = cluster_vector[j];
+      if (cluster.valid == false) { num_invalid_clusters += 1; }
+      else { filtered_clusters.push_back(cluster); }
+    }
+
+    // Filter out all the bad clusters. If all clusters are bad, just mark the intermediate mapping as unmapped.
+    // Otherwise update the clusters, but only if there is at least one that needs to be changed.
+    if (num_invalid_clusters == cluster_vector.size()) {
+      mapping_data->intermediate_mappings[i]->mapping_data().is_mapped = false;
+    } else if (num_invalid_clusters != 0) {
+      mapping_results.clusters = filtered_clusters;
+    }
+
+//      if (mapping_data->intermediate_mappings[i]) {
+//        delete mapping_data->intermediate_mappings[i];
+//      }
+//      mapping_data->intermediate_mappings[i] = NULL;
+//    } else {
+//      new_intermediate_mappings.push_back(mapping_data->intermediate_mappings[i]);
+//    }
+  }
+
+  return 0;
 }
