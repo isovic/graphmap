@@ -20,7 +20,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
   argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 //  argparser.AddCompositeArgument("sensitive", "-a gotoh -w sg -M 5 -X 4 -G 8 -E 6");
-  argparser.AddCompositeArgument("sensitive", "--freq-percentil 1.0 --minimizer-window 1");
+  argparser.AddCompositeArgument("sensitive", "--freq-percentile 1.0 --minimizer-window 1");
 
   argparser.AddArgument(&parameters->reference_path, VALUE_TYPE_STRING, "r", "ref", "", "Path to the reference sequence (fastq or fasta).", 0, "Input/Output options");
   argparser.AddArgument(&parameters->index_file, VALUE_TYPE_STRING, "i", "index", "", "Path to the index of the reference sequence. If not specified, index is generated in the same folder as the reference file, with .gmidx extension. For non-parsimonious mode, secondary index .gmidxsec is also generated.", 0, "Input/Output options");
@@ -38,7 +38,11 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   //    argparser.AddArgument(&parameters->reads_folder, VALUE_TYPE_STRING, "D", "readsfolder", "", "Path to a folder containing read files (in fastq or fasta format) to process. Cannot be used in combination with '-d' or '-o'.", 0, "Input/Output options");
   //    argparser.AddArgument(&parameters->output_folder, VALUE_TYPE_STRING, "O", "outfolder", "", "Path to a folder for placing SAM alignments. Use in combination with '-D'.", 0, "Input/Output options");
 
-  argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "", "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n illumina - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n overlap  - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --secondary'", 0, "General-purpose pre-set options");
+  argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "",
+                              "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n"
+                              " illumina  - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n"
+                              " overlap   - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --secondary'\n"
+                              " sensitive - Equivalent to: '--freq-percentile 1.0 --minimizer-window 1'", 0, "General-purpose pre-set options");
 
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n sg       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n sggotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with Gotoh.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
 //  argparser.AddArgument(&parameters->alignment_approach, VALUE_TYPE_STRING, "w", "appr", "sg", "Additional alignment approaches. Changes the way alignment algorithm is applied. Options are:\n sg         - Normal (default) alignment mode (non-overlapping).\n overlapper - (Experimental) Runs the entire GraphMap pipeline with small\n              modifications for better overlapping. Output in SAM format.\n              This is also a composite parameter - it changes values of other params to:\n              '-a anchor -Z -F 0.50 -z 1e0'.\n owler      - (Experimental) Runs reduced pipeline, does not produce alignments, fast.\n              Output in MHAP format.", 0, "Alignment options");
@@ -87,7 +91,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 
 //  argparser.AddArgument(&parameters->use_minimizers, VALUE_TYPE_BOOL, "", "minimizers", "0", "If selected, minimizers will be constructed from reference seeds.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from. If equal to 1, minimizers will be turned off.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentil", "0.99", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentile", "0.99", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
 //  argparser.AddArgument(&parameters->threshold_hits, VALUE_TYPE_BOOL, "", "threshold-hits", "0", "Applies a percentil threshold to the number of hits.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->index_on_the_fly, VALUE_TYPE_BOOL, "", "fly-index", "0", "Index will be constructed on the fly, without storing it to disk. If it already exists on disk, it will be loaded unless --rebuild-index is specified.", 0, "Algorithmic options");
 
@@ -279,7 +283,7 @@ int ProcessArgsOwler(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddArgument(&parameters->max_num_hits, VALUE_TYPE_INT64, "", "max-hits", "0", "Maximum allowed number of hits per seed. If 0, all seeds will be used. If < 0, threshold will be calculated automatically.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->index_shape, VALUE_TYPE_STRING, "", "shape", "111111111111111", "Seed shape which will be used for indexing and querying the sequences.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->minimizer_window, VALUE_TYPE_INT64, "", "minimizer-window", "5", "Length of the window to select a minimizer from. If equal to 1, minimizers will be turned off.", 0, "Algorithmic options");
-  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentil", "0.999", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->frequency_percentil, VALUE_TYPE_DOUBLE, "", "freq-percentile", "0.999", "Filer the (1.0 - value) percent of most frequent seeds in the lookup process.", 0, "Algorithmic options");
 
   argparser.AddArgument(&parameters->min_read_len, VALUE_TYPE_INT64, "", "min-read-len", "500", "Overlaps between sequences, where one sequence is shorter than min-read-len, will be discarded.", 0, "Overlap filtering");
   argparser.AddArgument(&parameters->min_num_anchor_bases, VALUE_TYPE_INT64, "", "min-cov-bases", "50", "Minimum number of bases covered by seeds in an overlap.", 0, "Overlap filtering");

@@ -1,18 +1,36 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.4.1__**  
-Release date: 28 January 2017  
+**__Current Version: 0.5.0__**  
+Release date: 28 February 2017  
 
-**\*new\* - Mapping to transcriptomes**  
+**\*new\* - Minimizer index**  
+The hash index has now been completely reimplemented.  
+Index construction is now much faster than before.  
+
+There are several new important features to mention:  
+- The index supports minimizers - the minimizer window size can be specified via command line and by default is equal to ```5```. To switch off minimizers, use ```--minimizer-window 1```.  
+- The number of hits for each seed lookup is now thresholded by a percentile value, e.g. ```--freq-percentile 0.99``` means that ```1%``` of the most repetitive seeds will be skipped. To turn off this feature, specify ```--freq-percentile 1.0```. This feature slightly reduces sensitivity, but plays a huge role when mapping to large references.  
+- ```--fly-index``` enables building the index on the fly, instead of storing it to disk.  
+- To switch off minimizers and percentile filtering, there is a composite option ```-x sensitive```. This will produce results similar to previous versions.
+- In case the version of an index file is not compatible with GraphMap, previous versions would automatically overwrite the index file. This is now prevented by default, and GraphMap now simply halts with a command line message. To force automatic rebuild if necessary (but not rebuild if a valid index file exists), use: ```--auto-rebuild-index```. To rebuild the index in any case, specify: ```--rebuild-index```.  
+- Renamed the ```--sensitive``` mode to ```--double-index```  
+
+Owler overlapping mode was also enhanced with the new index, and now works much faster on larger datasets.  
+
+Many bug fixes were also made, including the ones related to mapping to circular references, various segfaults, and extra new lines when outputting secondary alignments. Some of the segfaults were caused by the index, which is now addressed with the new version.
+
+Also, this release fixes an issue with **transcriptome mapping**, where recall would drop (however, not precision).  
+
+**Important** - When building an index, memory consumption is now larger than before. However, once minimizers have been collected and the index stored, the final size of the index is much smaller. Concrete estimate is: ```32 x reference_size``` for index construction, and ```~7 x reference_size``` for the final index. This means that for a human genome, constructing the index would peak at about ```~102 GB``` while the final index would have only ```~20 GB```.  
+
+The large peak **can and will be addressed** in the next minor release. This should not require the updating of the index versions, and the index should be compatible to ```v0.5.0```.  
+
+
+**Mapping to transcriptomes**  
 GraphMap can now accept a GTF file to internally construct a transcriptome sequence from a given reference genome, and map RNA-seq data to it. The final alignments are converted back to genome space by placing ```N``` operations in the CIGAR strings.  
 
 To use the new transcriptome mapping option simply specify a GTF file using the ```--gtf``` option:  
 ```graphmap align -r reference.fa --gtf reference.gtf -d reads.fastq -o out.sam```  
 
-**Important**  
-If you are using versions 0.3.x please update to the most recent commit. There were several important memory access issues which are now resolved.  
-
-GraphMap's command line has changed significantly between version 0.3.x and 0.2x - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
-The first parameter is now mandatory, and specifies whether the **mapping/alignment** (```./graphmap align```) or **overlapping** (```./graphmap owler```) should be used.  
 
 For a detailed change log from the previous release, take a look at [doc/changelog.md](doc/changelog.md).  
 
@@ -28,6 +46,7 @@ Description of custom parameters in GraphMap's SAM output can be found at [doc/s
 - Meaningful mapping quality.
 - Various alignment strategies (semiglobal bit-vector and Gotoh, anchored).  
 - **Overlapping** of reads for *de novo* assembly.  
+- **Transcriptome mapping** through internal construction of a transcriptome from a given genomic reference and a GTF file.  
 - ...and much more.  
 
 GraphMap is also used as an overlapper in a new *de novo* genome assembly project called [Ra](https://github.com/mariokostelac/ra-integrate) ([https://github.com/mariokostelac/ra-integrate](https://github.com/mariokostelac/ra-integrate)).  

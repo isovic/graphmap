@@ -1,7 +1,7 @@
 ## GraphMap - ChangeLog
 
 **__Version 0.4.1 -> 0.5.0__**  
-Release date: 13 February 2017
+Release date: 28 February 2017
 - Re-implemented the index. Removed all other indexes that were previously implemented, and cleaned up the code to only use the new index (MinimizerIndex). MinimizerIndex is implemented in a separate repo added to the codebase. It also uses a hash table to store the seeds, however instead of the perfect hash as before, Google's DenseHash is used. Seeds are first compiled in a giant list (each sequence in its space, in parallel), and afterwards the list is sorted (also multithreaded). Basic statistics on seed key distribution are calculated (mean, median, standard deviation). The index also allows thresholding the amount of hits during lookup (keys with a count higher than a user-specified percentil are skipped) which is very significant for large, repetitive genomes. The index can also generate minimizers (also user specified). Index also allows for custom indexing shapes to be defined, and creates the lookup shapes automatically.  
 - Changed the command line parameters to allow for new features, concretely:  
   1. Removed the parameter ```max-hits``` which is now obsolete.
@@ -41,6 +41,9 @@ Release date: 12 October 2016
 
 **__Version 0.22 -> 0.3.0__**  
 Release date: 15 April 2016  
+If you are using versions 0.3.x please update to the most recent commit. There were several important memory access issues which are now resolved.  
+GraphMap's command line has changed significantly between version 0.3.x and 0.2x - although many options remain similar, the usage is incompatible with the older releases due to explicit tool specification.  
+The first parameter is now mandatory, and specifies whether the **mapping/alignment** (```./graphmap align```) or **overlapping** (```./graphmap owler```) should be used.  
 **Important change in command line parameters.** The new version is not completely compatible to the previous one. For this reason, the minor version number has changed.  
 - Changed the version numbering from: ```x.yz``` to ```x.y.z```
 - Implemented a new argument parser.
