@@ -516,10 +516,10 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
     ProcessRead(&(*mapping_data), reads->get_sequences()[i], parameters, evalue_params);
 //    ProcessRead2(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
 
-      // Generate the output.
-      mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &(*mapping_data), sam_line);
-      mapping_data->clear();
-      mapping_data.reset();
+    // Generate the output.
+    mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &(*mapping_data), sam_line);
+    mapping_data->clear();
+//    mapping_data.reset();
 
     // Keep the counts.
     if (mapped_state == STATE_MAPPED) {
