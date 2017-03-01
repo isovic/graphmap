@@ -55,7 +55,13 @@ These steps are the same as in normal DNA mapping case.
 However, here we add a method of **clustering anchors** after they have been filtered. Clusters are obtained using the classic chaining approach which joins anchors that are close enough, and are nearly on the same diagonal.  
 Clusters then represent larger matching chunks between a read and a reference.  
 
-<!-- <img src="img/rna-clusters.png" width="316" height="300" align="middle"> -->
+For normal DNA mapping, one would ideally (in the abscence of structural variants) expect to see one large cluster, such as shown below:  
+
+<img src="img/anchors-normal.png" width="316" height="300" align="middle">
+
+However, in case of RNA-seq mapping (or in presence of structural variants) such a graph might look like something closer to the following figure:  
+
+<img src="img/anchors-rna.png" width="316" height="300" align="middle">
 
 What's more, viewed in such way, a cluster actually can represent an *exon*!  
 Now, if we collect all clusters (some of them being possible repeats), we can use this information to create our spliced alignments!  
@@ -70,7 +76,7 @@ Then, the **knapsack** algorithm is applied on the list of clusters.
 [Knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) is a problem of combinatorial optimization. Given a set of items, each with a weight and a value, the problem it tries to solve is "how to fill a knapsack with items so that the total weight is less than or equal to the given limit, and the value is as large as possible".
 
 In our case:  
-- Knapsack is a read
+- Knapsack is a *read*
 - Weight limit is the read length
 - An item is a cluster
 - Item weight is the length of the cluster in the read coordinate space  
