@@ -52,6 +52,9 @@ Description of custom parameters in GraphMap's SAM output can be found at [doc/s
 GraphMap is also used as an overlapper in a new *de novo* genome assembly project called [Ra](https://github.com/mariokostelac/ra-integrate) ([https://github.com/mariokostelac/ra-integrate](https://github.com/mariokostelac/ra-integrate)).  
 Ra attempts to create *de novo* assemblies from raw nanopore and PacBio reads without requiring error correction, for which a highly sensitive overlapper is required.  
 
+Currently, development of a new spliced-alignment mode for mapping RNA-seq reads is under way.  
+Description of the current effort as well as how to reach the experimental implementation can be found here: [doc/rnaseq.md](doc/rnaseq.md).  
+
 
 ### Quick start on Linux x64
 ```  
