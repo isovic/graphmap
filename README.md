@@ -14,7 +14,7 @@ There are several new important features to mention:
 - In case the version of an index file is not compatible with GraphMap, previous versions would automatically overwrite the index file. This is now prevented by default, and GraphMap now simply halts with a command line message. To force automatic rebuild if necessary (but not rebuild if a valid index file exists), use: ```--auto-rebuild-index```. To rebuild the index in any case, specify: ```--rebuild-index```.  
 - Renamed the ```--sensitive``` mode to ```--double-index```  
 
-Owler overlapping mode was also enhanced with the new index, and now works much faster on larger datasets.  
+Owler overlapping mode was also enhanced with the new index, and now works much faster on larger datasets. Also, Owler allows for spaced seeds, and a custom shape can be specified via commandline (```--shape``` parameter, default is a full 15bp seed).   
 
 Many bug fixes were also made, including the ones related to mapping to circular references, various segfaults, and extra new lines when outputting secondary alignments. Some of the segfaults were caused by the index, which is now addressed with the new version.
 
