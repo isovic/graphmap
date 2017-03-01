@@ -47,15 +47,17 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
   argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "",
                               "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n"
                               " illumina  - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n"
+                              " overlap   - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0\n"
+                              "             --ambiguity 0.50 --secondary'\n"
+                              " sensitive - Equivalent to: '--freq-percentile 1.0 --minimizer-window 1'\n"
+                              " rnaseq    - Equivalent to: '--ambiguity 0.5 --secondary --min-bin-perc 0.01\n"
+                              "             --bin-step 0.99 --max-regions 20 --spliced'", 0, "General-purpose pre-set options");
+#else
+  argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "",
+                              "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n"
+                              " illumina  - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n"
                               " overlap   - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --secondary'\n"
                               " sensitive - Equivalent to: '--freq-percentile 1.0 --minimizer-window 1'", 0, "General-purpose pre-set options");
-#else
-argparser.AddArgument(&parameters->composite_parameters, VALUE_TYPE_COMPOSITE, "x", "preset", "",
-                            "Pre-set parameters to increase sensitivity for different sequencing technologies. Valid options are:\n"
-                            " illumina  - Equivalent to: '-a gotoh -w normal -M 5 -X 4 -G 8 -E 6'\n"
-                            " overlap   - Equivalent to: '-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --secondary'\n"
-                            " sensitive - Equivalent to: '--freq-percentile 1.0 --minimizer-window 1'\n"
-                            " rnaseq    - Equivalent to: '--ambiguity 0.5 --secondary --min-bin-perc 0.01 --bin-step 0.99 --max-regions 20 --spliced'", 0, "General-purpose pre-set options");
 #endif
 
   argparser.AddArgument(&parameters->alignment_algorithm, VALUE_TYPE_STRING, "a", "alg", "anchor", "Specifies which algorithm should be used for alignment. Options are:\n sg       - Myers' bit-vector approach. Semiglobal. Edit dist. alignment.\n sggotoh       - Gotoh alignment with affine gaps. Semiglobal.\n anchor      - anchored alignment with end-to-end extension.\n               Uses Myers' global alignment to align between anchors.\n anchorgotoh - anchored alignment with Gotoh.\n               Uses Gotoh global alignment to align between anchors.", 0, "Alignment options");
