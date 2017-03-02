@@ -6,6 +6,7 @@
  */
 
 #include "index_util.h"
+#include "utility/utility_general.h"
 
 namespace is {
 
@@ -20,7 +21,7 @@ std::string GenerateSAMHeader(std::shared_ptr<is::MinimizerIndex> index,
                "\n";
 
   for (int64_t rid=0; rid<index->get_num_sequences_forward(); rid++) {
-    std::string reference_header = index->get_headers()[rid];
+    std::string reference_header = TrimToFirstSpace(index->get_headers()[rid]);
     uint64_t rlen = (uint64_t) index->get_reference_lengths()[rid];
 
     ss_header << "@SQ\t" <<
