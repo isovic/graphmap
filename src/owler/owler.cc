@@ -141,6 +141,8 @@ int Owler::BuildIndex_(ProgramParameters &parameters) {
 
     index_->Create(*ref_, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
 
+    LOG_ALL("Finished building index.\n");
+
     if (store) {
       LOG_ALL("Storing the index to file: '%s'.\n", index_path.c_str());
       index_->Store(index_path);
