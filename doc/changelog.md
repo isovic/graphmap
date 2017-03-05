@@ -1,5 +1,12 @@
 ## GraphMap - ChangeLog
 
+**__Version 0.5.0 -> 0.5.1__**  
+Release date: 04 March 2017
+- Updated the gindex module for smaller memory consumption when building the index. Index construction is now a bit slower (single thread is used for collecting minimizers), but collection of minimizers is now performed on the fly. Previously, all seeds would be collected first, and then they would be pulled through a minimizer generation function. Now, each seed is pushed into the minimizer queue and if the queue yields a seed which is different than the previous one, it is emplaced on the list.
+The memory consumption is still large (similar to index in versions 0.4.x), which is due to 128-bit integer representation of all seeds (seed key, sequence ID and sequence position). This could be reduced further by careful redesign.
+The disk version of the index is fully compatible to version 0.5.0.
+The reduced memory consumption directly also impacts the Owler mode as well.
+
 **__Version 0.4.1 -> 0.5.0__**  
 Release date: 28 February 2017
 - Re-implemented the index. Removed all other indexes that were previously implemented, and cleaned up the code to only use the new index (MinimizerIndex). MinimizerIndex is implemented in a separate repo added to the codebase. It also uses a hash table to store the seeds, however instead of the perfect hash as before, Google's DenseHash is used. Seeds are first compiled in a giant list (each sequence in its space, in parallel), and afterwards the list is sorted (also multithreaded). Basic statistics on seed key distribution are calculated (mean, median, standard deviation). The index also allows thresholding the amount of hits during lookup (keys with a count higher than a user-specified percentil are skipped) which is very significant for large, repetitive genomes. The index can also generate minimizers (also user specified). Index also allows for custom indexing shapes to be defined, and creates the lookup shapes automatically.  

@@ -1,6 +1,10 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
-**__Current Version: 0.5.0__**  
-Release date: 28 February 2017  
+**__Current Version: 0.5.1__**  
+Release date: 04 March 2017  
+
+Patch version resolving huge memory consumption when building the index.  
+Index construction now consumes similar amount of memory as the final constructed index.  
+Index files (stored to disk) constructed using v0.5.0 are fully compatible with v0.5.1 and can be used directly.  
 
 **\*new\* - Minimizer index**  
 The hash index has now been completely reimplemented.  
@@ -20,9 +24,7 @@ Many bug fixes were also made, including the ones related to mapping to circular
 
 Also, this release fixes an issue with **transcriptome mapping**, where recall would drop (however, not precision).  
 
-**Important** - When building an index, memory consumption is now larger than before. However, once minimizers have been collected and the index stored, the final size of the index is much smaller. Concrete estimate is: ```32 x reference_size``` for index construction, and ```~7 x reference_size``` for the final index. This means that for a human genome, constructing the index would peak at about ```~102 GB``` while the final index would have only ```~20 GB```.  
-
-The large peak **can and will be addressed** in the next minor release. This should not require the updating of the index versions, and the index should be compatible to ```v0.5.0```.  
+**Important** - GraphMap's index is actually a hash table of seed positions, and is therefore larger than the index for mappers which use the BWT. An estimate of the size of the index is about ```~14 x reference_size``` for the final index. This means that for a human genome, constructing the index would peak at about ```~42 GB```. Smaller indexes can be achieved by using a larger minimizer window (```--minimizer-window```), but this will probably cause a drop in sensitivity.  
 
 
 **Mapping to transcriptomes**  
