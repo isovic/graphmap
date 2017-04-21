@@ -5,6 +5,7 @@
  *      Author: ivan
  */
 
+#include <cassert>
 #include "alignment/cigargen.h"
 #include "utility/utility_general.h"
 
@@ -521,6 +522,7 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
                              bool skip_leading_and_trailing_insertions,
                              int64_t* ret_eq, int64_t* ret_x, int64_t* ret_i, int64_t* ret_d, int64_t *ret_alignment_score, int64_t *ret_edit_dist, int64_t *ret_nonclipped_length) {
+  assert(alignment_position_start >= 0);
   unsigned char last_move = -1;  // Code of last move.
   int64_t num_same_moves = 0;
   int64_t read_position = 0;
@@ -601,6 +603,7 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
  * for a CIGAR "5=2I3=" the MD would be "8".
  */
 std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *ref_data, int64_t alignment_position_start) {
+  assert(alignment_position_start >= 0);
   std::vector<CigarOp> cigar_array;
   AlignmentToExtendedCigarArray(&alignment[0], alignment.size(), cigar_array);
 //  printf("\n");
