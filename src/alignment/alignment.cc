@@ -311,7 +311,8 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
     return 4;
   }
   if ((index != nullptr && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
-      (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {
+      ((reference_hit_pos < index->get_reference_starting_pos()[reference_hit_id]) ||
+       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]))) {
     LOG_DEBUG("CheckAlignmentSane returned false! return 5. Alignment steps out of bounds of the reference.\n"
 	"\treference_hit_id = %ld\n"
         "\treference_hit_pos = %ld, ref_length = %ld\n"
