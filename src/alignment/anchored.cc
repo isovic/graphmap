@@ -5,6 +5,7 @@
  *      Author: isovic
  */
 
+#include <cassert>
 #include <alignment/alignment_wrappers.h>
 #include "alignment/alignment.h"
 
@@ -870,35 +871,36 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
       ConvertFromTranscriptomeToGenomeAln(parameters, index, transcriptome, curr_aln);
     }
 
-    LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
-    curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
+    if (curr_aln->is_aligned) {
+      LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
+      curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
-    LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0], final_aln_pos_start);
+      LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
+      curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0], final_aln_pos_start);
 
 //    printf ("final_aln_pos_start = %ld\n", final_aln_pos_start);
 //    printf ("Query:\n%s\nTarget:\n%s\n", GetSubstring((char *) read->get_data(), read->get_data_length()).c_str(), GetSubstring((char *) index->get_data() + final_aln_pos_start, read->get_data_length()).c_str());
 //    fflush(stdout);
 
-    LOG_DEBUG_SPEC("Counting alignment operations.\n");
-    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), &index->get_data()[0], abs_ref_id, curr_aln->raw_pos_start, orientation,
-                             parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
-                             &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
+      LOG_DEBUG_SPEC("Counting alignment operations.\n");
+      CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment, read->get_data(), &index->get_data()[0], abs_ref_id, curr_aln->raw_pos_start, orientation,
+                               parameters->evalue_match, parameters->evalue_mismatch, parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
+                               &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops, &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
 //    LOG_DEBUG_SPEC("Calculating the E-value.\n");
 //    CalculateEValueDNA(curr_aln->alignment_score, curr_aln->nonclipped_length, index->get_data_length_forward(), evalue_params, &curr_aln->evalue);
 
-    LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
-    double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
-    double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
-    if (error_rate > parameters->max_error_rate) {
-      curr_aln->is_aligned = false;
-      LOG_DEBUG_SPEC("Error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+      LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
+      double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+      double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+      if (error_rate > parameters->max_error_rate) {
+        curr_aln->is_aligned = false;
+        LOG_DEBUG_SPEC("Error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+      }
+      if (indel_error_rate > parameters->max_indel_error_rate) {
+        curr_aln->is_aligned = false;
+        LOG_DEBUG_SPEC("Indel error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+      }
     }
-    if (indel_error_rate > parameters->max_indel_error_rate) {
-      curr_aln->is_aligned = false;
-      LOG_DEBUG_SPEC("Indel error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
-    }
-
     VerboseAlignment(read, index, parameters, curr_aln);
   }
 
@@ -1043,7 +1045,9 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
     /// final_aln_pos_start is the alignment position within the reference (local to the reference), and is also reversed (subtracted from reference_length) in case orientation == kReverse.
     int64_t final_aln_pos_start = 0, final_aln_pos_end = 0;
     index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_start : curr_aln->raw_pos_end, abs_ref_id, 0, NULL, &final_aln_pos_start, NULL);
+    assert(final_aln_pos_start >= 0);
     index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_end : curr_aln->raw_pos_start, abs_ref_id, 0, NULL, &final_aln_pos_end, NULL);
+    assert(final_aln_pos_end >= 0);
     curr_aln->ref_start = final_aln_pos_start; // % ref_len;
     curr_aln->ref_end = final_aln_pos_end; // % ref_len;
 
