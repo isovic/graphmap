@@ -1,4 +1,15 @@
 ## GraphMap - A highly sensitive and accurate mapper for long, error-prone reads  
+**__Current Version: 0.5.2__**  
+Release date: 26 May 2017  
+
+Bugfix version, addressing several segfault and other important issues:  
+- Fixed mapping outside of reference bounds.  
+- Merged a pull request with some useful insanity tests (thanks @robegan21).
+- Changed the unmapped / Inf E-value (the ZE:f: tag) to be a valid float value (`std::numeric_limits<float>::max()` instead of `Inf`).  
+- Added several missing `#include`s.  
+
+
+
 **__Current Version: 0.5.1__**  
 Release date: 04 March 2017  
 
