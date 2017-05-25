@@ -17,9 +17,15 @@ enum ClusterAlnType {
   kAlnEnding = 3
 };
 
+// NOTE:
+//- ref_data_start is the start position of the reference withing the massive array of references within the index for linear genomes. If the genome is circular,
+//ref_data_start is equal to 0 because the chunk of the sequence is copied out.
+//
+//- region_ref_start is the start of the region within the reference. If the genome is linear, this is the beginning of the region, and when it's circular, it's the largest coordinate of both chunks.
+
 int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
                 const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
-                const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
+                const PathGraphEntry *region_results, int64_t ref_data_start, int64_t region_ref_start,
                 const int8_t *ref_data, int64_t ref_len, int64_t clip_count_front,
                 int64_t alignment_position_start, bool align_end_to_end, AlignmentResults &aln) {
   aln.aln_mode_code = EDLIB_MODE_SHW;
@@ -29,18 +35,19 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
   aln.raw_pos_end = alignment_position_start;
   aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
   aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
-  aln.ref_start = aln.raw_pos_start - ref_index_start;
-  aln.ref_end = aln.raw_pos_end - ref_index_start;
+  aln.ref_start = aln.raw_pos_start - ref_data_start;
+  aln.ref_end = aln.raw_pos_end - ref_data_start;
   aln.is_aligned = true;
   aln.raw_alignment.clear();
 
-//  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
-//  int64_t reference_id = region_results->get_region_data().reference_id;
-//  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
-//  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
-  int64_t reference_start = 0;
+  int64_t reference_start = ref_data_start; // 0;
 
   LOG_DEBUG_SPEC("Aligning the beginning of the read (overhang).\n");
+  LOG_DEBUG_SPEC("ref_len = %ld\n", ref_len);
+  LOG_DEBUG_SPEC("alignment_position_start = %ld\n", alignment_position_start);
+  LOG_DEBUG_SPEC("region_ref_start = %ld\n", region_ref_start);
+  LOG_DEBUG_SPEC("ref_index_start = %ld\n", ref_data_start);
+  LOG_DEBUG_SPEC("clip_count_front = %ld\n", clip_count_front);
 
   /// Check if we need to extend the alignment to the left boundary. Also, even if the user specified it, if we are to close to the boundary, just clip it.
   if (align_end_to_end == false) { // || ((alignment_position_start - clip_count_front*2) > 0 && (alignment_position_start - clip_count_front*2) < region_ref_start)) {
@@ -54,12 +61,10 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     LOG_DEBUG_SPEC("Performing the alignment.\n");
 
     /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
-//    int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
     LOG_DEBUG_SPEC("Reversing the query.\n");
     std::vector<int8_t> reversed_query_front;
     reverse_data2(read->get_data(), clip_count_front, reversed_query_front);
 
-//    int8_t *reversed_ref_front = NULL;
     LOG_DEBUG_SPEC("Reversing the ref.\n");
     std::vector<int8_t> reversed_ref_front;
     int64_t reversed_ref_len = 0;
@@ -74,8 +79,7 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
       reversed_ref_len = clip_count_front*2;
     }
 
-    int64_t bandwidth = -1;
-//    bandwidth = 0.30f*read->get_sequence_length();
+    int64_t bandwidth = -1; //    bandwidth = 0.30f*read->get_sequence_length();
 
     LOG_DEBUG_SPEC("Running AlignmentFunctionSHW.\n");
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
@@ -136,16 +140,11 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
         aln.raw_pos_end = alignment_position_start + leftover_left_end;     // TODO: Check this coordinate!! Might be missing a '+ 1';
         aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
         aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
-        aln.ref_start = aln.raw_pos_start - ref_index_start;
-        aln.ref_end = aln.raw_pos_end - ref_index_start;
+        aln.ref_start = aln.raw_pos_start - ref_data_start;
+        aln.ref_end = aln.raw_pos_end - ref_data_start;
         if (reversed_alignment)
           free(reversed_alignment);
       }
-
-//      if (reversed_query_front)
-//        free(reversed_query_front);
-//      if (reversed_ref_front)
-//        free(reversed_ref_front);
     }
   }
 
@@ -316,8 +315,8 @@ int AlignInBetweenAnchors(AlignmentFunctionType AlignmentFunctionNW,
 
 int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
               const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, const ProgramParameters *parameters,
-              const PathGraphEntry *region_results, int64_t ref_index_start, int64_t region_ref_start,
-              const int8_t *ref_data, int64_t ref_len, int64_t clip_count_back, int64_t ref_start,
+              const PathGraphEntry *region_results, int64_t ref_data_start, int64_t region_ref_start,
+              const int8_t *ref_data, int64_t ref_len, int64_t clip_count_back,  // TODO: ref_start is the same as ref_index_start
               int64_t alignment_position_end, bool align_end_to_end, AlignmentResults &aln) {
   aln.aln_mode_code = EDLIB_MODE_SHW;
   aln.query_start = read->get_sequence_length() - clip_count_back;
@@ -326,15 +325,15 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
   aln.raw_pos_end = alignment_position_end + 1;
   aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
   aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
-  aln.ref_start = aln.raw_pos_start - ref_index_start;
-  aln.ref_end = aln.raw_pos_end - ref_index_start;
+  aln.ref_start = aln.raw_pos_start - ref_data_start;
+  aln.ref_end = aln.raw_pos_end - ref_data_start;
   aln.raw_alignment.clear();
 
 //  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
 //  int64_t reference_id = region_results->get_region_data().reference_id;
 //  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
 //  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
-  int64_t reference_start = ref_start;
+  int64_t reference_start = ref_data_start;
   int64_t reference_length = ref_len;
 
   LOG_DEBUG_SPEC("Aligning the end of the read (overhang).\n");
@@ -400,8 +399,8 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
       aln.raw_pos_end = alignment_position_end;
       aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
       aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
-      aln.ref_start = aln.raw_pos_start - ref_index_start;
-      aln.ref_end = aln.raw_pos_end - ref_index_start;
+      aln.ref_start = aln.raw_pos_start - ref_data_start;
+      aln.ref_end = aln.raw_pos_end - ref_data_start;
       aln.is_aligned = true;
 
       if (ret_code_right == 0) {
@@ -421,8 +420,8 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
         aln.raw_pos_end = alignment_position_end;
         aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
         aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
-        aln.ref_start = aln.raw_pos_start - ref_index_start;
-        aln.ref_end = aln.raw_pos_end - ref_index_start;
+        aln.ref_start = aln.raw_pos_start - ref_data_start;
+        aln.ref_end = aln.raw_pos_end - ref_data_start;
         aln.is_aligned = true;
 
       } else {
@@ -437,8 +436,8 @@ int AlignBack(AlignmentFunctionType AlignmentFunctionSHW,
         aln.raw_pos_end = alignment_position_end;
         aln.reg_pos_start = aln.raw_pos_start - region_ref_start;
         aln.reg_pos_end = aln.raw_pos_end - region_ref_start;
-        aln.ref_start = aln.raw_pos_start - ref_index_start;
-        aln.ref_end = aln.raw_pos_end - ref_index_start;
+        aln.ref_start = aln.raw_pos_start - ref_data_start;
+        aln.ref_end = aln.raw_pos_end - ref_data_start;
       }
 
       aln.is_aligned = true;
@@ -667,7 +666,7 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
   /// Aligning the end of the read.
   if (clip_count_back > 0) {
     LOG_DEBUG_SPEC("Trying to align the end of the read. clip_count_back = %ld\n", clip_count_back);
-    int ret_code_back = AlignBack(AlignmentFunctionSHW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, clip_count_back, ref_data_start, alignment_position_end, align_end_to_end, alns[num_alns]);
+    int ret_code_back = AlignBack(AlignmentFunctionSHW, read, index, parameters, region_results, ref_data_start, region_ref_start, ref_data, ref_data_len, clip_count_back, alignment_position_end, align_end_to_end, alns[num_alns]);
 //    if (!ret_code_back) {
       alns_anchor_type[num_alns] = kAlnEnding;
       num_alns += 1;
@@ -813,6 +812,23 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
 //        LOG_DEBUG_HIGH("\nCircular!\n");
 //      }
     }
+
+    LOG_DEBUG_SPEC("aln:\n");
+    LOG_DEBUG_SPEC("  region_ref_start = %ld\n", region_ref_start);
+    LOG_DEBUG_SPEC("  aln.query_start = %ld\n", aln.query_start);
+    LOG_DEBUG_SPEC("  aln.query_end = %ld\n", aln.query_end);
+    LOG_DEBUG_SPEC("  aln.query_len = %ld\n", aln.query_len);
+    LOG_DEBUG_SPEC("  aln.ref_data_start = %ld\n", aln.ref_start);
+    LOG_DEBUG_SPEC("  aln.ref_end = %ld\n", aln.ref_end);
+    LOG_DEBUG_SPEC("  aln.ref_len = %ld\n", aln.ref_len);
+    LOG_DEBUG_SPEC("  aln.raw_start = %ld\n", aln.raw_pos_start);
+    LOG_DEBUG_SPEC("  aln.raw_end = %ld\n", aln.raw_pos_end);
+    LOG_DEBUG_SPEC("  aln.reg_pos_start = %ld\n", aln.reg_pos_start);
+    LOG_DEBUG_SPEC("  aln.reg_pos_end = %ld\n", aln.reg_pos_end);
+    LOG_DEBUG_SPEC("  aln.is_aligned = %s\n", (aln.is_aligned == true) ? "true" : "false");
+    LOG_DEBUG_SPEC("reference_length = %ld\n", reference_length);
+    LOG_DEBUG_SPEC_NEWLINE;
+
   }
 
   /// Fill out statistics for each alignment (E-value calculation, couting of CIGAR operations, etc.) and check if the alignments are sane.

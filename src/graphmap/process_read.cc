@@ -895,7 +895,7 @@ std::string GraphMap::GenerateUnmappedSamLine_(const SingleSequence *read, const
   ss_optional1 << "NM:i:" << -1 << "\t";  // Specified by SAM format.
   ss_optional1 << "AS:i:" << -((int64_t) read->get_sequence_length()) << "\t";
   ss_optional1 << "H0:i:" << 0 << "\t";  // Specified by SAM format.
-  ss_optional1 << "ZE:f:" << std::numeric_limits<float>::infinity() << "\t";
+  ss_optional1 << "ZE:f:" << std::numeric_limits<float>::max() << "\t";
   ss_optional1 << "ZF:f:" << 0.0f << "\t";
   ss_optional1 << "ZQ:i:" << read->get_sequence_length() << "\t";
   ss_optional1 << "ZR:i:" << 0;
