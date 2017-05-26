@@ -8,6 +8,7 @@ Bugfix version, addressing several segfault and other important issues:
 - Changed the unmapped / Inf E-value (the ZE:f: tag) to be a valid float value (`std::numeric_limits<float>::max()` instead of `Inf`).  
 - Added several missing `#include`s.  
 
+**Note:** After running `git pull`, please `make modules` before `make`.  
 
 
 **__Current Version: 0.5.1__**  
