@@ -12,7 +12,8 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   LOG_DEBUG_SPEC("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id());
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
-  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
+  // CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices, indexes[0]->get_shape_max_width() - 1);
+  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices, 0);
   if (lcskpp_length == 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
     return 1;
@@ -38,10 +39,15 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   std::vector<int> second_filtered_lcskpp_indices;
 
   // Parameters for anchor filtering.
-  double indel_bandwidth_margin = parameters->error_rate/2 + 0.01f;
-  int32_t max_dist = 200;
-  int64_t min_covered_bases = 50; // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
-  int64_t cluster_size_cutoff = 2; // TODO: need to experiment with this. 1; // 2
+  // double indel_bandwidth_margin = parameters->error_rate/2 + 0.01f;
+  // int32_t max_dist = 200;
+  // int64_t min_covered_bases = 50; // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
+  // int64_t cluster_size_cutoff = 2; // TODO: need to experiment with this. 1; // 2
+  double indel_bandwidth_margin = parameters->anchor_chain_indel_bandwidth;
+  int32_t max_dist = parameters->anchor_chain_max_dist;
+  int64_t min_covered_bases = parameters->anchor_chain_min_cov_bases;
+  int64_t cluster_size_cutoff = parameters->anchor_chain_size_cutoff;
+
   FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, indel_bandwidth_margin, max_dist, 0, min_covered_bases, cluster_size_cutoff, first_filtered_lcskpp_indices, NULL);
   FilterAnchorsByDiff(read, local_score, parameters, first_filtered_lcskpp_indices, second_filtered_lcskpp_indices);
 //  FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, parameters->error_rate/2 + 0.01f, 200.0f, 0, 50, 2, first_filtered_lcskpp_indices, NULL);

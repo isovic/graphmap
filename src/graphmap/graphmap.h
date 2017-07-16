@@ -79,7 +79,7 @@ class GraphMap {
   std::string GenerateUnmappedSamLine_(const SingleSequence *read, const std::string& unmapped_reason, int64_t verbose_sam_output) const;
 
   // Calculates the LCSk of the anchors using the Fenwick tree.
-  void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices);
+  void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices, int64_t allowed_begin_offset=0);
 
   std::shared_ptr<is::MinimizerIndex> SetupIndex_(std::shared_ptr<SequenceFile> ref, const std::string &index_path, const std::string &shape,
                   const ProgramParameters &parameters, int64_t num_threads) const;

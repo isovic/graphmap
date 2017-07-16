@@ -113,6 +113,11 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddArgument(&parameters->threshold_hits, VALUE_TYPE_BOOL, "", "threshold-hits", "0", "Applies a percentil threshold to the number of hits.", 0, "Algorithmic options");
   argparser.AddArgument(&parameters->index_on_the_fly, VALUE_TYPE_BOOL, "", "fly-index", "0", "Index will be constructed on the fly, without storing it to disk. If it already exists on disk, it will be loaded unless --rebuild-index is specified.", 0, "Algorithmic options");
 
+  argparser.AddArgument(&parameters->anchor_chain_indel_bandwidth, VALUE_TYPE_DOUBLE, "", "chain-indel-bw", "0.23", "Diagonal between two anchors needs to be within this band to chain them.", 0, "Algorithmic options");
+  argparser.AddArgument(&parameters->anchor_chain_max_dist, VALUE_TYPE_INT64, "", "chain-max-dist", "200", "Maximum distance between two anchors to chain them.", 0, "Anchor chaining options");
+  argparser.AddArgument(&parameters->anchor_chain_min_cov_bases, VALUE_TYPE_INT64, "", "chain-min-cov", "50", "Minimum number of bases covered by a chain to keep it. Only checked if number of anchors in the cluster is <= '--chain-min-num-anchors'.", 0, "Anchor chaining options");
+  argparser.AddArgument(&parameters->anchor_chain_size_cutoff, VALUE_TYPE_INT64, "", "chain-min-num-anchors", "2", "If number of anchors in chain is <= to this value and the chain covers < '--chain-min-cov' bases, the chain is discarded.", 0, "Anchor chaining options");
+
   argparser.AddArgument(&parameters->num_threads, VALUE_TYPE_INT64, "t", "threads", "-1", "Number of threads to use. If '-1', number of threads will be equal to min(24, num_cores/2).", 0, "Other options");
   argparser.AddArgument(&parameters->verbose_level, VALUE_TYPE_INT64, "v", "verbose", "5", "Verbose level. If equal to 0 nothing except strict output will be placed on stdout.", 0, "Other options");
   argparser.AddArgument(&parameters->start_read, VALUE_TYPE_INT64, "s", "start", "0", "Ordinal number of the read from which to start processing data.", 0, "Other options");

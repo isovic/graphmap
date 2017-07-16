@@ -155,7 +155,8 @@ int FilterAnchorsByDiff(const SingleSequence* read, ScoreRegistry* local_score, 
 }
 
 int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_score, const ProgramParameters *parameters,
-                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor, int64_t min_covered_bases, int32_t cluster_size_cutoff,
+                  const std::vector<int> &lcskpp_indices, double indel_bandwidth_margin, int32_t max_dist, int32_t lookahead_dist_factor,
+                  int64_t min_covered_bases, int32_t cluster_size_cutoff,
                   std::vector<int> &ret_filtered_lcskpp_indices, std::vector<int32_t> *ret_cluster_ids) {
 
   int64_t chain_len_lookahead = max_dist;

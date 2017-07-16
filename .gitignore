@@ -16,6 +16,7 @@ bin/
 .settings/
 reproducibility/*/
 test-data/
+.vscode*
 
 !reproducibility/*.py
 !reproducibility/*.md

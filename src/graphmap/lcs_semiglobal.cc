@@ -30,7 +30,9 @@
 // If use_l1_filtering is true, then all vertices/anchors that have coordinates further than allowed_dist from the L1 line are filtered out.
 // Otherwise, all vertices will be used.
 // The L1 line is specified with k = 1 and l parameters (y = k*x + l).
-void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices) {
+// allowed_begin_offset is the allowed number of overlapping bases of two neighboring anchors.
+void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist,
+                                                    int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices, int64_t allowed_begin_offset) {
   uint32_t num_vertices = vertices->num_vertices;
 
   if (num_vertices <= 0)
@@ -199,7 +201,7 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
     int primary_diagonal = n - 1 + i - j;
 
     if (is_beginning) { // begin
-      std::pair<int, int> prev_dp = dp_col_max.get(j);
+      std::pair<int, int> prev_dp = dp_col_max.get(j + allowed_begin_offset);
       uint64_t k_length = matches_dists_ref[idx];
       dp[idx] = k_length;      // k
       recon[idx] = -1;
