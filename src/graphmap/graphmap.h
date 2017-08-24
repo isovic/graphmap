@@ -103,6 +103,7 @@ class GraphMap {
   //
   int EvaluateMappings_(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);
   int GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
+  int RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
 
   // Helper functions.
   int CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_score, std::vector<int> &lcskpp_indices, float maximum_allowed_deviation, int64_t *ret_k, int64_t *ret_l, float *ret_sigma_L2, float *ret_confidence_L1);

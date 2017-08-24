@@ -235,7 +235,11 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
 
   begin_clock = clock();
 
-  GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
+  if (parameters->composite_parameters == "rnaseq") {
+    RNAGenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
+  } else {
+    GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
+  }
 
   end_clock = clock();
   elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
@@ -278,158 +282,158 @@ void GraphMap::OpenDebugClustersFile_(const ProgramParameters* parameters, const
   #endif
 }
 
-int GraphMap::ProcessRead2(MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
-  if (indexes.size() == 0 || indexes[0] == NULL) {
-    LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
-  }
+// int GraphMap::ProcessRead2(MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+//   if (indexes.size() == 0 || indexes[0] == NULL) {
+//     LogSystem::GetInstance().Error(SEVERITY_INT_FATAL, __FUNCTION__, LogSystem::GetInstance().GenerateErrorMessage(ERR_UNEXPECTED_VALUE, "No reference indexes are specified."));
+//   }
 
-  LOG_DEBUG_SPEC_NEWLINE;
-  LOG_DEBUG_SPEC("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024));
+//   LOG_DEBUG_SPEC_NEWLINE;
+//   LOG_DEBUG_SPEC("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024));
 
-  // If the read length is too short, call it unmapped.
-  if (read->get_sequence_length() < parameters->min_read_len) {
-    std::stringstream ss;
-    ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << parameters->min_read_len << "__num_region_iterations=" << mapping_data->num_region_iterations;
-    mapping_data->unmapped_reason += ss.str();
-    return 2;
-  }
+//   // If the read length is too short, call it unmapped.
+//   if (read->get_sequence_length() < parameters->min_read_len) {
+//     std::stringstream ss;
+//     ss << "Unmapped_5__readlength_too_short" << "__readlength=" << read->get_sequence_length() << "__limit=" << parameters->min_read_len << "__num_region_iterations=" << mapping_data->num_region_iterations;
+//     mapping_data->unmapped_reason += ss.str();
+//     return 2;
+//   }
 
-  ////////////////////////////////////
-  ///// Perform Region Selection /////
-  ////////////////////////////////////
-  std::vector<Region> regions;
+//   ////////////////////////////////////
+//   ///// Perform Region Selection /////
+//   ////////////////////////////////////
+//   std::vector<Region> regions;
 
-  TicToc tt_region;
-  tt_region.start();
+//   TicToc tt_region;
+//   tt_region.start();
 
-  RegionSelectionWithSort_(0, mapping_data, indexes, read, parameters, regions);
+//   RegionSelectionWithSort_(0, mapping_data, indexes, read, parameters, regions);
 
-  tt_region.stop();
+//   tt_region.stop();
 
-  mapping_data->time_region_selection = tt_region.get_secs();
-  LOG_DEBUG_SPEC("\n+++++++++++++++++ Region selection (sort version) elapsed time: %f sec.\n\n", mapping_data->time_region_selection);
+//   mapping_data->time_region_selection = tt_region.get_secs();
+//   LOG_DEBUG_SPEC("\n+++++++++++++++++ Region selection (sort version) elapsed time: %f sec.\n\n", mapping_data->time_region_selection);
 
-  /// Sanity check.
-  if (regions.size() == 0) {
-    mapping_data->unmapped_reason += "Unmapped_2.3_no_regions_were_selected._";
-    return 1;
-  }
+//   /// Sanity check.
+//   if (regions.size() == 0) {
+//     mapping_data->unmapped_reason += "Unmapped_2.3_no_regions_were_selected._";
+//     return 1;
+//   }
 
 
 
-  /////////////////////////////////////////////
-  ///// Start the mapping process         /////
-  /////////////////////////////////////////////
-  TicToc tt_mapping;
-  tt_mapping.start();
+//   /////////////////////////////////////////////
+//   ///// Start the mapping process         /////
+//   /////////////////////////////////////////////
+//   TicToc tt_mapping;
+//   tt_mapping.start();
 
-  /////////////////////////////////////////////
-  ///// Create a hash index from the read /////
-  /////////////////////////////////////////////
-  // Temporary SequenceFile for the current read.
-  SequenceFile sf_read;
-  sf_read.AddSequence((SingleSequence *) read, false);
+//   /////////////////////////////////////////////
+//   ///// Create a hash index from the read /////
+//   /////////////////////////////////////////////
+//   // Temporary SequenceFile for the current read.
+//   SequenceFile sf_read;
+//   sf_read.AddSequence((SingleSequence *) read, false);
 
-  // Create an index of the current read. This index is used in graph construction.
-  std::vector<std::string> graph_shapes = {std::string(parameters->k_graph, '1')};
-  std::shared_ptr<is::MinimizerIndex> index_read = is::createMinimizerIndex(graph_shapes, 1.0);
-  index_read->Create(sf_read, 0.0f, false, false, 1, 1);
+//   // Create an index of the current read. This index is used in graph construction.
+//   std::vector<std::string> graph_shapes = {std::string(parameters->k_graph, '1')};
+//   std::shared_ptr<is::MinimizerIndex> index_read = is::createMinimizerIndex(graph_shapes, 1.0);
+//   index_read->Create(sf_read, 0.0f, false, false, 1, 1);
 
-  //////////////////////////////
-  ///// Initialize stuff.  /////
-  /////////////////////////////
+//   //////////////////////////////
+//   ///// Initialize stuff.  /////
+//   /////////////////////////////
 
-  // Initialize the vertices of the graph.
-  mapping_data->vertices.Resize(read->get_sequence_length());
+//   // Initialize the vertices of the graph.
+//   mapping_data->vertices.Resize(read->get_sequence_length());
 
-  // Initialize the iteration counter and the value after which the counter should be reset.
-  mapping_data->iteration = 0;
+//   // Initialize the iteration counter and the value after which the counter should be reset.
+//   mapping_data->iteration = 0;
 
-//  float bin_value_threshold = std::max(std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), 2.0);
-  int64_t min_allowed_bin_value = 5.0f;
-  LOG_DEBUG_SPEC("regions.size() = %ld\n", regions.size());
+// //  float bin_value_threshold = std::max(std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), 2.0);
+//   int64_t min_allowed_bin_value = 5.0f;
+//   LOG_DEBUG_SPEC("regions.size() = %ld\n", regions.size());
 
-  int64_t min_num_votes = std::max((int64_t) std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), min_allowed_bin_value);
-  int64_t max_num_regions = (parameters->max_num_regions < 0) ? (parameters->max_num_regions) : (regions.size());
+//   int64_t min_num_votes = std::max((int64_t) std::floor(regions.front().region_votes * (1.0f - parameters->bin_threshold_step)), min_allowed_bin_value);
+//   int64_t max_num_regions = (parameters->max_num_regions < 0) ? (parameters->max_num_regions) : (regions.size());
 
-  // Just verbose.
-  LOG_DEBUG_SPEC("min_allowed_bin_value = %f, bin_value_threshold = %f\n", min_allowed_bin_value);
-  LOG_DEBUG_SPEC("regions.front().region_votes = %ld, regions.back().region_votes = %ld\n", regions.front().region_votes, regions.back().region_votes);
-  LOG_DEBUG_SPEC("parameters->bin_threshold_step = %f\n", parameters->bin_threshold_step);
-  VerboseRegions_(parameters, indexes, read, regions);
-  OpenDebugClustersFile_(parameters, read);
-  LOG_DEBUG_SPEC("\n\n");
+//   // Just verbose.
+//   LOG_DEBUG_SPEC("min_allowed_bin_value = %f, bin_value_threshold = %f\n", min_allowed_bin_value);
+//   LOG_DEBUG_SPEC("regions.front().region_votes = %ld, regions.back().region_votes = %ld\n", regions.front().region_votes, regions.back().region_votes);
+//   LOG_DEBUG_SPEC("parameters->bin_threshold_step = %f\n", parameters->bin_threshold_step);
+//   VerboseRegions_(parameters, indexes, read, regions);
+//   OpenDebugClustersFile_(parameters, read);
+//   LOG_DEBUG_SPEC("\n\n");
 
-  //////////////////////////////
-  ///// Perform mapping.   /////
-  /////////////////////////////
-  mapping_data->num_region_iterations = 0;
+//   //////////////////////////////
+//   ///// Perform mapping.   /////
+//   /////////////////////////////
+//   mapping_data->num_region_iterations = 0;
 
-  int64_t num_regions_processed = 0;
-  // Process regions one by one.
-  for (int64_t i=0; i<regions.size() && i < max_num_regions; i++) {
-    auto& region = regions[i];
+//   int64_t num_regions_processed = 0;
+//   // Process regions one by one.
+//   for (int64_t i=0; i<regions.size() && i < max_num_regions; i++) {
+//     auto& region = regions[i];
 
-    if (region.region_votes < min_num_votes) {
-      break;
-    }
+//     if (region.region_votes < min_num_votes) {
+//       break;
+//     }
 
-    mapping_data->num_region_iterations += 1;
-    num_regions_processed += 1;
+//     mapping_data->num_region_iterations += 1;
+//     num_regions_processed += 1;
 
-    ScoreRegistry local_score(region, i);
+//     ScoreRegistry local_score(region, i);
 
-    bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
-    LOG_DEBUG_SPEC("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n",
-                   i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index);
+//     bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
+//     LOG_DEBUG_SPEC("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n",
+//                    i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index);
 
-    // Perform the GraphMap on a single region.
-    GraphMap_(&local_score, index_read, mapping_data, indexes, read, parameters);
+//     // Perform the GraphMap on a single region.
+//     GraphMap_(&local_score, index_read, mapping_data, indexes, read, parameters);
 
-    // Just verbose.
-    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LOG_DEBUG_SPEC("Local scores (raw, before LCSk):\n");
-      LOG_DEBUG_SPEC("%s", local_score.VerboseToString().c_str());
-      LOG_DEBUG_SPEC("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, regions.size(), local_score.get_registry_entries().num_vertices);
-    }
+//     // Just verbose.
+//     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//       LOG_DEBUG_SPEC("Local scores (raw, before LCSk):\n");
+//       LOG_DEBUG_SPEC("%s", local_score.VerboseToString().c_str());
+//       LOG_DEBUG_SPEC("Running PostProcessRegionWithLCS_. j = %ld / %ld, local_score.size() = %ld\n", i, regions.size(), local_score.get_registry_entries().num_vertices);
+//     }
 
-    if (parameters->alignment_algorithm == "sg" || parameters->alignment_algorithm == "sggotoh") {
-      int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
-    } else {
-      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
-    }
+//     if (parameters->alignment_algorithm == "sg" || parameters->alignment_algorithm == "sggotoh") {
+//       int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+//     } else {
+//       int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+//     }
 
-    local_score.Clear();
+//     local_score.Clear();
 
-    if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-      LOG_DEBUG_SPEC("-----\n\n");
-    }
-  }
+//     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//       LOG_DEBUG_SPEC("-----\n\n");
+//     }
+//   }
 
-  LOG_DEBUG_SPEC("Last region processed: num_regions_processed = %ld.\n", num_regions_processed);
+//   LOG_DEBUG_SPEC("Last region processed: num_regions_processed = %ld.\n", num_regions_processed);
 
-  mapping_data->vertices.Clear();
+//   mapping_data->vertices.Clear();
 
-  tt_mapping.stop();
-  mapping_data->time_mapping = tt_mapping.get_secs();
-  LOG_DEBUG_SPEC("\n+++++++++++++++++ Read mapping elapsed time: %f sec.\n\n", mapping_data->time_mapping);
+//   tt_mapping.stop();
+//   mapping_data->time_mapping = tt_mapping.get_secs();
+//   LOG_DEBUG_SPEC("\n+++++++++++++++++ Read mapping elapsed time: %f sec.\n\n", mapping_data->time_mapping);
 
-  TicToc tt_alignment;
-  tt_alignment.start();
-  GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
-  tt_alignment.stop();
+//   TicToc tt_alignment;
+//   tt_alignment.start();
+//   GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
+//   tt_alignment.stop();
 
-  mapping_data->time_alignment = tt_alignment.get_secs();
-  LOG_DEBUG_SPEC("\n+++++++++++++++++ GenerateAlignments elapsed time: %f sec.\n\n", mapping_data->time_alignment);
+//   mapping_data->time_alignment = tt_alignment.get_secs();
+//   LOG_DEBUG_SPEC("\n+++++++++++++++++ GenerateAlignments elapsed time: %f sec.\n\n", mapping_data->time_alignment);
 
-  // Just verbose.
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
-  }
+//   // Just verbose.
+//   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+//     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n"), "[]");
+//     LogSystem::GetInstance().Log(VERBOSE_LEVEL_MED_DEBUG | VERBOSE_LEVEL_HIGH_DEBUG, ((parameters->num_threads == 1) || read->get_sequence_id() == parameters->debug_read), FormatString("Exiting function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024)), "ProcessRead");
+//   }
 
-  return 0;
-}
+//   return 0;
+// }
 
 
 
@@ -676,6 +680,165 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is:
     mapping_data->unmapped_reason += FormatString("__Unmapped_because_mapq_too_low__mapq<%d", parameters->mapq_threshold);
     return 0;
   }
+
+  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
+    auto region_data = mapping_data->final_mapping_ptrs.at(i);
+
+    /// If the region wasn't mapped for some reason, no need to perform alignment.
+    if (region_data->get_mapping_data().is_mapped == false) {
+      region_data->SetAligned(false);
+      region_data->get_mapping_metadata().unmapped_reason += FormatString("__Unmapped_final_region_%d_because__region_data.is_mapped==false", i);
+      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
+      continue;
+    }
+
+    /// Align the region and measure the time for execution.
+    clock_t begin_clock = clock();
+    int ret_aln = AlignRegion(read, index, transcriptome, parameters, evalue_params, true, region_data);
+    clock_t end_clock = clock();
+    double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
+
+    /// Set the number of different regions as an estimate of the mapping quality.
+    for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
+      region_data->get_alignments()[j].num_secondary_alns = mapping_data->num_similar_mappings;
+      region_data->get_alignments()[j].mapping_quality = mapping_data->mapping_quality;
+    }
+
+    /// Set the timing statistics.
+    region_data->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
+    region_data->get_mapping_metadata().time_mapping = mapping_data->time_mapping;
+    region_data->get_mapping_metadata().time_alignment = elapsed_secs;
+    region_data->get_mapping_metadata().time_region_seed_lookup = mapping_data->time_region_seed_lookup;
+    region_data->get_mapping_metadata().time_region_hitsort = mapping_data->time_region_hitsort;
+    region_data->get_mapping_metadata().time_region_conversion = mapping_data->time_region_conversion;
+    region_data->get_mapping_metadata().time_region_alloc = mapping_data->time_region_alloc;
+    region_data->get_mapping_metadata().time_region_counting = mapping_data->time_region_counting;
+    mapping_data->time_alignment = elapsed_secs;
+
+    /// Check if something went wrong and the read is unmapped.
+    if (ret_aln != 0) {
+      region_data->get_mapping_metadata().unmapped_reason += FormatString("__AlignRegion_returned_with_error__ret_value=%d", ret_aln);
+      region_data->SetAligned(false);
+
+      /// Keep the output if alignment is insane for debug purposes.
+      if (ret_aln != ALIGNMENT_NOT_SANE) {
+        region_data->get_mapping_metadata().unmapped_reason += FormatString("__(Alignment_is_sane_but_there_is_another_problem)");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but ret_aln != 0 (ret_aln = %d)!\n", ret_aln), "GenerateAlignments_");
+        continue;
+      } else {
+        region_data->get_mapping_metadata().unmapped_reason += FormatString("__(Alignment_is_insane)");
+        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane (ret_aln = %d)!\n", ret_aln), "GenerateAlignments_");
+      }
+    }
+
+    /// Check if the alignment E-value satisfies the threshold.
+    if (parameters->evalue_threshold >= ((double) 0.0)) {
+      for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
+        if (region_data->get_alignments()[j].is_aligned == true && region_data->get_alignments()[j].evalue > parameters->evalue_threshold) {
+          region_data->get_alignments()[j].is_aligned = false;
+          region_data->get_mapping_metadata().unmapped_reason += FormatString("_evalue=%E>%E", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
+          LOG_DEBUG_SPEC("Alignment %d/%d has E-value %E > %E. Marking alignment as unaligned.\n", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
+        }
+      }
+    }
+  }
+
+  /// Check if after everything, there are no valid alignments. If so, concatenate all unmapped_reasons into the top one.
+  if (mapping_data->IsAligned() == false) {
+    for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
+      auto region_data = mapping_data->final_mapping_ptrs.at(i);
+      for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
+        mapping_data->unmapped_reason += region_data->get_mapping_metadata().unmapped_reason;
+      }
+    }
+  }
+
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str()), "GenerateAlignments_");
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+  }
+
+  return 0;
+}
+
+// std::string VerboseCluster(const ClusterAndIndices& cluster);
+
+std::string VerboseCluster(const Cluster& cluster) {
+  std::stringstream ss;
+
+  ss << "ref_id = " << cluster.ref_id << ", region_index = " << cluster.region.region_index << ", q[" << cluster.query.start << ", " << cluster.query.end << "], r[" << cluster.ref.start << ", " << cluster.ref.end << "], num_anchors = " << cluster.num_anchors << ", coverage = " << cluster.coverage;
+
+  return ss.str();
+}
+
+#include "aligner/aligner_containers.h"
+#include "aligner/aligner_ksw2.h"
+#include "aligner/anchor_aligner.h"
+#include "aligner/pairwise_penalties.h"
+
+int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+  if (mapping_data->intermediate_mappings.size() == 0) {
+    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
+    return 1;
+  }
+
+  EvaluateMappings_(mapping_data, read, parameters);
+  CollectFinalMappingsAndMapQ_(true, mapping_data, read, parameters);
+
+  std::vector<is::AlignmentAnchor> alignment_anchors;
+  int64_t abs_ref_id = -1;
+
+  for (int32_t i=0; i<mapping_data->final_mapping_ptrs.size(); i++) {
+    Region& region = mapping_data->intermediate_mappings[i]->region_data();
+    int64_t ref_id = region.reference_id % index->get_num_sequences_forward();     // If there are N indexed sequences, then the index contains 2*N sequences: first N are the forward strand, followed by the same N sequences reverse-complemented. The reference_id is then the absolute reference ID in the index, which means that if it refers to the reverse complement of the sequence, reference_id will be > N. Modulo needs to be taken.
+    int64_t ref_len = index->get_reference_lengths()[region.reference_id];
+    MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->mapping_data();
+    auto& cluster_vector = mapping_results.clusters;
+
+    // printf ("Tu sam 1! i = %ld\n", i);
+    if (mapping_data->final_mapping_ptrs[i]->mapping_data().is_mapped == true) {
+      for (int32_t j=0; j<cluster_vector.size(); j++) {
+        Cluster& cluster = cluster_vector[j];
+        if (cluster.valid == false) { continue; }
+        if (abs_ref_id < 0) { abs_ref_id = ref_id; }
+        assert(abs_ref_id == ref_id);
+        alignment_anchors.emplace_back(is::AlignmentAnchor(cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end));
+        // alignment_clusters.push_back(cluster);
+        // printf ("  [i = %ld, j = %ld] Cluster: %s\n", i, j, VerboseCluster(cluster).c_str());
+      }
+    }
+  }
+
+  std::sort(alignment_anchors.begin(), alignment_anchors.end(), [](const is::AlignmentAnchor& a, const is::AlignmentAnchor& b) { return b.rstart > a.rstart; });
+
+  is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
+  is::AlignmentOptions aln_opt;
+
+  auto aligner = is::createAlignerKSW2(p, aln_opt);
+  auto anchor_aligner = is::createAnchorAligner(aligner);
+
+  int64_t ref_data_start = index->get_reference_starting_pos()[abs_ref_id];
+  int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
+  int8_t *ref_data  = (int8_t *) &index->get_data()[0];       // The data of the region.
+
+  anchor_aligner->GlobalAnchored(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
+
+  anchor_aligner->GlobalEndToEnd(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
+
+  return 0;
+
+
+
+
+
+  // if (parameters->mapq_threshold >= 0 && mapping_data->mapping_quality < parameters->mapq_threshold) {
+  //   mapping_data->unmapped_reason += FormatString("__Unmapped_because_mapq_too_low__mapq<%d", parameters->mapq_threshold);
+  //   return 0;
+  // }
 
   for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
     auto region_data = mapping_data->final_mapping_ptrs.at(i);
