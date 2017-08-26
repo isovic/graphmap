@@ -6,6 +6,7 @@
  */
 
 #include "anchor_aligner.h"
+#include "aligner_util.hpp"
 
 namespace is {
 
@@ -23,44 +24,51 @@ AnchorAligner::~AnchorAligner() {
 
 std::shared_ptr<AlignmentResult> AnchorAligner::GlobalEndToEnd(const char *ref, const char *query, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
-
-  printf ("anchors.front().qstart = %ld\n", anchors.front().qstart);
-  printf ("anchors.front().qend = %ld\n", anchors.front().qend);
-  printf ("anchors.front().rstart = %ld\n", anchors.front().rstart);
-  printf ("anchors.front().rend = %ld\n\n", anchors.front().rend);
-
-  printf ("anchors.back().qstart = %ld\n", anchors.back().qstart);
-  printf ("anchors.back().qend = %ld\n", anchors.back().qend);
-  printf ("anchors.back().rstart = %ld\n", anchors.back().rstart);
-  printf ("anchors.back().rend = %ld\n\n", anchors.back().rend);
-
-  aligner_->Global(query + anchors.front().qstart, anchors.back().qend - anchors.front().qstart,
-                   ref + anchors.front().rstart, anchors.back().rend - anchors.front().rstart);
-
-  return result;
+  std::vector<AlignmentAnchor> final_anchors;
+  if (anchors.size() > 0) {
+    final_anchors.emplace_back(AlignmentAnchor(anchors.front().qstart, anchors.back().qend, anchors.front().rstart, anchors.back().rend));
+  }
+  return GlobalAnchored(ref, query, final_anchors);
 }
 
 std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *ref, const char *query, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
-  assert(anchors.size() > 1);
 
-  if (anchors.size() > 1) {
-    for (int64_t i = 0; i < (anchors.size() - 1); i++) {
-      printf ("anchors[i].qstart = %ld\n", anchors[i].qstart);
-      printf ("anchors[i].qend = %ld\n", anchors[i].qend);
-      printf ("anchors[i].rstart = %ld\n", anchors[i].rstart);
-      printf ("anchors[i].rend = %ld\n\n", anchors[i].rend);
-
-      printf ("anchors[i+1].qstart = %ld\n", anchors[i+1].qstart);
-      printf ("anchors[i+1].qend = %ld\n", anchors[i+1].qend);
-      printf ("anchors[i+1].rstart = %ld\n", anchors[i+1].rstart);
-      printf ("anchors[i+1].rend = %ld\n\n", anchors[i+1].rend);
-
-      aligner_->Global(query + anchors[i].qstart, anchors[i+1].qend - anchors[i].qstart,
-                       ref + anchors[i].rstart, anchors[i+1].rend - anchors[i].rstart);
-
-    }
+  if (anchors.size() == 0) {
+    return result;
   }
+
+  result->cigar.clear();
+
+  // Align between anchors.
+  for (int64_t i = 0; i < (anchors.size() - 1); i++) {
+    aligner_->Global(query + anchors[i].qstart, anchors[i+1].qend - anchors[i].qstart,
+                      ref + anchors[i].rstart, anchors[i+1].rend - anchors[i].rstart);
+
+    auto aln_result = aligner_->getResults();
+
+    auto left_part = ExtractCigarBetweenQueryCoords(aln_result->cigar,
+                                                    0,
+                                                    anchors[i+1].qstart - anchors[i].qstart); // Leave next anchor for the next alignment.
+
+    result->cigar.insert(result->cigar.end(), left_part.begin(), left_part.end());
+  }
+
+  // Align the last anchor.
+  aligner_->Global(query + anchors.back().qstart, anchors.back().qend - anchors.back().qstart,
+                    ref + anchors.back().rstart, anchors.back().rend - anchors.back().rstart);
+
+  auto aln_result = aligner_->getResults();
+
+  result->cigar.insert(result->cigar.end(), aln_result->cigar.begin(), aln_result->cigar.end());
+
+  // Fill the other alignment info.
+  result->score = -1;
+  result->edit_dist = EditDistFromExtCIGAR(result->cigar);
+
+  result->position = is::AlignmentPosition(anchors.front().qstart, anchors.back().qend, anchors.front().rstart, anchors.back().rend);
+  result->k = -1;
+  result->rv = is::AlignmentReturnValue::OK;
 
   return result;
 }

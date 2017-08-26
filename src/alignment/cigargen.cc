@@ -599,21 +599,11 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
  * ignored (including clipping).
  * One needs to be careful to add-up matches/mismatches normally separated by I operations, e.g.
  * for a CIGAR "5=2I3=" the MD would be "8".
+ * This method treats 'N' CIGAR operations as deletions and reports them as such.
  */
 std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *ref_data, int64_t alignment_position_start) {
   std::vector<CigarOp> cigar_array;
   AlignmentToExtendedCigarArray(&alignment[0], alignment.size(), cigar_array);
-//  printf("\n");
-//  for (int32_t i=0; i<alignment.size(); i++) {
-//    printf ("%d", alignment[i]);
-//  }
-//  printf ("\n");
-//  fflush(stdout);
-//  for (int32_t i=0; i<cigar_array.size(); i++) {
-//    printf ("%d%c", cigar_array[i].count, cigar_array[i].op);
-//  }
-//  printf ("\n");
-//  fflush(stdout);
 
   // This loop truncates the CIGAR operations to skip anything but M and D operations.
   // It keeps track of an offset which points to the last index to where an op was copied.
@@ -622,52 +612,37 @@ std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *r
   for (int32_t i=0; i<cigar_array.size(); i++) {
     if (cigar_array[i].op == 'I' || cigar_array[i].op == 'S') {     // I and S should not be counted. Truncate them.
       offset += 1;
-//      printf ("(if) %d%c, i = %d, offset = %d\n", cigar_array[i].count, cigar_array[i].op, i, offset);
 
     } else if (i > 0 && (i-offset-1) >= 0 && cigar_array[i].op == cigar_array[i-offset-1].op) {  // Handle same operations
       // The "(i-offset-1) > 0" comes into play when there are leading insertions/soft clips. Prevents invalid reads of size 1.
       cigar_array[i-offset-1].count += cigar_array[i].count;
       offset += 1;
-//      printf ("(else if) %d%c, i = %d, offset = %d\n", cigar_array[i].count, cigar_array[i].op, i, offset);
 
     } else {      // Just truncate the current op.
       cigar_array[i-offset] = cigar_array[i];
-//      printf ("(else) %d%c, i = %d, offset = %d\n", cigar_array[i].count, cigar_array[i].op, i, offset);
+
     }
   }
 
   // Offset is the last CIGAR operation that was updated.
   cigar_array.resize(cigar_array.size() - offset);
 
-//  printf ("cigar_array after trunkating:\n");
-//  for (int32_t i=0; i<cigar_array.size(); i++) {
-//    printf ("%d%c", cigar_array[i].count, cigar_array[i].op);
-//  }
-//  printf ("\n");
-//  fflush(stdout);
-
   std::stringstream md;
 
   for (int32_t i=0; i<cigar_array.size(); i++) {
     int64_t ref_position = cigar_array[i].pos_ref + alignment_position_start;
-//    printf ("[i = %d] cigar_array[i].op = '%c', cigar_array[i].count = %d, cigar_array[i].pos_ref = %d, alignment_position_start = %ld\n", i, cigar_array[i].op, cigar_array[i].count, cigar_array[i].pos_ref, alignment_position_start);
-//    fflush(stdout);
 
     if (cigar_array[i].op == '=') {
       md << cigar_array[i].count;
-//      md << "_";
+
     } else if (cigar_array[i].op == 'X') {
-//      printf ("  cigar_array[i].op = '%c', cigar_array[i].count = %ld\n", cigar_array[i].op, cigar_array[i].count);
-//      fflush(stdout);
       for (int32_t j=0; j<cigar_array[i].count; j++) {
-//        printf ("j = %ld, ref_position = %ld, sum = %ld\n", j, ref_position, (ref_position+j));
-//        fflush(stdout);
         md << ref_data[ref_position + j];
         if ((j + 1) < cigar_array[i].count) {
           md << '0';
         }
       }
-    } else if (cigar_array[i].op == 'D') {
+    } else if (cigar_array[i].op == 'D' || cigar_array[i].op == 'N') {
       md << '^';
       for (int32_t j=0; j<cigar_array[i].count; j++) {
         md << ref_data[ref_position + j];

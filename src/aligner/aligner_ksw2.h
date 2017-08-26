@@ -13,6 +13,8 @@
 #include "aligner_base.h"
 #include "aligner_containers.h"
 #include "pairwise_penalties.h"
+#include "aligner_util.hpp"
+#include "ksw2/ksw2.h"
 
 namespace is {
 
@@ -42,6 +44,12 @@ class AlignerKSW2 : public AlignerBase {
   AlignerKSW2& operator=(const AlignerKSW2&) = delete;            // No copying.
   AlignerKSW2(AlignerKSW2&&) = delete;                            // No move constructor.
   AlignerKSW2& operator=(const AlignerKSW2&&) = delete;           // No copying.
+
+  void KSW2GlobalAlnWrapper_(void *km,
+                        const int8_t *qseq_, int qlen, const int8_t *tseq_, int tlen,
+                        int8_t m, const int8_t *mat,
+                        int8_t q, int8_t e, int8_t q2, int8_t e2,
+                        int w, int zdrop, int flag, ksw_extz_t *ez);
 
   const is::PiecewisePenalties& p_;
   const is::AlignmentOptions& opt_;

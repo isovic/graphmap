@@ -825,9 +825,20 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
   int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
   int8_t *ref_data  = (int8_t *) &index->get_data()[0];       // The data of the region.
 
-  anchor_aligner->GlobalAnchored(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
+  auto ret_aln = anchor_aligner->GlobalAnchored(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
 
-  anchor_aligner->GlobalEndToEnd(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
+  // Mark introns.
+  const int64_t MIN_INTRON_LEN = 10;
+  for (auto& c: ret_aln->cigar) {
+    if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
+      c.op = 'N';
+    }
+  }
+
+  printf ("GlobalAnchored:\n%s\n\n", CigarToString(ret_aln->cigar).c_str());
+
+  // auto ret_aln2 = anchor_aligner->GlobalEndToEnd(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
+  // printf ("GlobalEndToEnd:\n%s\n\n", CigarToString(ret_aln2->cigar).c_str());
 
   return 0;
 
