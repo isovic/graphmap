@@ -10,6 +10,8 @@
 
 #include <set>
 
+#define VERBOSE_RNASEQ_DEBUG
+
 void ClearFile(std::string &out_file);
 int VerbosePathGraphEntryCluster(std::string &out_file, const Region &region, const MappingResults& mapping_results, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes,
                                   const SingleSequence* read, const ProgramParameters* parameters);
@@ -49,6 +51,9 @@ struct MyCluster {
 
 #define MAXN 3001
 #define STRANDS 2
+
+//Margin for overlap of neighboring clusters.
+#define FUZZ 10
 
 //int backtrack[STRANDS][MAXN];
 //int dp[STRANDS][MAXN];
@@ -125,36 +130,41 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, std::vector<std::sha
 //    #endif
 
     int reverseStrand = (int32_t) region.reference_id >= indexes[0]->get_num_sequences_forward();
-    //printf ("\ni: %d, cluster_vector.size(): %d\n", i, cluster_vector.size());
+
+		#ifdef VERBOSE_RNASEQ_DEBUG
+    	LOG_DEBUG_SPEC_NO_HEADER ("\ni: %d, cluster_vector.size(): %d\n", i, cluster_vector.size());
+		#endif
 
     // Clusters can be accessed like so.
     for (int32_t j=0; j<cluster_vector.size(); j++) {
-    	//printf ("\tj: %d\n", j);
-      Cluster& cluster = cluster_vector[j];
-			clusterSet[reverseStrand].insert(MyCluster(cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
-					cluster.coverage, i, j));
+			#ifdef VERBOSE_RNASEQ_DEBUG
+				LOG_DEBUG_SPEC_NO_HEADER("\tj: %d\n", j);
+      #endif
+
+			Cluster& cluster = cluster_vector[j];
+			clusterSet[reverseStrand].insert(MyCluster(cluster.query.start, std::max(cluster.query.start, cluster.query.end - FUZZ),
+																								 cluster.ref.start, std::max(cluster.ref.start, cluster.ref.end - FUZZ),
+																								 cluster.coverage, i, j));
 			cluster.valid = false;
 			cluster_data[i].push_back(&cluster);
 
-			/*printf ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n", cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
-					cluster.coverage, i, j);*/
-
-      // Members of Cluster contain these values:
-      // cluster.query.start
-      // cluster.query.end
-      // cluster.ref.start
-      // cluster.ref.end
-      // cluster.num_anchors
-      // cluster.coverage
-      // If the cluster is supposed to be used, set cluster.valid to true, otherwise set it to false (mandatory; it will be true by default).
+			#ifdef VERBOSE_RNASEQ_DEBUG
+				LOG_DEBUG_SPEC_NO_HEADER ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n", cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
+						cluster.coverage, i, j);
+			#endif
     }
   }
 
-  ////#XY printf ("\nprosli sve clustere - krece racunanje\n");
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("Initialized cluster data. Initializing sets.\n");
+	#endif
 
 	int emptySets = 0;
   for (int strand = 0; strand < STRANDS; strand++) {
-  	//printf ("\nclusterSet[%d].size(): %d\n", strand, clusterSet[strand].size());
+		#ifdef VERBOSE_RNASEQ_DEBUG
+  		LOG_DEBUG_SPEC_NO_HEADER ("\nclusterSet[%d].size(): %d\n", strand, clusterSet[strand].size());
+		#endif
+
   	if (clusterSet[strand].size() == 0) {
   		emptySets++;
   		continue;
@@ -164,77 +174,82 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, std::vector<std::sha
 		}
 	}
 
-	////#XY 	printf ("prebacio iz seta u vector\n");
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("Moving from set to vector done.\n");
+	#endif
 
 	if (emptySets == STRANDS) {
-		printf ("izlazim jer nema nista ...\n");
-		//empty_clusters();
+		LOG_DEBUG_SPEC("The cluster set is empty, nothing to do.\n");
 		return 0;
 	}
 
-  //memset(backtrack, -1, sizeof(backtrack));
-  //memset(dp, 0, sizeof(dp));
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("Initializing the dp and backtrack matrices.\n");
+	#endif
 
   int **dp = (int **) calloc(STRANDS, sizeof(int));
   int **backtrack = (int **) calloc(STRANDS, sizeof(int));
   for (int strand = 0; strand < STRANDS; strand++) {
   	dp[strand] = (int *) calloc(MAXN, sizeof(int));
   	backtrack[strand] = (int *) calloc(MAXN, sizeof(int));
-  	//memset(backtrack[strand], -1, sizeof(backtrack[strand]));
   	for (int i = 0; i < MAXN; i++) {
   		backtrack[strand][i] = -1;
   	}
   }
-  //memset(backtrack, -1, sizeof(backtrack));
 
-  ////#XY printf ("sve je memsetano\n");
-	////#XY printf ("forward: %d, reverse: %d\n", clusters[0].size(), clusters[1].size());
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("Running calculateDP.\n");
+	#endif
+
   calculateDP(dp, backtrack, clusters);
 
-  ////#XY printf ("DP je izracunat\n");
-	int strand = (dp[0][0] > dp[1][0]) ? 0 : 1;
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("calculateDP done.\n");
+	#endif
 
-	//printf ("\ncluster_data array size: %d\n", mapping_data->intermediate_mappings.size());
-	//printf ("first region cluster size: %d\n", cluster_data[0].size());
+	int strand = (dp[0][0] > dp[1][0]) ? 0 : 1;
 
 	std::set<int>	done;
   int curr = backtrack[strand][0];
-  ////#XY printf ("dobar!\n");
 
-  //empty_clusters();
-  //return 0;
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("Backtracking:\n");
+	#endif
 
-  //printf ("ispis rjesenja:\n");
   while (true) {
   	if (curr == -1) {
   		break;
   	}
   	if (done.count(curr) > 0) {
-  		printf ("vec obisao!!!!\n");
-  		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
-  		//empty_clusters();
+			#ifdef VERBOSE_RNASEQ_DEBUG
+				LOG_DEBUG_SPEC("Already been here!\n");
+  			LOG_DEBUG_SPEC ("number of regions: %d\n", mapping_data->intermediate_mappings.size());
+			#endif
   		return 0;
   	}
   	done.insert(curr);
   	int currClusterIndex = curr - 1;
   	if (curr == backtrack[strand][curr]) {
-  		printf ("sljedeci je bas isti!!!\n");
-  		printf ("\nnumber of regions: %d\n", mapping_data->intermediate_mappings.size());
-  		//empty_clusters();
+			#ifdef VERBOSE_RNASEQ_DEBUG
+				LOG_DEBUG_SPEC("Next one is the same as current one (circular backtrack?)!\n");
+  			LOG_DEBUG_SPEC ("number of regions: %d\n", mapping_data->intermediate_mappings.size());
+			#endif
   		return 0;
   	}
   	int i = clusters[strand][currClusterIndex].regionI;
   	int j = clusters[strand][currClusterIndex].clusterJ;
-  	//printf ("i: %d, j: %d\n", i, j);
-  	////#XY printf ("curr: %d\n", curr);
-  	/* printf ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n",
+		#ifdef VERBOSE_RNASEQ_DEBUG
+  	LOG_DEBUG_SPEC_NO_HEADER ("i: %d, j: %d\n", i, j);
+  	LOG_DEBUG_SPEC_NO_HEADER ("curr: %d\n", curr);
+  	LOG_DEBUG_SPEC_NO_HEADER ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n",
   		clusters[strand][currClusterIndex].readStart,
   		clusters[strand][currClusterIndex].readEnd,
   		clusters[strand][currClusterIndex].refStart,
   		clusters[strand][currClusterIndex].refEnd,
   		clusters[strand][currClusterIndex].coveredBases,
   		clusters[strand][currClusterIndex].regionI,
-  		clusters[strand][currClusterIndex].clusterJ);*/
+  		clusters[strand][currClusterIndex].clusterJ);
+		#endif
   	////#XY printf ("backtrack[strand][curr]: %d\n", backtrack[strand][curr]);
 
   	cluster_data[i][j]->valid = true;
@@ -244,7 +259,9 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, std::vector<std::sha
   	curr = backtrack[strand][curr];
   }
 
-  //empty_clusters();
+	#ifdef VERBOSE_RNASEQ_DEBUG
+		LOG_DEBUG_SPEC("RNAFilterClusters_ done.\n");
+	#endif
 
   return 0;
 }

@@ -995,7 +995,7 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
   std::vector<is::AlignmentAnchor> alignment_anchors;
   int64_t abs_ref_id = -1;
 
-  for (int32_t i=0; i<mapping_data->final_mapping_ptrs.size(); i++) {
+  for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
     Region& region = mapping_data->intermediate_mappings[i]->region_data();
     int64_t ref_id = region.reference_id % index->get_num_sequences_forward();     // If there are N indexed sequences, then the index contains 2*N sequences: first N are the forward strand, followed by the same N sequences reverse-complemented. The reference_id is then the absolute reference ID in the index, which means that if it refers to the reverse complement of the sequence, reference_id will be > N. Modulo needs to be taken.
     int64_t ref_len = index->get_reference_lengths()[region.reference_id];
@@ -1003,7 +1003,7 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
     auto& cluster_vector = mapping_results.clusters;
 
     // printf ("Tu sam 1! i = %ld\n", i);
-    if (mapping_data->final_mapping_ptrs[i]->mapping_data().is_mapped == true) {
+    if (mapping_data->intermediate_mappings[i]->mapping_data().is_mapped == true) {
       for (int32_t j=0; j<cluster_vector.size(); j++) {
         Cluster& cluster = cluster_vector[j];
         if (cluster.valid == false) { continue; }
