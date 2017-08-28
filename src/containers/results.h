@@ -23,7 +23,6 @@ typedef struct Cluster {
   int32_t num_anchors = 0;
   int32_t coverage = 0;
   bool valid = false;
-  int64_t ref_id;
   SeqOrientation orientation;
   Region region;
 } Cluster;

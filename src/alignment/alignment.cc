@@ -269,7 +269,9 @@ int SplitCircularAlignment(const AlignmentResults *aln, int64_t pos_of_ref_end, 
 // Checks if there is a strange (large) number of insertions and deletions, or consecutive insertion/deletion operations.
 // SeqAn likes to make such alignments.
 // Returns 0 if everything went ok.
-int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read, std::shared_ptr<is::MinimizerIndex> index, int64_t reference_hit_id, int64_t reference_hit_pos) {
+int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequence* read,
+                       std::shared_ptr<is::MinimizerIndex> index,
+                       int64_t reference_hit_id, int64_t reference_hit_pos) {
   unsigned char last_move = -1;  // Code of last move.
   int64_t num_same_moves = 0;
   int64_t read_length = 0;

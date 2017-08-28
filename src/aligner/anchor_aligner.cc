@@ -22,16 +22,16 @@ AnchorAligner::~AnchorAligner() {
 
 }
 
-std::shared_ptr<AlignmentResult> AnchorAligner::GlobalEndToEnd(const char *ref, const char *query, const std::vector<AlignmentAnchor>& anchors) {
+std::shared_ptr<AlignmentResult> AnchorAligner::GlobalEndToEnd(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
   std::vector<AlignmentAnchor> final_anchors;
   if (anchors.size() > 0) {
     final_anchors.emplace_back(AlignmentAnchor(anchors.front().qstart, anchors.back().qend, anchors.front().rstart, anchors.back().rend));
   }
-  return GlobalAnchored(ref, query, final_anchors);
+  return GlobalAnchored(query, qlen, ref, rlen, final_anchors);
 }
 
-std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *ref, const char *query, const std::vector<AlignmentAnchor>& anchors) {
+std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
 
   if (anchors.size() == 0) {
@@ -39,6 +39,7 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *ref, 
   }
 
   result->cigar.clear();
+  result->score = 0;
 
   // Align between anchors.
   for (int64_t i = 0; i < (anchors.size() - 1); i++) {
@@ -52,6 +53,9 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *ref, 
                                                     anchors[i+1].qstart - anchors[i].qstart); // Leave next anchor for the next alignment.
 
     result->cigar.insert(result->cigar.end(), left_part.begin(), left_part.end());
+
+    // TODO: This is wrong, because it takes the score for the next anchor twice. Need to rework this.
+    result->score += aln_result->score;
   }
 
   // Align the last anchor.
@@ -62,8 +66,17 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *ref, 
 
   result->cigar.insert(result->cigar.end(), aln_result->cigar.begin(), aln_result->cigar.end());
 
+  // Add the soft clippings at front and back.
+  if ( anchors.front().qstart > 0) {
+    result->cigar.insert(result->cigar.begin(), is::CigarOp('S', anchors.front().qstart));
+  }
+  if ((qlen - anchors.front().qend) > 0) {
+    result->cigar.insert(result->cigar.end(), is::CigarOp('S', (qlen - anchors.back().qend)));
+  }
+
+  result->score += aln_result->score;
+
   // Fill the other alignment info.
-  result->score = -1;
   result->edit_dist = EditDistFromExtCIGAR(result->cigar);
 
   result->position = is::AlignmentPosition(anchors.front().qstart, anchors.back().qend, anchors.front().rstart, anchors.back().rend);
@@ -73,7 +86,7 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *ref, 
   return result;
 }
 
-std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithExtend(const char *ref, const char *query, const std::vector<AlignmentAnchor>& anchors) {
+std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithExtend(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
   return result;
 }

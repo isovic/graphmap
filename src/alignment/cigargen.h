@@ -29,6 +29,7 @@
 #define EDLIB_H 5     /// Not used in GraphMap currently (26.01.2016.)
 #define EDLIB_NOP 6
 #define EDLIB_N 7     // Large gaps (e.g. splicing sites).
+#define EDLIB_P 8     // Padding.
 
 inline char EdlibOpToChar(int8_t op) {
   return (op == EDLIB_M || op == EDLIB_EQUAL || op == EDLIB_X) ? 'M' :

@@ -770,7 +770,7 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is:
 std::string VerboseCluster(const Cluster& cluster) {
   std::stringstream ss;
 
-  ss << "ref_id = " << cluster.ref_id << ", region_index = " << cluster.region.region_index << ", q[" << cluster.query.start << ", " << cluster.query.end << "], r[" << cluster.ref.start << ", " << cluster.ref.end << "], num_anchors = " << cluster.num_anchors << ", coverage = " << cluster.coverage;
+  ss << "ref_id = " << cluster.region.reference_id << ", region_index = " << cluster.region.region_index << ", q[" << cluster.query.start << ", " << cluster.query.end << "], r[" << cluster.ref.start << ", " << cluster.ref.end << "], num_anchors = " << cluster.num_anchors << ", coverage = " << cluster.coverage;
 
   return ss.str();
 }
@@ -778,9 +778,212 @@ std::string VerboseCluster(const Cluster& cluster) {
 #include "aligner/aligner_containers.h"
 #include "aligner/aligner_ksw2.h"
 #include "aligner/anchor_aligner.h"
+#include "aligner/aligner_util.hpp"
 #include "aligner/pairwise_penalties.h"
 
-int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+inline uint8_t CigarCharToEdlibOp(char cigar) {
+  uint8_t ret = EDLIB_NOP;
+
+  switch(cigar) {
+    case 'M':
+      ret = EDLIB_M;
+      break;
+    case '=':
+      ret = EDLIB_EQUAL;
+      break;
+    case 'X':
+      ret = EDLIB_X;
+      break;
+    case 'I':
+      ret = EDLIB_I;
+      break;
+    case 'D':
+      ret = EDLIB_D;
+      break;
+    case 'S':
+      ret = EDLIB_S;
+      break;
+    case 'H':
+      ret = EDLIB_H;
+      break;
+    case 'N':
+      ret = EDLIB_N;
+      break;
+    case 'P':
+      ret = EDLIB_P;
+      break;
+    default:
+      ret = EDLIB_NOP;
+  }
+
+  return ret;
+}
+
+std::vector<uint8_t> CigarToAlignmentArray(const std::vector<is::CigarOp> &cigar) {
+  std::vector<uint8_t> ret;
+  int64_t count = 0;
+  for (auto& c: cigar) {
+    count += c.count;
+  }
+  ret.reserve(count);
+  for (auto& c: cigar) {
+    uint8_t edlib_op = CigarCharToEdlibOp(c.op);
+    for (int64_t i=0; i<c.count; i++) {
+      ret.push_back(edlib_op);
+    }
+  }
+  return ret;
+}
+
+void HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> &index,
+                             const SingleSequence *read, const ProgramParameters *parameters,
+                             int64_t abs_ref_id, std::shared_ptr<is::AlignmentResult> aln_result) {
+
+  int64_t reference_start = index->get_reference_starting_pos()[abs_ref_id];
+  int64_t reference_length = index->get_reference_lengths()[abs_ref_id % index->get_num_sequences_forward()];
+
+  // Create an empty mapping_info object.
+  MappingResults mapping_info;
+
+  // Create an empty l1_info object.
+  L1Results l1_info;
+
+  // Create and initialize a region object.
+  Region region;
+  region.start = reference_start;
+  region.end = reference_start + reference_length;
+  region.reference_id = abs_ref_id;
+  region.rname = index->get_headers()[abs_ref_id];
+  region.region_index = 0;
+  region.region_votes = 0;
+  region.is_split = false;
+  region.split_start = -1;
+  region.split_end = -1;
+
+  PathGraphEntry *new_entry = new PathGraphEntry(index, read, parameters, region, &mapping_info, &l1_info);
+
+  LOG_DEBUG_SPEC("abs_ref_id = %ld\n", abs_ref_id);
+  AlignmentResults aln;
+  aln.orientation = (abs_ref_id < index->get_num_sequences_forward()) ? kForward : kReverse;
+  aln.is_reverse = (abs_ref_id >= index->get_num_sequences_forward()) ? true : false;
+  aln.ref_id = abs_ref_id % index->get_num_sequences_forward();
+  aln.ref_header = index->get_headers()[abs_ref_id];
+  aln.ref_len = reference_length;
+  aln.query_id = read->get_sequence_absolute_id();
+  aln.query_header = read->get_header();
+  aln.query_len = read->get_sequence_length();
+  aln.is_aligned = true;
+  aln.aln_mode_code = EDLIB_MODE_NW;
+  aln.edit_distance = aln_result->edit_dist;
+  aln.raw_alignment = CigarToAlignmentArray(aln_result->cigar);
+  aln.alignment = aln.raw_alignment;
+  aln.ref_start = -1;     // Starting position of the alignment within a reference (offset from the beginning of the reference).
+  aln.ref_end = -1;       //
+  aln.query_start = -1;   // Beginning of the alignment on the query. Clipped bases are not included.
+  aln.query_end = -1;     //
+  aln.raw_pos_start = aln_result->position.tstart; // The raw_pos_start then holds the absolute coordinate of the alignment in such joined sequence data.
+  aln.raw_pos_end = aln_result->position.tend;   //
+  aln.reg_pos_start = aln_result->position.tstart; // Starting position of the alignment within a region (offset from the beginning of the region).
+  aln.reg_pos_end = aln_result->position.tend;   // End position of the alignment within a region (offset from the beginning of the region).
+  // These values need to be set individually:
+  //   Handled by CountAlignmentOperations below: &aln.num_eq_ops, &aln.num_x_ops, &aln.num_i_ops, &aln.num_d_ops, &aln.alignment_score, &aln.nonclipped_length
+  //   Handled by each Align* function: aln.raw_alignment, aln.alignment, where aln.alignment is the same as raw_alignment if orientation == kForward, and reverse-complemented if orientation == kReverse.
+  //                                    aln.ref_start, aln.ref_end, aln.query_start, aln.query_end, aln.raw_pos_start, aln.raw_pos_end, aln.reg_pos_start, aln.reg_pos_end
+
+  if (aln.orientation == kReverse) ReverseArray(aln.alignment);
+  new_entry->AddAlignmentData(aln);
+
+  // Trebam dodati clipping baze u CIGAR output od AnchorAlignera
+
+  /// Fill out statistics for each alignment (E-value calculation, couting of CIGAR operations, etc.) and check if the alignments are sane.
+  for (int32_t i=0; i<new_entry->get_alignments().size(); i++) {
+    AlignmentResults *curr_aln = &new_entry->get_alignments()[i];
+
+    if (curr_aln->is_aligned == false) { continue; }
+
+    /// Verbose debug.
+    LOG_DEBUG_SPEC("Alignment part %d / %d:\n", (i + 1), new_entry->get_alignments().size());
+
+    LOG_DEBUG_SPEC("Converting insertions to Clipping.\n");
+    ConvertInsertionsToClipping((unsigned char *) &(curr_aln->raw_alignment[0]), curr_aln->raw_alignment.size());
+    int64_t num_clipped_front = 0, num_clipped_back = 0;
+    CountClippedBases((unsigned char *) &(curr_aln->raw_alignment[0]), curr_aln->raw_alignment.size(), &num_clipped_front, &num_clipped_back);
+    curr_aln->query_start = (curr_aln->orientation == kForward) ? num_clipped_front : num_clipped_back;
+    curr_aln->query_end = read->get_sequence_length() - ((curr_aln->orientation == kForward) ? num_clipped_back : num_clipped_front) - 1;
+
+    LOG_DEBUG_SPEC("Converting coordinates.\n");
+
+    /// This part converts the global alignment coordinates to local. 'Global' meaning the coordinates on the entire data array from the index.
+    /// 'Local' meaning the coordinates on the reference that was hit (in range [0, ref_len>).
+    /// final_aln_pos_start is the alignment position within the reference (local to the reference), and is also reversed (subtracted from reference_length) in case orientation == kReverse.
+    int64_t final_aln_pos_start = 0, final_aln_pos_end = 0;
+    index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_start : curr_aln->raw_pos_end, abs_ref_id, 0, NULL, &final_aln_pos_start, NULL);
+    index->RawPositionConverterWithRefId((curr_aln->orientation == kForward) ? curr_aln->raw_pos_end : curr_aln->raw_pos_start, abs_ref_id, 0, NULL, &final_aln_pos_end, NULL);
+    curr_aln->ref_start = final_aln_pos_start; // % ref_len;
+    curr_aln->ref_end = final_aln_pos_end; // % ref_data_len;
+
+    LOG_DEBUG_SPEC("Calling FixAlignmentLeadingTrailingID\n");
+
+    FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
+
+    LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
+    if (CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, abs_ref_id, curr_aln->raw_pos_start) != 0) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Alignment is insane!\n");
+    } else {
+      LOG_DEBUG_SPEC("Alignment is ok!\n");
+    }
+
+    // if (parameters->is_transcriptome) {
+    //   LOG_DEBUG_SPEC("Converting alignment from transcriptome space to genome space.\n");
+    //   ConvertFromTranscriptomeToGenomeAln(parameters, index, transcriptome, curr_aln);
+    // }
+
+    LOG_DEBUG_SPEC("Converting alignment to CIGAR string.\n");
+    curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
+
+    LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
+    curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0], final_aln_pos_start);
+
+    LOG_DEBUG_SPEC("Counting alignment operations.\n");
+    CountAlignmentOperations((std::vector<unsigned char> &) curr_aln->raw_alignment,
+                             read->get_data(), &index->get_data()[0], abs_ref_id,
+                             curr_aln->raw_pos_start, curr_aln->orientation,
+                             parameters->evalue_match, parameters->evalue_mismatch,
+                             parameters->evalue_gap_open, parameters->evalue_gap_extend, true,
+                             &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops,
+                             &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
+
+    LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
+    double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+    double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
+    if (error_rate > parameters->max_error_rate) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+    }
+    if (indel_error_rate > parameters->max_indel_error_rate) {
+      curr_aln->is_aligned = false;
+      LOG_DEBUG_SPEC("Indel error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
+    }
+  }
+
+  // /// Count the number of 'unaligned' alignments.
+  // int32_t num_unaligned = 0;
+  // for (int32_t i=0; i<region_results->get_alignments().size(); i++) { if (region_results->get_alignments()[i].is_aligned == false) num_unaligned += 1; }
+  // if (num_unaligned == region_results->get_alignments().size()) { return ALIGNMENT_NOT_SANE; }
+
+  LOG_DEBUG_SPEC("Adding to intermediate mappings.\n");
+
+  mapping_data->intermediate_mappings.push_back(new_entry);
+
+
+
+
+}
+
+int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index,
+                                     std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read,
+                                     const ProgramParameters *parameters, const EValueParams *evalue_params) {
   if (mapping_data->intermediate_mappings.size() == 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
@@ -804,8 +1007,8 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
       for (int32_t j=0; j<cluster_vector.size(); j++) {
         Cluster& cluster = cluster_vector[j];
         if (cluster.valid == false) { continue; }
-        if (abs_ref_id < 0) { abs_ref_id = ref_id; }
-        assert(abs_ref_id == ref_id);
+        if (abs_ref_id < 0) { abs_ref_id = cluster.region.reference_id; }
+        assert(abs_ref_id == cluster.region.reference_id);
         alignment_anchors.emplace_back(is::AlignmentAnchor(cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end));
         // alignment_clusters.push_back(cluster);
         // printf ("  [i = %ld, j = %ld] Cluster: %s\n", i, j, VerboseCluster(cluster).c_str());
@@ -825,111 +1028,33 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
   int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
   int8_t *ref_data  = (int8_t *) &index->get_data()[0];       // The data of the region.
 
-  auto ret_aln = anchor_aligner->GlobalAnchored(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
+  auto aln_result = anchor_aligner->GlobalAnchored((const char *) read->get_data(), read->get_sequence_length(),
+                                                ((const char *) ref_data), ref_data_len, alignment_anchors);
 
   // Mark introns.
   const int64_t MIN_INTRON_LEN = 10;
-  for (auto& c: ret_aln->cigar) {
+  for (auto& c: aln_result->cigar) {
     if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
       c.op = 'N';
     }
   }
 
-  printf ("GlobalAnchored:\n%s\n\n", CigarToString(ret_aln->cigar).c_str());
+  // printf ("GlobalAnchored:\n%s\n\n", is::CigarToString(aln_result->cigar).c_str());
+
+  // Generate the alignment.
+  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result);
+  mapping_data->final_mapping_ptrs.clear();
+  mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.back()));
 
   // auto ret_aln2 = anchor_aligner->GlobalEndToEnd(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
   // printf ("GlobalEndToEnd:\n%s\n\n", CigarToString(ret_aln2->cigar).c_str());
 
-  return 0;
-
-
-
-
-
-  // if (parameters->mapq_threshold >= 0 && mapping_data->mapping_quality < parameters->mapq_threshold) {
-  //   mapping_data->unmapped_reason += FormatString("__Unmapped_because_mapq_too_low__mapq<%d", parameters->mapq_threshold);
-  //   return 0;
-  // }
-
-  for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
-    auto region_data = mapping_data->final_mapping_ptrs.at(i);
-
-    /// If the region wasn't mapped for some reason, no need to perform alignment.
-    if (region_data->get_mapping_data().is_mapped == false) {
-      region_data->SetAligned(false);
-      region_data->get_mapping_metadata().unmapped_reason += FormatString("__Unmapped_final_region_%d_because__region_data.is_mapped==false", i);
-      LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->final_mapping_ptrs.at(i)->get_mapping_data().is_mapped == false\n"), "GenerateAlignments_");
-      continue;
-    }
-
-    /// Align the region and measure the time for execution.
-    clock_t begin_clock = clock();
-    int ret_aln = AlignRegion(read, index, transcriptome, parameters, evalue_params, true, region_data);
-    clock_t end_clock = clock();
-    double elapsed_secs = double(end_clock - begin_clock) / CLOCKS_PER_SEC;
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n+++++++++++++++++ Alignment elapsed time: %f sec.\n\n", elapsed_secs), "GenerateAlignments_");
-
-    /// Set the number of different regions as an estimate of the mapping quality.
-    for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
-      region_data->get_alignments()[j].num_secondary_alns = mapping_data->num_similar_mappings;
-      region_data->get_alignments()[j].mapping_quality = mapping_data->mapping_quality;
-    }
-
-    /// Set the timing statistics.
-    region_data->get_mapping_metadata().time_region_selection = mapping_data->time_region_selection;
-    region_data->get_mapping_metadata().time_mapping = mapping_data->time_mapping;
-    region_data->get_mapping_metadata().time_alignment = elapsed_secs;
-    region_data->get_mapping_metadata().time_region_seed_lookup = mapping_data->time_region_seed_lookup;
-    region_data->get_mapping_metadata().time_region_hitsort = mapping_data->time_region_hitsort;
-    region_data->get_mapping_metadata().time_region_conversion = mapping_data->time_region_conversion;
-    region_data->get_mapping_metadata().time_region_alloc = mapping_data->time_region_alloc;
-    region_data->get_mapping_metadata().time_region_counting = mapping_data->time_region_counting;
-    mapping_data->time_alignment = elapsed_secs;
-
-    /// Check if something went wrong and the read is unmapped.
-    if (ret_aln != 0) {
-      region_data->get_mapping_metadata().unmapped_reason += FormatString("__AlignRegion_returned_with_error__ret_value=%d", ret_aln);
-      region_data->SetAligned(false);
-
-      /// Keep the output if alignment is insane for debug purposes.
-      if (ret_aln != ALIGNMENT_NOT_SANE) {
-        region_data->get_mapping_metadata().unmapped_reason += FormatString("__(Alignment_is_sane_but_there_is_another_problem)");
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment sane, but ret_aln != 0 (ret_aln = %d)!\n", ret_aln), "GenerateAlignments_");
-        continue;
-      } else {
-        region_data->get_mapping_metadata().unmapped_reason += FormatString("__(Alignment_is_insane)");
-        LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Alignment is insane (ret_aln = %d)!\n", ret_aln), "GenerateAlignments_");
-      }
-    }
-
-    /// Check if the alignment E-value satisfies the threshold.
-    if (parameters->evalue_threshold >= ((double) 0.0)) {
-      for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
-        if (region_data->get_alignments()[j].is_aligned == true && region_data->get_alignments()[j].evalue > parameters->evalue_threshold) {
-          region_data->get_alignments()[j].is_aligned = false;
-          region_data->get_mapping_metadata().unmapped_reason += FormatString("_evalue=%E>%E", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
-          LOG_DEBUG_SPEC("Alignment %d/%d has E-value %E > %E. Marking alignment as unaligned.\n", region_data->get_alignments()[j].evalue, parameters->evalue_threshold);
-        }
-      }
-    }
-  }
-
-  /// Check if after everything, there are no valid alignments. If so, concatenate all unmapped_reasons into the top one.
-  if (mapping_data->IsAligned() == false) {
-    for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
-      auto region_data = mapping_data->final_mapping_ptrs.at(i);
-      for (int32_t j=0; j<region_data->get_alignments().size(); j++) {
-        mapping_data->unmapped_reason += region_data->get_mapping_metadata().unmapped_reason;
-      }
-    }
-  }
-
   if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str()), "GenerateAlignments_");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str()), "GenerateAlignments_");
-    LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("\n\n\n"), "[]");
+    LOG_DEBUG_SPEC("\n\n\n");
+    LOG_DEBUG_SPEC("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str());
+    LOG_DEBUG_SPEC("\n\n\n");
+    LOG_DEBUG_SPEC("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str());
+    LOG_DEBUG_SPEC("\n\n\n");
   }
 
   return 0;

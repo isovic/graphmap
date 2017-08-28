@@ -579,7 +579,7 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
     // Increase coordinates.
     if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X || align_op == EDLIB_I || align_op == EDLIB_S)
       read_position += 1;
-    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X || align_op == EDLIB_D)
+    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL || align_op == EDLIB_X || align_op == EDLIB_D || align_op == EDLIB_N)
       ref_position += 1;
   }
 
@@ -602,6 +602,10 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
  * This method treats 'N' CIGAR operations as deletions and reports them as such.
  */
 std::string AlignmentToMD(std::vector<unsigned char>& alignment, const int8_t *ref_data, int64_t alignment_position_start) {
+  if (alignment.size() == 0) {
+    return std::string("");
+  }
+
   std::vector<CigarOp> cigar_array;
   AlignmentToExtendedCigarArray(&alignment[0], alignment.size(), cigar_array);
 
@@ -707,6 +711,8 @@ int GetAlignmentPatterns(const unsigned char* query, const int64_t queryLength,
  * then they can be removed provided that the start and end reference coordinates of the alignment are moved.
  */
 void FixAlignmentLeadingTrailingID(std::vector<unsigned char>& alignment, int64_t *ref_start, int64_t *ref_end) {
+  if (alignment.size() == 0) { return; }
+
   // Find the D stretch at the front, if any.
   int64_t front_start = 0;
   int64_t front_end = 0;

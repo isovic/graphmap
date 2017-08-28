@@ -145,7 +145,6 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
         mapping_cluster.coverage = clusters[i]->coverage;
         mapping_cluster.num_anchors = clusters[i]->num_anchors;
         mapping_cluster.valid = true;
-        mapping_cluster.ref_id = local_score->get_region().reference_id % indexes[0]->get_num_sequences_forward();
         mapping_cluster.region = local_score->get_region();
         mapping_cluster.orientation = (local_score->get_region().reference_id < indexes[0]->get_num_sequences_forward()) ? kForward : kReverse;
         mapping_info.clusters.push_back(mapping_cluster);
