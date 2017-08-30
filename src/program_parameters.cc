@@ -20,7 +20,7 @@ int ProcessArgsGraphMap(int argc, char **argv, ProgramParameters *parameters)
 //  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
   argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");
 #ifndef RELEASE_VERSION
-  argparser.AddCompositeArgument("rnaseq", "--ambiguity 0.5 --secondary --min-bin-perc 0.01 --bin-step 0.99 --max-regions 20 --mapq -1 --spliced");
+  argparser.AddCompositeArgument("rnaseq", "--ambiguity 0.5 --secondary --min-bin-perc 0.01 --bin-step 0.99 --max-regions 20 --mapq -1 --spliced --chain-min-cov 40");
 #endif
 
 //  argparser.AddCompositeArgument("overlap", "-a anchor -w normal --overlapper --evalue 1e0 --ambiguity 0.50 --min-bin-perc 0.10 --bin-step 0.90 --max-regions -1 --mapq -1 --secondary");

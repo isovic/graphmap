@@ -8,12 +8,14 @@
 #include "graphmap/graphmap.h"
 #include "graphmap/filter_anchors.h"
 
-int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, MappingData* mapping_data,
+                                                std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes,
+                                                const SingleSequence* read, const ProgramParameters* parameters, int64_t allowed_anchor_overlap) {
   LOG_DEBUG_SPEC("Entering function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB] current_readid = %ld, current_local_score = %ld\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024), read->get_sequence_id(), local_score->get_scores_id());
   int lcskpp_length = 0;
   std::vector<int> lcskpp_indices;
   // CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices, indexes[0]->get_shape_max_width() - 1);
-  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices, 0);
+  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices, allowed_anchor_overlap);
   if (lcskpp_length == 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "ExperimentalPostProcessRegionWithLCS");
     return 1;
@@ -70,7 +72,7 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   // Actual L1 calculation.
   int ret_L1 = CalculateL1ParametersWithMaximumDeviation_(local_score, cluster_indices, maximum_allowed_deviation, &k, &l, &sigma_L2, &confidence_L1);
   // Sanity check.
-  if (ret_L1) {
+  if (ret_L1 && parameters->composite_parameters != "rnaseq") {
     LOG_DEBUG_SPEC("An error occured, L1 function (I) returned with %d!\n", ret_L1);
     if (ret_L1 == 1) {  LOG_DEBUG_SPEC("  lcskpp_indices.size() == 0\n"); }
     else if (ret_L1 == 2) { LOG_DEBUG_SPEC("  num_points_under_max_dev_threshold == 0\n"); }

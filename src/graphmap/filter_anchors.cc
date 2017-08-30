@@ -183,18 +183,21 @@ int FilterAnchorsByChaining(const SingleSequence* read, ScoreRegistry* local_sco
     double max_score_gap = 1.0, max_score_mismatch = 1.0;
     int64_t max_score_id = -1;
     int64_t next_id = i;
-    while (next_id < lcskpp_indices.size()) {
+
+    // Note: I moved this from within the loop to here!
       if (chains.back().size() == 0) {
         int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
         GetPositionsFromRegistry(registry_entries, lcskpp_indices, next_id, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
         int32_t cov_bases = std::max((qpos_end - qpos_start), (rpos_end - rpos_start));
         chains.back().push_back(lcskpp_indices[next_id]);
         chain_cov_bases.back() += cov_bases;
-        LOG_DEBUG_SPEC_NO_HEADER("  (I) Adding ancho %ld (chains.back().size() == 0): start = [%d, %d], end = [%d, %d]\n", 0, qpos_start, rpos_start, qpos_end, rpos_end);
+        LOG_DEBUG_SPEC_NO_HEADER("  (I) Adding anchor %ld (chains.back().size() == 0): start = [%d, %d], end = [%d, %d]\n", 0, qpos_start, rpos_start, qpos_end, rpos_end);
 //        fflush(stdout);
 //        next_id += 1;
         continue;
       }
+
+    while (next_id < lcskpp_indices.size()) {
 
       int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
       GetPositionsFromRegistry2(registry_entries, chains.back().back(), &qpos_start, &rpos_start, &qpos_end, &rpos_end);
@@ -356,11 +359,11 @@ int GenerateClusters(int64_t min_num_anchors_in_cluster, int64_t min_cluster_len
 
       LOG_DEBUG_SPEC("  Adding a new lcskpp index to an empty cluster. Cluster ID: %ld.\n", ret_clusters.size());
 
-//      printf ("Tu sam 1! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
-//      int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
-//      GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
-//      printf ("    start: [%d, %d], end: [%d, %d], i = %ld\n", qpos_start, rpos_start, qpos_end, rpos_end, i);
-//      fflush(stdout);
+    //  printf ("Tu sam 1! i = %ld / %ld, new_cluster->lcskpp_indices.size() = %ld\n", i, (lcskpp_indices.size() - 1), new_cluster->lcskpp_indices.size());
+    //  int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;
+    //  GetPositionsFromRegistry(registry_entries, lcskpp_indices, i, &qpos_start, &rpos_start, &qpos_end, &rpos_end);
+    //  printf ("    start: [%d, %d], end: [%d, %d], i = %ld\n", qpos_start, rpos_start, qpos_end, rpos_end, i);
+    //  fflush(stdout);
 
     } else {
       int32_t qpos_start = 0, rpos_start = 0, qpos_end = 0, rpos_end = 0;

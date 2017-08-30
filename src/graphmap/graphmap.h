@@ -79,7 +79,8 @@ class GraphMap {
   std::string GenerateUnmappedSamLine_(const SingleSequence *read, const std::string& unmapped_reason, int64_t verbose_sam_output) const;
 
   // Calculates the LCSk of the anchors using the Fenwick tree.
-  void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist, int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices, int64_t allowed_begin_offset=0);
+  void CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist,
+                                            int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices, int64_t allowed_anchor_overlap);
 
   std::shared_ptr<is::MinimizerIndex> SetupIndex_(std::shared_ptr<SequenceFile> ref, const std::string &index_path, const std::string &shape,
                   const ProgramParameters &parameters, int64_t num_threads) const;
@@ -94,7 +95,7 @@ class GraphMap {
 
   // Perform the LCSk calculation and simple filtering of the anchores that survived the LCSk.
   int SemiglobalPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
-  int AnchoredPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters);
+  int AnchoredPostProcessRegionWithLCS_(ScoreRegistry *local_score, MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence *read, const ProgramParameters *parameters, int64_t allowed_anchor_overlap);
 
   // Performs a knapsack algorithm implementation on the set of clusters, to determine the most likely RNA-seq alignment. Clusters will be marked as valid or invalid. Valid should stay in play, but invalid filtered out.
   int RNAFilterClusters_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters);

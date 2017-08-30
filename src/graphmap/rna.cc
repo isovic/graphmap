@@ -149,8 +149,9 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, std::vector<std::sha
 			cluster_data[i].push_back(&cluster);
 
 			#ifdef VERBOSE_RNASEQ_DEBUG
-				LOG_DEBUG_SPEC_NO_HEADER ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n", cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
-						cluster.coverage, i, j);
+				LOG_DEBUG_SPEC_NO_HEADER ("readStart: %lld, readEnd: %lld, refStart: %lld, refEnd: %lld, coveredBases: %d, i: %d, j: %d\n",
+																	cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end,
+																	cluster.coverage, i, j);
 			#endif
     }
   }

@@ -26,13 +26,19 @@
 // Then starting positions on the reference.
 #define MASK_128_STARTR     ((unsigned __int128) (0x00000000FFFFFFFF0000000000000000))
 
-// Assumes vertices are sorted.
-// If use_l1_filtering is true, then all vertices/anchors that have coordinates further than allowed_dist from the L1 line are filtered out.
-// Otherwise, all vertices will be used.
-// The L1 line is specified with k = 1 and l parameters (y = k*x + l).
-// allowed_begin_offset is the allowed number of overlapping bases of two neighboring anchors.
+/*
+  Assumes vertices are sorted.
+  If use_l1_filtering is true, then all vertices/anchors that have coordinates further than allowed_dist from the L1 line are filtered out.
+  Otherwise, all vertices will be used.
+  The L1 line is specified with k = 1 and l parameters (y = k*x + l).
+
+  @allowed_anchor_overlap is the allowed number of overlapping bases of two neighboring anchors.
+                          If > 0, each anchor's end coordinate will be subtracted by this number to achieve the result.
+                          If < 0, each anchor's end coordinate will be equal to (start + 1). This is important for performing LCSk directly
+                          on seed hits, as many of them can overlap, and LCSk would normally filter those out and reduce coverage.
+*/
 void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bool use_l1_filtering, int64_t l, int64_t allowed_dist,
-                                                    int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices, int64_t allowed_begin_offset) {
+                                                    int* ret_lcskpp_length, std::vector<int> *ret_lcskpp_indices, int64_t allowed_anchor_overlap) {
   uint32_t num_vertices = vertices->num_vertices;
 
   if (num_vertices <= 0)
@@ -48,6 +54,8 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
 
   int64_t num_events = 0;
   int64_t lcskpp_length = 0;
+
+  uint32_t allowed_anchor_overlap_uint = (uint32_t) allowed_anchor_overlap;
 
   if (use_l1_filtering == false) {
     int64_t min_ref = vertices->reference_starts[0], min_query = vertices->query_starts[0];
@@ -70,6 +78,15 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
       uint32_t query_end = vertices->query_ends[i] - min_query;
       uint32_t dist_ref = ref_end - ref_start;
       uint32_t dist_query = query_end - query_start;
+
+      if (allowed_anchor_overlap > 0) {
+        // Allowed anchor overlap by subtraction of the fuzz amount. Performs a sanity check for the size of elements because of unsigned int.
+        query_end = (allowed_anchor_overlap_uint <= query_end) ? (std::max(query_start + 1, query_end - allowed_anchor_overlap_uint)) : query_end;
+        ref_end = (allowed_anchor_overlap_uint <= ref_end) ? (std::max(ref_start + 1, ref_end - allowed_anchor_overlap_uint)) : ref_end;
+      } else {  // This is useful for a large number of short seeds which may overlap. LCSk would otherwise remove many of overlapping seeds.
+        query_end = query_start + 1;
+        ref_end = ref_start + 1;
+      }
 
       unsigned __int128 event1 = (((unsigned __int128) ref_start) << (8 * 8)) | (((unsigned __int128) query_start) << (4 * 8)) | (((unsigned __int128) (i + num_vertices)));
       events[num_events] = event1;
@@ -201,7 +218,7 @@ void GraphMap::CalcLCSFromLocalScoresCacheFriendly_(const Vertices *vertices, bo
     int primary_diagonal = n - 1 + i - j;
 
     if (is_beginning) { // begin
-      std::pair<int, int> prev_dp = dp_col_max.get(j + allowed_begin_offset);
+      std::pair<int, int> prev_dp = dp_col_max.get(j);
       uint64_t k_length = matches_dists_ref[idx];
       dp[idx] = k_length;      // k
       recon[idx] = -1;
@@ -328,7 +345,7 @@ int GraphMap::SemiglobalPostProcessRegionWithLCS_(ScoreRegistry* local_score, Ma
   #endif
 
 //  CalcLCSFromLocalScores2(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
-  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices);
+  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), false, 0, 0, &lcskpp_length, &lcskpp_indices, 0);
 
   if (lcskpp_length == 0) {
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("Current local scores: %ld, lcskpp_length == 0 || best_score == NULL\n", local_score->get_scores_id()), "PostProcessRegionWithLCS_");
@@ -361,7 +378,7 @@ int GraphMap::SemiglobalPostProcessRegionWithLCS_(ScoreRegistry* local_score, Ma
   lcskpp_indices.clear();
 
   // Call the LCSk again, only on the bricks within the L1 bounded window.
-  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), true, l, allowed_L1_deviation, &lcskpp_length, &lcskpp_indices);
+  CalcLCSFromLocalScoresCacheFriendly_(&(local_score->get_registry_entries()), true, l, allowed_L1_deviation, &lcskpp_length, &lcskpp_indices, 0);
 
   // Count the number of covered bases, and find the first and last element of the LCSk.
   int64_t indexfirst = -1;
