@@ -17,6 +17,8 @@
 
 namespace is {
 
+static constexpr int64_t LARGE_NEGATIVE_INT64 = std::numeric_limits<int64_t>::min() + 10000;
+
 enum class AlignmentReturnValue { // Strongly typed enum, C++11 feature.
   OK,                   // Everything went ok.
   Suboptimal,            // Alignment stepped out of defined band. Result is not optimal.
@@ -54,12 +56,18 @@ class AlignmentPosition {
 
 class AlignmentResult {
  public:
-  AlignmentResult() : score(0), edit_dist(0), position(), k(-1), rv(AlignmentReturnValue::AlignmentNotPerformed) {
+  AlignmentResult() : score(0), edit_dist(0), position(),
+                      max_score(LARGE_NEGATIVE_INT64),
+                      max_q_pos(-1),
+                      max_t_pos(-1), k(-1), rv(AlignmentReturnValue::AlignmentNotPerformed) {
   }
 
   AlignmentResult(const AlignmentResult& op) :
     score(op.score), edit_dist(op.edit_dist),
-    position(op.position), cigar(op.cigar), k(op.k), rv(op.rv) { // Copy constructor.
+    position(op.position), cigar(op.cigar),
+    max_score(op.max_score), max_q_pos(op.max_q_pos),
+    max_t_pos(op.max_t_pos),
+    k(op.k), rv(op.rv) { // Copy constructor.
   }
 
   ~AlignmentResult() { };
@@ -69,6 +77,9 @@ class AlignmentResult {
     edit_dist = op.edit_dist;
     position = op.position;
     cigar = op.cigar;
+    max_score = op.max_score;
+    max_q_pos = op.max_q_pos;
+    max_t_pos = op.max_t_pos;
     k = op.k;
     rv = op.rv;
     return *this;
@@ -80,6 +91,7 @@ class AlignmentResult {
   is::AlignmentPosition position;                   // There can be multiple alignments with the same score.
                                                     // Only the first position and the corresponding alignment
   std::vector<is::CigarOp> cigar;                   // are reported
+  int64_t max_score, max_q_pos, max_t_pos;          // Maximum score in the alignment, and the coordinates on query and target.
   int64_t k;                                        // Value of band k used in the final alignment.
   AlignmentReturnValue rv;                          // Return value of the aligner.
 };

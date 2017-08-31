@@ -108,6 +108,66 @@ is::AlignmentReturnValue AlignerKSW2::Global(const char* qseq, int64_t qlen, con
   return is::AlignmentReturnValue::OK;
 }
 
+is::AlignmentReturnValue AlignerKSW2::Extend(const char* qseq, int64_t qlen, const char* tseq, int64_t tlen, int32_t bandwidth, int32_t zdrop) {
+  result_ = std::shared_ptr<is::AlignmentResult>(new is::AlignmentResult);
+
+  if (qseq == NULL || tseq == NULL || qlen <= 0 || tlen <= 0) {
+    return is::AlignmentReturnValue::InvalidOptions;
+  }
+
+	void *km = 0;
+	ksw_extz_t ez;  // Alignment result.
+	int flag = KSW_EZ_SCORE_ONLY | KSW_EZ_EXTZ_ONLY;
+
+  #ifdef HAVE_KALLOC
+    km = km_init();
+  #endif
+
+	memset(&ez, 0, sizeof(ksw_extz_t));
+
+  auto mat = GenerateSimpleMatchMatrix<int8_t>((int8_t) p_.match, (int8_t) p_.mismatch, 5);
+  // In GraphMap definition, penalties are negative. KSW2 expects positive values for affine pieces.
+  int8_t q = -p_.w[0].v;  // Gap open. The intercept component of the affine function.
+  int8_t e = -p_.w[0].u;  // Gap extend. The slope of the affine function.
+  int8_t q2 = -p_.w[1].v;
+  int8_t e2 = -p_.w[1].u;
+
+  KSW2GlobalAlnWrapper_(km, (const int8_t*) qseq, qlen, (const int8_t*) tseq, tlen, 5, &mat[0], q, e, q2, e2, bandwidth, zdrop, flag, &ez);
+
+  // print_aln("Query", "Target", &ez);
+
+  result_->score = ez.score;
+  result_->position = is::AlignmentPosition(0, qlen, 0, tlen);
+  result_->k = -1;
+  result_->rv = is::AlignmentReturnValue::OK;
+  result_->max_score = ez.max;
+  result_->max_q_pos = ez.max_q;
+  result_->max_t_pos = ez.max_t;
+
+  result_->cigar.clear();
+  std::vector<is::CigarOp> basic_cigar;
+  for (size_t i=0; i<ez.n_cigar; i++) {
+    basic_cigar.push_back(is::CigarOp("MID"[ez.cigar[i]&0xf], ez.cigar[i]>>4));
+  }
+  result_->cigar = is::ConvertBasicToExtCIGAR(qseq, qlen, tseq, tlen, basic_cigar);
+
+  result_->edit_dist = EditDistFromExtCIGAR(result_->cigar);
+
+  // printf ("Converted CIGAR:\n");
+  // for (size_t i=0; i<result_->cigar.size(); i++) {
+  //   printf ("%d%c", result_->cigar[i].count, result_->cigar[i].op);
+  // }
+  // printf ("\n");
+  // printf ("Edit distance: %ld\n", result_->edit_dist);
+
+  kfree(km, ez.cigar);
+  #ifdef HAVE_KALLOC
+    km_destroy(km);
+  #endif
+
+  return is::AlignmentReturnValue::OK;
+}
+
 is::AlignmentReturnValue AlignerKSW2::Local(const char* q, int64_t qlen, const char* t, int64_t tlen) {
   return is::AlignmentReturnValue::NotImplementedYet;
 }
@@ -146,5 +206,7 @@ void AlignerKSW2::KSW2GlobalAlnWrapper_(void *km,
 	// 	exit(1);
 	// }
 }
+
+
 
 }

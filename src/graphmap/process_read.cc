@@ -1029,9 +1029,13 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
   int64_t ref_data_start = index->get_reference_starting_pos()[abs_ref_id];
   int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
   int8_t *ref_data  = (int8_t *) &index->get_data()[0];       // The data of the region.
+  int64_t total_ref_data_len = index->get_data_length();
 
-  auto aln_result = anchor_aligner->GlobalAnchored((const char *) read->get_data(), read->get_sequence_length(),
-                                                ((const char *) ref_data), ref_data_len, alignment_anchors);
+  // auto aln_result = anchor_aligner->GlobalAnchored((const char *) read->get_data(), read->get_sequence_length(),
+  //                                               ((const char *) ref_data), total_ref_data_len, alignment_anchors);
+
+  auto aln_result = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+                                                ((const char *) ref_data), total_ref_data_len, alignment_anchors, -1, 400);
 
   // Mark introns.
   const int64_t MIN_INTRON_LEN = 10;

@@ -34,6 +34,8 @@ class AlignerKSW2 : public AlignerBase {
 
   AlignmentReturnValue Semiglobal(const char* q, int64_t qlen, const char* t, int64_t tlen);   // Semiglobal alignment mode.
 
+  AlignmentReturnValue Extend(const char* qseq, int64_t qlen, const char* tseq, int64_t tlen, int32_t bandwidth, int32_t zdrop);
+
   std::shared_ptr<AlignmentResult> getResults();
 
  protected:
