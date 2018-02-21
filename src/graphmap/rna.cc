@@ -16,6 +16,11 @@ void ClearFile(std::string &out_file);
 int VerbosePathGraphEntryCluster(std::string &out_file, const Region &region, const MappingResults& mapping_results, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes,
                                   const SingleSequence* read, const ProgramParameters* parameters);
 
+struct ClusterGroup {
+	int start;
+	int stop;
+};
+
 struct MyCluster {
 	int64_t readStart;
 	int64_t readEnd;
@@ -87,6 +92,82 @@ void empty_clusters(std::vector<MyCluster> *clusters) {
   }
 }
 
+void GraphMap::RNAFilterClustersWithHugeGaps_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+    std::vector<Cluster> clustersTmp;
+    std::vector<ClusterGroup> clustersGroups;
+
+    for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
+  	  MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->mapping_data();
+  	  auto& cluster_vector = mapping_results.clusters;
+      if (mapping_data->intermediate_mappings[i]->mapping_data().is_mapped == true) {
+        for (int32_t j=0; j<cluster_vector.size(); j++) {
+          Cluster& cluster = cluster_vector[j];
+          clustersTmp.push_back(cluster);
+        }
+      }
+    }
+
+    if (clustersTmp.size() > 1) {
+	    int start = 0;
+	    int stop = 0;
+	    Cluster currentCluster = clustersTmp[0];
+
+	    for (int i = 1; i < clustersTmp.size(); i++) {
+	        Cluster cluster = clustersTmp[i];
+	        // Currently set 100000 as gap size, this should be discussed
+	        if (abs(cluster.ref.start - currentCluster.ref.end) < 100000) {
+	        		stop = i;
+	        } else {
+	        		ClusterGroup group;
+	        		group.start = start;
+	        		group.stop = stop;
+	        		clustersGroups.push_back(group);
+	        		start = i;
+	        		stop = i;
+	        }
+			currentCluster = cluster;
+	    }
+
+		ClusterGroup group;
+		group.start = start;
+		group.stop = stop;
+		clustersGroups.push_back(group);
+
+		int maxCoverage = 0;
+		ClusterGroup bestGroup = clustersGroups[0];
+
+	    for (int i = 0; i < clustersGroups.size(); i++) {
+	    		int coverage = 0;
+	    		ClusterGroup tmpGroup;
+	    		for(int j = tmpGroup.start; j < tmpGroup.stop; j++) {
+	    			coverage += clustersTmp[j].coverage;
+	    		}
+	    		if(coverage > maxCoverage) {
+	    			maxCoverage = coverage;
+	    			bestGroup = tmpGroup;
+	    		}
+	    }
+
+		int index = 0;
+
+	    for (int32_t i=0; i<mapping_data->intermediate_mappings.size(); i++) {
+	  	  MappingResults& mapping_results = mapping_data->intermediate_mappings[i]->mapping_data();
+	  	  auto& cluster_vector = mapping_results.clusters;
+	      if (mapping_data->intermediate_mappings[i]->mapping_data().is_mapped == true) {
+	        for (int32_t j=0; j<cluster_vector.size(); j++) {
+	          Cluster& cluster = cluster_vector[j];
+	          if(index < bestGroup.start || index > bestGroup.stop) {
+	        	  	  cluster.valid = false;
+	          }
+	          index += 1;
+	        }
+	      }
+	    }
+
+	    int ret_value_rna_fin2 = CleanupIntermediateMappings_(mapping_data, indexes, read, parameters);
+    }
+}
+
 // This function filters clusters in different mapping regions, to preserve only the ones which might be construed as valid RNA-seq mappings.
 int GraphMap::RNAFilterClusters_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
 
@@ -139,7 +220,7 @@ int GraphMap::RNAFilterClusters_(MappingData* mapping_data, std::vector<std::sha
     for (int32_t j=0; j<cluster_vector.size(); j++) {
 			#ifdef VERBOSE_RNASEQ_DEBUG
 				LOG_DEBUG_SPEC_NO_HEADER("\tj: %d\n", j);
-      #endif
+      	  	#endif
 
 			Cluster& cluster = cluster_vector[j];
 			clusterSet[reverseStrand].insert(MyCluster(cluster.query.start, std::max(cluster.query.start, cluster.query.end - FUZZ),

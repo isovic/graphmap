@@ -70,7 +70,7 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
   if ( anchors.front().qstart > 0) {
     result->cigar.insert(result->cigar.begin(), is::CigarOp('S', anchors.front().qstart));
   }
-  if ((qlen - anchors.front().qend) > 0) {
+  if ((qlen - anchors.back().qend) > 0) {
     result->cigar.insert(result->cigar.end(), is::CigarOp('S', (qlen - anchors.back().qend)));
   }
 
@@ -127,41 +127,11 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithExtend(const c
   int64_t max_q_pos_front = anchors.front().qend - (ext_front->max_q_pos + 1); // The "+1" because end coordinate is non-inclusive in GraphMap.
   int64_t max_t_pos_front = anchors.front().rend - (ext_front->max_t_pos + 1); // The max position is inclusive on the other hand.
   // If extend did not pan out (e.g. band is too narrow), do not extend.
-  if (ext_front->max_q_pos >= 0 && ext_front->max_t_pos >= 0) {
+  // Added to fix crash when extending makes rstart bigger than rend
+  if (ext_front->max_q_pos >= 0 && ext_front->max_t_pos >= 0 && max_t_pos_front < updated_anchors.front().rstart && max_q_pos_front < updated_anchors.front().qstart) {
     updated_anchors.front().qstart = max_q_pos_front;
     updated_anchors.front().rstart = max_t_pos_front;
   }
-
-  // printf ("####################################\n");
-  // // printf ("Front rev Q:\n%s\n\nFront rev T:\n%s\n\n", rev_q_front.c_str(), rev_t_front.c_str());
-  // // printf ("Back fwd Q:\n");
-  // // for (int64_t i=anchors.back().qend; i<qlen; i++) {
-  // //   printf ("%c", query[i]);
-  // // }
-  // // printf ("\n\n");
-  // // printf ("Back fwd T:\n");
-  // // for (int64_t i=anchors.back().rend; i<rlen; i++) {
-  // //   printf ("%c", ref[i]);
-  // // }
-  // // printf ("\n\n");
-
-  // for (int64_t i=0; i<anchors.size(); i++) {
-  //   printf ("  anchor[%ld]: qstart = %ld, qend = %ld, qlen = %ld, rstart = %ld, rend = %ld, rlen = %ld\n",
-  //           i, anchors[i].qstart, anchors[i].qend, qlen, anchors[i].rstart, anchors[i].rend);
-  // }
-  // printf ("\n");
-  // printf ("max_q_pos_back = %ld\n", max_q_pos_back);
-  // printf ("max_t_pos_back = %ld\n", max_t_pos_back);
-  // printf ("ext_back->max_q_pos = %ld\n", ext_back->max_q_pos);
-  // printf ("ext_back->max_t_pos = %ld\n", ext_back->max_t_pos);
-  // printf ("####################################\n");
-  // printf ("\n");
-  // printf ("max_q_pos_front = %ld\n", max_q_pos_front);
-  // printf ("max_t_pos_front = %ld\n", max_t_pos_front);
-  // printf ("ext_front->max_q_pos = %ld\n", ext_front->max_q_pos);
-  // printf ("ext_front->max_t_pos = %ld\n", ext_front->max_t_pos);
-  // printf ("####################################\n");
-  // fflush(stdout);
 
   // Align the updated coordinates.
   return GlobalAnchored(query, qlen, ref, rlen, updated_anchors);

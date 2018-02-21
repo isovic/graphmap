@@ -10,6 +10,8 @@
 #include <algorithm>
 #include "graphmap/graphmap.h"
 
+#include <iostream>
+
 #include "log_system/log_system.h"
 #include "utility/utility_general.h"
 #include "alignment/alignment.h"
@@ -222,10 +224,9 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
     int ret_value_rna_filt = RNAFilterClusters_(mapping_data, indexes, read, parameters);
     int ret_value_rna_fin = CleanupIntermediateMappings_(mapping_data, indexes, read, parameters);
 
-//    for (int32_t i=0; i<all_local_scores.size(); i++) {
-//      if (all_local_scores[i]) { delete all_local_scores[i]; }
-//    }
-//    all_local_scores.clear();
+    	if(mapping_data->intermediate_mappings.size() > 0) {
+    		RNAFilterClustersWithHugeGaps_(mapping_data, indexes, read, parameters);
+    	}
   }
 
   mapping_data->vertices.Clear();
@@ -837,9 +838,9 @@ std::vector<uint8_t> CigarToAlignmentArray(const std::vector<is::CigarOp> &cigar
   return ret;
 }
 
-void HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> &index,
+bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> &index,
                              const SingleSequence *read, const ProgramParameters *parameters,
-                             int64_t abs_ref_id, std::shared_ptr<is::AlignmentResult> aln_result) {
+                             int64_t abs_ref_id, std::shared_ptr<is::AlignmentResult> aln_result, double* score) {
 
   int64_t reference_start = index->get_reference_starting_pos()[abs_ref_id];
   int64_t reference_length = index->get_reference_lengths()[abs_ref_id % index->get_num_sequences_forward()];
@@ -897,11 +898,17 @@ void HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
 
   // Trebam dodati clipping baze u CIGAR output od AnchorAlignera
 
+  double bestScore = -10000000;
+
+  bool isGlobalyAligned = false;
+
   /// Fill out statistics for each alignment (E-value calculation, couting of CIGAR operations, etc.) and check if the alignments are sane.
   for (int32_t i=0; i<new_entry->get_alignments().size(); i++) {
     AlignmentResults *curr_aln = &new_entry->get_alignments()[i];
 
-    if (curr_aln->is_aligned == false) { continue; }
+    if (curr_aln->is_aligned == false) {
+    		continue;
+    }
 
     /// Verbose debug.
     LOG_DEBUG_SPEC("Alignment part %d / %d:\n", (i + 1), new_entry->get_alignments().size());
@@ -956,6 +963,21 @@ void HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
                              &curr_aln->num_eq_ops, &curr_aln->num_x_ops, &curr_aln->num_i_ops,
                              &curr_aln->num_d_ops, &curr_aln->alignment_score, &curr_aln->edit_distance, &curr_aln->nonclipped_length);
 
+
+    double ratio = (double) curr_aln->alignment_score / read->get_sequence_length();
+    if (ratio > bestScore) {
+    		bestScore = ratio;
+	}
+//    if ((ratio < 1.0)) {
+//    		curr_aln->is_aligned = false;
+//	}
+
+//  	std::ofstream myfile;
+//  	myfile.open ("/Users/josipmaric/Projects/data/txts/scores_for_pacbio_cutted.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//  	myfile << curr_aln->alignment_score << std::endl;
+//  	myfile << read->get_sequence_length() << std::endl;
+//    myfile.close();
+
     LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
     double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
     double indel_error_rate = ((double) curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
@@ -967,6 +989,8 @@ void HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
       curr_aln->is_aligned = false;
       LOG_DEBUG_SPEC("Indel error rate is too high! error_rate = %lf, parameters->max_error_rate = %lf\n", error_rate, parameters->max_error_rate);
     }
+
+    isGlobalyAligned |= curr_aln->is_aligned;
   }
 
   // /// Count the number of 'unaligned' alignments.
@@ -978,9 +1002,257 @@ void HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
 
   mapping_data->intermediate_mappings.push_back(new_entry);
 
+  *score = bestScore;
+  return isGlobalyAligned;
 
+}
 
+/////////////////////////
+///// EXON FINDER ///////
+/////////////////////////
 
+struct ExonMatch {
+	int start;
+	int stop;
+};
+
+int getNumberOfSBack(std::string read) {
+	int number = 0;
+	int base = 1;
+	for(int i = read.length()-2; i >= 0; i--) {
+		if(isdigit(read[i])) {
+			int znam = read[i] - '0';
+			number += base * znam;
+			base *= 10;
+		} else {
+			break;
+		}
+	}
+
+	return number;
+}
+
+int getNumberOfSFront(std::string read) {
+	int number = 0;
+	for(int i = 0; i < read.length(); i++) {
+		if(isdigit(read[i])) {
+			int znam = read[i] - '0';
+			number *= 10;
+			number += znam;
+		} else {
+			break;
+		}
+	}
+
+	return number;
+}
+
+int hasSOnBegining(std::string read) {
+	for (int i = 0; i < read.length(); i++) {
+		if (isdigit(read[i])) {
+		} else if (read[i] == 'S') {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+	return 0;
+}
+
+int hasSOnEnd(std::string cigar) {
+	if (cigar[cigar.length()-1] == 'S') {
+		return 1;
+	}
+	return 0;
+}
+
+int getLengthOfBackClipping(std::string cigar) {
+	if (hasSOnEnd(cigar)) {
+		int length = getNumberOfSBack(cigar);
+		if (length <=15) {
+			return 0;
+		}
+		return length;
+	}
+	return 0;
+}
+
+int getLengthOfFrontClipping(std::string cigar) {
+	if (hasSOnBegining(cigar)) {
+		int length = getNumberOfSFront(cigar);
+		if (length <=15) {
+			return 0;
+		}
+		return length;
+	}
+	return 0;
+}
+
+std::string convertCigarString(std::vector<is::CigarOp> cigarIn) {
+	  std::string cigar;
+
+	  for (auto& c: cigarIn) {
+		  int tmp = (int) c.count;
+		  char str[20] = {0};
+		  std::sprintf(str, "%d", tmp);
+		  cigar += str;
+		  cigar += c.op;
+	  }
+
+	  return  cigar;
+}
+
+ExonMatch findExonMatch(const char *ref, const SingleSequence *read, std::shared_ptr<is::AlignerBase> aligner) {
+
+	auto aln_result_extended = aligner->getResults();
+	std::string cigar;
+
+	int biggestMatch = 0;
+	int bigMatchStart = 0;
+	int bigMatchStop = 0;
+	int currentMatch = 0;
+	int currentMatchStart = 0;
+	int currentMatchStop = 0;
+
+	for (auto& c: aln_result_extended->cigar) {
+		int numberOfBases = (int) c.count;
+		char str[20] = {0};
+		std::sprintf(str, "%d", numberOfBases);
+		cigar += str;
+		cigar += c.op;
+
+		if (c.op == 'D') {
+			if (biggestMatch < currentMatch) {
+				if (abs(currentMatch - (currentMatchStop - currentMatchStart)) < 12) {
+					biggestMatch = currentMatch;
+					bigMatchStart = currentMatchStart;
+					bigMatchStop = currentMatchStop;
+				}
+			}
+			currentMatch = 0;
+			currentMatchStart = bigMatchStop + numberOfBases;
+			currentMatchStop = bigMatchStop + numberOfBases;
+		} else if (c.op == '=') {
+			currentMatch += numberOfBases;
+			currentMatchStop += numberOfBases;
+		} else {
+			currentMatchStop += numberOfBases;
+		}
+	}
+
+	ExonMatch em = ExonMatch();
+	em.start = bigMatchStart;
+	em.stop = bigMatchStop;
+	return em;
+}
+
+PathGraphEntry* ExtendAlignmentForAnotherExonIfNeeded(std::shared_ptr<is::AlignmentResult> aln_result,
+		const char *ref,
+		std::vector<is::AlignmentAnchor> alignment_anchors,
+		const SingleSequence *read,
+		int64_t abs_ref_id,
+		const ProgramParameters *parameters,
+		MappingData *mapping_data,
+		int64_t total_ref_data_len,
+		std::shared_ptr<is::MinimizerIndex> index,
+		double* score) {
+
+	is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
+	is::AlignmentOptions aln_opt;
+
+	double back_extended_score;
+	double front_extended_score;
+
+	auto aligner = is::createAlignerKSW2(p, aln_opt);
+	auto anchor_aligner = is::createAnchorAligner(aligner);
+
+	std::string cigar = convertCigarString(aln_result->cigar);
+	int backClippingLength = getLengthOfBackClipping(cigar);
+
+	int windowLength = 10000;
+	const char *readPointer = (const char *) read->get_data();
+
+	PathGraphEntry* entry_candidate = NULL;
+
+	if (backClippingLength > 15) {
+		aligner->Global(readPointer+(read->get_sequence_length()-backClippingLength), read->get_sequence_length(), ref+alignment_anchors.back().rend, windowLength);
+
+		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
+
+		if ((exonMatch.stop - exonMatch.start) / (double) backClippingLength > 0.4) {
+			alignment_anchors.emplace_back(is::AlignmentAnchor(read->get_sequence_length()-backClippingLength, read->get_sequence_length(), alignment_anchors.back().rend + exonMatch.start, alignment_anchors.back().rend + exonMatch.stop));
+
+			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400);
+			std::string cigar_upgraded;
+
+			for (auto& c: aln_result_upgraded->cigar) {
+				int numberOfBases = (int) c.count;
+				char str[20] = {0};
+				std::sprintf(str, "%d", numberOfBases);
+				cigar_upgraded += str;
+				cigar_upgraded += c.op;
+			}
+
+			const int64_t MIN_INTRON_LEN = 10;
+			for (auto& c: aln_result_upgraded->cigar) {
+				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
+					c.op = 'N';
+				}
+			}
+
+			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &back_extended_score);
+			if (isAligned) {
+				entry_candidate = mapping_data->intermediate_mappings.back();
+				*score = back_extended_score;
+			} else {
+				alignment_anchors.pop_back();
+			}
+		}
+	}
+
+	int frontClippingLength = getLengthOfFrontClipping(cigar);
+
+	if (frontClippingLength > 15) {
+
+		aligner->Global(readPointer, frontClippingLength, ref+alignment_anchors.front().rstart-windowLength, windowLength);
+		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
+
+		if ((exonMatch.stop - exonMatch.start) / (double) frontClippingLength > 0.4) {
+			alignment_anchors.insert(alignment_anchors.begin(), is::AlignmentAnchor(0, backClippingLength, (alignment_anchors.front().rstart-windowLength) + exonMatch.start, (alignment_anchors.front().rstart-windowLength) + exonMatch.stop));
+
+			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400);
+			std::string cigar_upgraded;
+
+			for (auto& c: aln_result_upgraded->cigar) {
+				int numberOfBases = (int) c.count;
+				char str[20] = {0};
+				std::sprintf(str, "%d", numberOfBases);
+				cigar_upgraded += str;
+				cigar_upgraded += c.op;
+			}
+
+			const int64_t MIN_INTRON_LEN = 10;
+			for (auto& c: aln_result_upgraded->cigar) {
+				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
+					c.op = 'N';
+				}
+			}
+
+			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &front_extended_score);
+			if (isAligned) {
+				if (entry_candidate == NULL || front_extended_score > back_extended_score) {
+					entry_candidate = mapping_data->intermediate_mappings.back();
+					*score = front_extended_score;
+				}
+			} else {
+				alignment_anchors.erase(alignment_anchors.begin());
+			}
+		}
+	}
+
+	return entry_candidate;
 }
 
 int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index,
@@ -990,6 +1262,11 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
   }
+
+//  std::ofstream myfile;
+//  myfile.open ("/Users/josipmaric/Projects/data/txts/scores_for_pacbio_cutted.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//  myfile << read->get_header() << std::endl;
+//  myfile.close();
 
   EvaluateMappings_(mapping_data, read, parameters);
   CollectFinalMappingsAndMapQ_(true, mapping_data, read, parameters);
@@ -1010,10 +1287,10 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
         Cluster& cluster = cluster_vector[j];
         if (cluster.valid == false) { continue; }
         if (abs_ref_id < 0) { abs_ref_id = cluster.region.reference_id; }
-        assert(abs_ref_id == cluster.region.reference_id);
+//        assert(abs_ref_id == cluster.region.reference_id);
         alignment_anchors.emplace_back(is::AlignmentAnchor(cluster.query.start, cluster.query.end, cluster.ref.start, cluster.ref.end));
         // alignment_clusters.push_back(cluster);
-        // printf ("  [i = %ld, j = %ld] Cluster: %s\n", i, j, VerboseCluster(cluster).c_str());
+//         printf ("  [i = %ld, j = %ld] Cluster: %s\n", i, j, VerboseCluster(cluster).c_str());
       }
     }
   }
@@ -1037,6 +1314,23 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
   auto aln_result = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
                                                 ((const char *) ref_data), total_ref_data_len, alignment_anchors, -1, 400);
 
+//
+//	if (aln_result->score < 0) {
+//		return 0;
+//	}
+
+  const char *ref = (const char *) ref_data;
+
+  std::vector<is::AlignmentAnchor> alignment_anchors_copy;
+
+  for (int var = 0; var < alignment_anchors.size(); ++var) {
+	  alignment_anchors_copy.emplace_back(alignment_anchors[var]);
+  }
+
+  double extended_score = -10000;
+
+  PathGraphEntry* extended_entry = ExtendAlignmentForAnotherExonIfNeeded(aln_result, ref, alignment_anchors_copy, read, abs_ref_id, parameters, mapping_data, total_ref_data_len, index, &extended_score);
+
   // Mark introns.
   const int64_t MIN_INTRON_LEN = 10;
   for (auto& c: aln_result->cigar) {
@@ -1045,23 +1339,27 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
     }
   }
 
-  // printf ("GlobalAnchored:\n%s\n\n", is::CigarToString(aln_result->cigar).c_str());
+//   printf ("GlobalAnchored:\n%s\n\n", is::CigarToString(aln_result->cigar).c_str());
 
   // Generate the alignment.
-  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result);
+  double score;
+  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result, &score);
+
   mapping_data->final_mapping_ptrs.clear();
-  mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.back()));
+
+  if (extended_entry == NULL) {
+	  mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.back()));
+	  return 0;
+  }
+
+  if(score > extended_score) {
+	  mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.back()));
+  } else {
+	  mapping_data->final_mapping_ptrs.push_back(extended_entry);
+  }
 
   // auto ret_aln2 = anchor_aligner->GlobalEndToEnd(((const char *) ref_data) + ref_data_start, (const char *) read->get_data(), alignment_anchors);
   // printf ("GlobalEndToEnd:\n%s\n\n", CigarToString(ret_aln2->cigar).c_str());
-
-  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-    LOG_DEBUG_SPEC("\n\n\n");
-    LOG_DEBUG_SPEC("Intermediate mappings:\n%s", mapping_data->VerboseIntermediateMappingsToString(index, read).c_str());
-    LOG_DEBUG_SPEC("\n\n\n");
-    LOG_DEBUG_SPEC("Final mappings:\n%s", mapping_data->VerboseFinalMappingsToString(index, read).c_str());
-    LOG_DEBUG_SPEC("\n\n\n");
-  }
 
   return 0;
 }

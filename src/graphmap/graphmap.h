@@ -99,6 +99,7 @@ class GraphMap {
 
   // Performs a knapsack algorithm implementation on the set of clusters, to determine the most likely RNA-seq alignment. Clusters will be marked as valid or invalid. Valid should stay in play, but invalid filtered out.
   int RNAFilterClusters_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
+  void RNAFilterClustersWithHugeGaps_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
   int CleanupIntermediateMappings_(MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters);
 
   //

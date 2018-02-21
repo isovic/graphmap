@@ -177,7 +177,9 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
   int64_t num_bins_above_min = 0;
   for (int64_t i = 0; i < (indexes[0]->get_num_sequences_forward() * 2); i++) {
     for (int64_t j = 0; j < bins_chromosome[i].size(); j++) {
-      if (bins_chromosome[i][j] > min_allowed_bin_value) { num_bins_above_min += 1; }
+      if (bins_chromosome[i][j] > min_allowed_bin_value) {
+    	  	  num_bins_above_min += 1;
+      }
     }
   }
 

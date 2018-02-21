@@ -446,7 +446,8 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 //
 //  if (parameters->num_threads > 0)
 
-  int64_t num_threads = (int64_t) parameters->num_threads;
+//  int64_t num_threads = (int64_t) parameters->num_threads;
+  int64_t num_threads = 1;
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.\n", num_threads), "ProcessReads");
 
   // Set up the starting and ending read index.
