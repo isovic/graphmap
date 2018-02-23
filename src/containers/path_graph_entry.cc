@@ -292,6 +292,15 @@ void PathGraphEntry::AddAlignmentData(AlignmentResults alignment_info) {
   alignments_.push_back(alignment_info);
 }
 
+void PathGraphEntry::update_ref_coordinates(int translated_start) {
+	if (alignments_.size() > 0) {
+		int length = alignments_[alignments_.size()-1].ref_end - alignments_[alignments_.size()-1].ref_start;
+		alignments_[alignments_.size()-1].ref_start = translated_start;
+		alignments_[alignments_.size()-1].ref_end = translated_start + length;
+	}
+}
+
+
 std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults &alignment_info, const MappingMetadata &mapping_metadata, bool is_primary, int64_t verbose_sam_output) const {
   std::stringstream ss;
 

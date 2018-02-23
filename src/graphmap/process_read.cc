@@ -17,7 +17,7 @@
 #include "alignment/alignment.h"
 #include "utility/tictoc.h"
 
-int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params) {
+int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *low_scored_reads, std::vector<RealignmentStructure *> *high_scored_reads) {
   std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes = indexes_;
   std::shared_ptr<is::Transcriptome> transcriptome = transcriptome_;
 
@@ -239,7 +239,7 @@ int GraphMap::ProcessRead(MappingData *mapping_data, const SingleSequence *read,
   begin_clock = clock();
 
   if (parameters->composite_parameters == "rnaseq") {
-    RNAGenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
+    RNAGenerateAlignments_(order_number, mapping_data, indexes[0], transcriptome, read, parameters, evalue_params, low_scored_reads, high_scored_reads);
   } else {
     GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
   }
@@ -972,6 +972,18 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
 //    		curr_aln->is_aligned = false;
 //	}
 
+
+//    if (ratio > 2.5) {
+//    	  std::ofstream out_file;
+//    	  int32_t region_start = aln_result->position.tstart; // Starting position of the alignment within a region (offset from the beginning of the region).
+//    	  int32_t region_end = aln_result->position.tend;   // End position of the alignment within a region (offset from the beginning of the region).
+//    	  out_file.open ("reference_regions.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//    	  out_file << region_start;
+//    	  out_file << "-";
+//    	  out_file << region_end << std::endl;
+//    	  out_file.close();
+//	}
+
 //  	std::ofstream myfile;
 //  	myfile.open ("/Users/josipmaric/Projects/data/txts/scores_for_pacbio_cutted.txt", std::fstream::in | std::fstream::out | std::fstream::app);
 //  	myfile << curr_aln->alignment_score << std::endl;
@@ -1010,11 +1022,6 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
 /////////////////////////
 ///// EXON FINDER ///////
 /////////////////////////
-
-struct ExonMatch {
-	int start;
-	int stop;
-};
 
 int getNumberOfSBack(std::string read) {
 	int number = 0;
@@ -1255,10 +1262,13 @@ PathGraphEntry* ExtendAlignmentForAnotherExonIfNeeded(std::shared_ptr<is::Alignm
 	return entry_candidate;
 }
 
-int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index,
+int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index,
                                      std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read,
-                                     const ProgramParameters *parameters, const EValueParams *evalue_params) {
+                                     const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *low_scored_reads, std::vector<RealignmentStructure *> *high_scored_reads) {
   if (mapping_data->intermediate_mappings.size() == 0) {
+	RealignmentStructure *rs = new RealignmentStructure(order_number, read, NULL);
+	low_scored_reads->push_back(rs);
+
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
   }
@@ -1348,13 +1358,34 @@ int GraphMap::RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<
   mapping_data->final_mapping_ptrs.clear();
 
   if (extended_entry == NULL) {
+	  if (score < 0.4) {
+		  RealignmentStructure *rs = new RealignmentStructure(order_number, read, mapping_data->intermediate_mappings.back());
+		  low_scored_reads->push_back(rs);
+	  } else {
+		  RealignmentStructure *rs = new RealignmentStructure(order_number, read, mapping_data->intermediate_mappings.back());
+		  high_scored_reads->push_back(rs);
+	  }
 	  mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.back()));
 	  return 0;
   }
 
   if(score > extended_score) {
+	  if (score < 0.4) {
+		  RealignmentStructure *rs = new RealignmentStructure(order_number, read, mapping_data->intermediate_mappings.back());
+		  low_scored_reads->push_back(rs);
+	  } else {
+		  RealignmentStructure *rs = new RealignmentStructure(order_number, read, mapping_data->intermediate_mappings.back());
+		  high_scored_reads->push_back(rs);
+	  }
 	  mapping_data->final_mapping_ptrs.push_back((mapping_data->intermediate_mappings.back()));
   } else {
+	  if (extended_score < 0.4) {
+		  RealignmentStructure *rs = new RealignmentStructure(order_number, read, extended_entry);
+		  low_scored_reads->push_back(rs);
+	  } else {
+		  RealignmentStructure *rs = new RealignmentStructure(order_number, read, extended_entry);
+		  high_scored_reads->push_back(rs);
+	  }
 	  mapping_data->final_mapping_ptrs.push_back(extended_entry);
   }
 

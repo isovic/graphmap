@@ -87,6 +87,8 @@ class PathGraphEntry {
   MappingMetadata& get_mapping_metadata();
   void set_mapping_metadata(MappingMetadata& mappingMetadata);
 
+  void update_ref_coordinates(int translated_start);
+
  private:
   const SingleSequence *read_;
   std::shared_ptr<is::MinimizerIndex> index_;

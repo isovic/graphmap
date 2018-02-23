@@ -14,7 +14,7 @@
 #include "utility/utility_general.h"
 #include "transcriptome.h"
 #include "index/index_util.h"
-
+#include <iostream>
 
 
 GraphMap::GraphMap() : transcriptome_(nullptr) {
@@ -28,6 +28,8 @@ GraphMap::~GraphMap() {
 void GraphMap::Run(ProgramParameters& parameters) {
   clock_t time_start = clock();
   clock_t last_time = time_start;
+
+  parameters.output_in_original_order = true;
 
   // Set the verbose level for the execution of this program.
   LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
@@ -264,6 +266,23 @@ int GraphMap::BuildIndexes(ProgramParameters &parameters) {
   return 0;
 }
 
+int GraphMap::BuildCuttedIndex(ProgramParameters parameters) {
+
+  // Division by 2 to to avoid hyperthreading cores, and limit
+  // to 24 to avoid clogging a shared SMP.
+  int64_t num_threads = (parameters.num_threads > 0) ?
+                              parameters.num_threads :
+                              std::min(24, ((int) omp_get_num_procs()) / 2);
+
+  std::shared_ptr<SequenceFile> refs = nullptr;
+  refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path+"cut.fa"));
+
+  std::string index_path = parameters.index_file+"cut.fa";
+
+  indexes_.push_back(SetupIndex_(refs, index_path, "11110111101111", parameters, num_threads));
+  return 0;
+}
+
 //void DeprecatedBuildIndex(ProgramParameters &parameters) {
 //  // Run away, you are free now!
 //  for (int32_t i=0; i<indexes_.size(); i++) {
@@ -433,6 +452,24 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   reads.CloseFileAfterBatchLoading();
 }
 
+int get_new_position(std::vector<ExonMatch> covered_regions, int pos) {
+	if (pos == 0) {
+		return 0;
+	}
+	int sum = 0;
+	for (int i = 1; i < covered_regions.size(); i++) {
+		ExonMatch d = covered_regions[i];
+		sum += d.stop-d.start;
+		sum += 8000;
+		if (pos < sum) {
+			int lastStart = (int) (sum - (4000 + (d.stop-d.start)));
+			int movement = pos - lastStart;
+			return (int) (d.start + movement);
+		}
+	}
+	return pos;
+}
+
 int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
   int64_t num_reads = reads->get_sequences().size();
   std::vector<std::string> sam_lines;
@@ -474,6 +511,24 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
   int64_t num_mapped=0, num_unmapped=0, num_ambiguous=0, num_errors=0;
   int64_t num_reads_processed_in_thread_0 = 0;
 
+  std::vector<RealignmentStructure *> low_scored_reads;
+  std::vector<RealignmentStructure *> high_scored_reads;
+
+  std::shared_ptr<is::MinimizerIndex> first_index = indexes_[0];
+  int64_t ref_data_start = first_index->get_reference_starting_pos()[0];
+  int64_t ref_data_len = first_index->get_reference_lengths()[0];
+
+  std::cout << "start" << std::endl;
+  std::cout << ref_data_start << " " << ref_data_len << std::endl;
+
+  int64_t *coverage_array = new int64_t[ref_data_len];
+
+  for (int var = 0; var < ref_data_len; ++var) {
+	  coverage_array[var] = 0;
+  }
+
+  std::cout << "start 2" << std::endl;
+
   EValueParams *evalue_params;
   SetupScorer((char *) "EDNA_FULL_5_4", indexes_[0]->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
 
@@ -514,13 +569,12 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
     std::string sam_line = "";
     // The actual interesting part.
     auto mapping_data = std::unique_ptr<MappingData>(new MappingData);
-    ProcessRead(&(*mapping_data), reads->get_sequences()[i], parameters, evalue_params);
+    ProcessRead(i, &(*mapping_data), reads->get_sequences()[i], parameters, evalue_params, &low_scored_reads, &high_scored_reads);
 //    ProcessRead2(&mapping_data, indexes_, transcriptome_, reads->get_sequences()[i], parameters, evalue_params);
 
     // Generate the output.
     mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &(*mapping_data), sam_line);
     mapping_data->clear();
-//    mapping_data.reset();
 
     // Keep the counts.
     if (mapped_state == STATE_MAPPED) {
@@ -552,6 +606,96 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
       sam_lines[i] = sam_line;
     }
   }
+
+  std::string ref_name = indexes_.front()->get_headers()[0];
+  indexes_.clear();
+
+  for (int var = 0; var < high_scored_reads.size(); ++var) {
+	  RealignmentStructure* rs = high_scored_reads[var];
+	  for (int i = rs->start; i < rs->stop; ++i) {
+		  coverage_array[i] += 1;
+	  }
+  }
+
+  std::vector<ExonMatch> covered_regions;
+
+  int current_start = 0;
+  int current_stop = 0;
+
+  int sum = 0;
+  for (int i = 0; i < ref_data_len; ++i) {
+	  if (coverage_array[i] > 0) {
+		  if (current_stop+10000 < i) {
+			  ExonMatch em = ExonMatch();
+			  em.start = current_start;
+			  em.stop = current_stop;
+			  current_start = i;
+			  current_stop = i;
+			  covered_regions.push_back(em);
+		  } else {
+			  current_stop = i;
+		  }
+		  sum += 1;
+	  }
+  }
+
+  int8_t *ref_data_int  = (int8_t *) &first_index->get_data()[0];
+  const char *ref_data = (const char *) ref_data_int;
+
+  std::string cutted_reference;
+
+  for (int i = 1; i < covered_regions.size(); ++i) {
+	  for (int j = covered_regions[i].start-4000; j < covered_regions[i].stop+4000; ++j) {
+		  cutted_reference += ref_data[j];
+	  }
+  }
+
+  std::ofstream myfile;
+  std::string cutted_reference_path = parameters->reference_path + "cut.fa";
+  myfile.open (cutted_reference_path, std::fstream::in | std::fstream::out | std::fstream::app);
+  myfile << ref_name << std::endl;
+  myfile << cutted_reference << std::endl;
+  myfile.close();
+
+  BuildCuttedIndex(*parameters);
+
+  std::vector<RealignmentStructure *> scored_reads_realigned;
+
+  std::vector<std::string> sam_lines_upgraded;
+
+  for (int var = 0; var < low_scored_reads.size(); ++var) {
+	  std::string sam_line_realigned = "";
+
+	  int old_score = low_scored_reads[var]->score;
+
+	  auto mapping_data_realigned = std::unique_ptr<MappingData>(new MappingData);
+	  ProcessRead(0, &(*mapping_data_realigned), low_scored_reads[var]->sequence, parameters, evalue_params, &scored_reads_realigned, &scored_reads_realigned);
+
+	  if (scored_reads_realigned.size() > 0) {
+		  RealignmentStructure *rs = scored_reads_realigned.back();
+		  if (rs->score > old_score) {
+			  if (mapping_data_realigned->final_mapping_ptrs.size() > 0) {
+				  PathGraphEntry* entry = mapping_data_realigned->final_mapping_ptrs.back();
+				  std::vector<AlignmentResults> alignments = entry->get_alignments();
+				  if (alignments.size() > 0) {
+					  AlignmentResults ar = alignments.back();
+					  int translated_start = get_new_position(covered_regions, ar.ref_start);
+					  entry->update_ref_coordinates(translated_start);
+
+					  CollectAlignments(low_scored_reads[var]->sequence, parameters, &(*mapping_data_realigned), sam_line_realigned);
+					  mapping_data_realigned->clear();
+
+					  sam_lines_upgraded.push_back(sam_line_realigned);
+				      sam_lines[low_scored_reads[var]->order_number] = sam_line_realigned;
+				  }
+			  }
+		  }
+	  }
+  }
+
+  delete [] coverage_array;
+
+  std::cout << "gotovo" << std::endl;
 
   (*ret_num_mapped) = num_mapped;
   (*ret_num_unmapped) = num_unmapped;

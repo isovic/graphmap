@@ -33,6 +33,41 @@
 #include "containers/vertices.h"
 #include "transcriptome.h"
 
+struct ExonMatch {
+	int start;
+	int stop;
+};
+
+class RealignmentStructure {
+public:
+	int order_number;
+	const SingleSequence* sequence;
+	int start;
+	int stop;
+	double score;
+	bool isAligned;
+	RealignmentStructure(int _order_number, const SingleSequence* _sequence, PathGraphEntry* _entry) {
+		order_number = _order_number;
+		sequence = _sequence;
+		if (_entry != NULL) {
+			std::vector<AlignmentResults> alignments =_entry->get_alignments();
+			if (alignments.size() > 0) {
+				AlignmentResults ar = alignments.back();
+				start = ar.ref_start;
+				stop = ar.ref_end;
+				score = ar.alignment_score;
+			} else {
+				start = 0;
+				stop = 0;
+				score = -1000000;
+			}
+			isAligned = true;
+		} else {
+			isAligned = false;
+		}
+	}
+};
+
 class GraphMap {
  public:
   GraphMap();
@@ -43,6 +78,7 @@ class GraphMap {
 
   // Generates or loads the index of the reference genome.
   int BuildIndexes(ProgramParameters &parameters);
+  int BuildCuttedIndex(ProgramParameters parameters);
 
   // Loads reads from a file in batches of given size (in MiB), or all at once.
   void ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *fp_out);
@@ -51,7 +87,7 @@ class GraphMap {
   int ProcessSequenceFileInParallel(ProgramParameters *parameters, const SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped);
 
   // Processes a single read from the batch of loaded reads.
-  int ProcessRead(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
+  int ProcessRead(int order_number, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *low_scored_reads, std::vector<RealignmentStructure *> *high_scored_reads);
   int ProcessRead2(MappingData *mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
 
   // Collects alignments from the given mapping_data and converts them into an appropriate output format (string).
@@ -67,7 +103,6 @@ class GraphMap {
 
 
  private:
-//  std::vector<Index *> indexes_;
   std::vector<std::shared_ptr<is::MinimizerIndex>> indexes_;
   std::shared_ptr<is::Transcriptome> transcriptome_;
 
@@ -105,7 +140,7 @@ class GraphMap {
   //
   int EvaluateMappings_(MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters);
   int GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
-  int RNAGenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params);
+  int RNAGenerateAlignments_(int order_number, MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index, std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *low_scored_reads, std::vector<RealignmentStructure *> *high_scored_reads);
 
   // Helper functions.
   int CalculateL1ParametersWithMaximumDeviation_(ScoreRegistry *local_score, std::vector<int> &lcskpp_indices, float maximum_allowed_deviation, int64_t *ret_k, int64_t *ret_l, float *ret_sigma_L2, float *ret_confidence_L1);
