@@ -200,3 +200,21 @@ rebuildmac: cleanmac mac
 # divsufsort:
 # 	cd libs; ./build-libdivsufsort.sh
 
+USERNAME=""
+TAG="latest"
+
+ifeq ($(strip $(USERNAME)), "")
+	BASE_TAG=""
+else
+	BASE_TAG=$(USERNAME)/
+endif
+
+docker-build: modules
+	docker build -t $(BASE_TAG)graphmap:$(TAG) .
+
+.PHONY: docker-build
+
+docker-push: docker-build
+	docker push $(BASE_TAG)graphmap:$(TAG)
+
+.PHONY: docker-push

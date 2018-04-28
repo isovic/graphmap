@@ -69,6 +69,11 @@ Ra attempts to create *de novo* assemblies from raw nanopore and PacBio reads wi
 Currently, development of a new spliced-alignment mode for mapping RNA-seq reads is under way.  
 Description of the current effort as well as how to reach the experimental implementation can be found here: [doc/rnaseq.md](doc/rnaseq.md).  
 
+### Docker quick start
+```
+make docker-build
+docker run --rm -it -v <data_dir>:/data -w /data -it --rm graphmap align -C -r reference.fa -d reads.fasta -o output.sam
+```
 
 ### Quick start on Linux x64
 ```  

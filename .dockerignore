@@ -1,0 +1,22 @@
+deprecated/
+temp/
+temp/*
+obj/
+obj_debug/
+obj_linux/
+obj_mac/
+obj_test/
+obj_testext/
+obj_extcigar/
+# bin/graphmap-not_release
+# bin/graphmap-debug
+bin/
+.project
+.cproject
+.settings/
+reproducibility/*/
+test-data/
+
+!reproducibility/*.py
+!reproducibility/*.md
+Dockerfile
