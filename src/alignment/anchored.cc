@@ -876,7 +876,9 @@ int AnchoredAlignmentNew(AlignmentFunctionType AlignmentFunctionNW, AlignmentFun
       curr_aln->cigar = AlignmentToCigar((unsigned char *) &(curr_aln->alignment[0]), curr_aln->alignment.size(), parameters->use_extended_cigar);
 
       LOG_DEBUG_SPEC("Converting alignment to MD string.\n");
-      curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0], final_aln_pos_start);
+      //curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0], final_aln_pos_start);
+      //MDC: fixed bug with generating MD
+      curr_aln->md = AlignmentToMD((std::vector<unsigned char> &) curr_aln->alignment, &index->get_data()[0] + index->get_reference_starting_pos()[ref_id], final_aln_pos_start);
 
 //    printf ("final_aln_pos_start = %ld\n", final_aln_pos_start);
 //    printf ("Query:\n%s\nTarget:\n%s\n", GetSubstring((char *) read->get_data(), read->get_data_length()).c_str(), GetSubstring((char *) index->get_data() + final_aln_pos_start, read->get_data_length()).c_str());
