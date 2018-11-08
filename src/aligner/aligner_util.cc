@@ -70,20 +70,16 @@ int64_t EditDistFromExtCIGAR(const std::vector<is::CigarOp>& extended_cigar) {
   return edit_dist;
 }
 
-std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::CigarOp>& cigar, int64_t qstart, int64_t qend) {
+std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::CigarOp>& cigar, int64_t qstart, int64_t qend, int64_t *cigar_length) {
   std::vector<is::CigarOp> ret;
 
-  // printf ("qstart = %ld, qend = %ld\n", qstart, qend);
-
   int64_t qpos = 0;
+
+  int lengthOfRef = 0;
 
   for (auto& c: cigar) {
 
     int64_t qpos_next = (c.op == 'M' || c.op == '=' || c.op == 'X' || c.op == 'I' || c.op == 'S') ? (qpos + c.count) : qpos;
-
-    // printf ("\n");
-    // printf ("(1) Entered: c = %ld%c\n", c.count, c.op);
-    // printf ("(2) qpos = %ld, qpos_next = %ld\n", qpos, qpos_next);
 
     if (qpos > qend) { break; }
 
@@ -99,10 +95,16 @@ std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::Ci
 
     if ((e - b) > 0) {
       ret.emplace_back(is::CigarOp(c.op, (e - b)));
+
+      if (c.op != 'I') {
+    	  lengthOfRef += (e - b);
+      }
     }
 
     qpos = qpos_next;
   }
+
+  *cigar_length = lengthOfRef;
 
   return ret;
 }

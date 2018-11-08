@@ -7,7 +7,7 @@
 
 #include "alignment/cigargen.h"
 #include "utility/utility_general.h"
-
+#include <iostream>
 
 
 std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength, bool extended_format) {
@@ -517,6 +517,30 @@ std::string PrintAlignmentToString(const unsigned char* query, const int queryLe
     return ss.str();
 }
 
+int CalculateAlignmentScore(std::vector<unsigned char>& alignment, int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend) {
+
+  int64_t alignment_score = 0;
+  int64_t start_op = 0, end_op = alignment.size() - 1;
+
+  for (int i = start_op; i <= end_op; i++) {
+    char align_op = 255;
+    align_op = alignment[i];
+
+    if (align_op == EDLIB_M || align_op == EDLIB_EQUAL) {
+    		alignment_score += match;
+    } else if(align_op == EDLIB_X) {
+    		alignment_score -= mismatch;
+    }
+    else if (align_op == EDLIB_I) {
+    		alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open) : gap_extend);
+    } else if (align_op == EDLIB_D) {
+    		alignment_score -= ((i == 0 || (i > 0 && alignment[i-1] != align_op)) ? (gap_open) : gap_extend);
+    }
+  }
+
+  return alignment_score;
+}
+
 int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start, SeqOrientation orientation,
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,
                              bool skip_leading_and_trailing_insertions,
@@ -552,7 +576,6 @@ int CountAlignmentOperations(std::vector<unsigned char>& alignment, const int8_t
       if (read_data[read_position] == ref_data[alignment_position_start + ref_position]) {
         num_eq += 1;
         alignment_score += match;
-
       } else {
         num_x += 1;
         alignment_score -= mismatch;

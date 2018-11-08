@@ -9,7 +9,7 @@
 
 
 
-int GraphMap::GraphMap_(ScoreRegistry* local_score, std::shared_ptr<is::MinimizerIndex> index_read, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::GraphMap_(ScoreRegistry* local_score, std::shared_ptr<is::MinimizerIndex> index_read, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<const uint128_t*>& hits,std::vector<int64_t> &num_hits, std::vector<uint64_t> &keys) {
   LOG_DEBUG_SPEC("Entered function. [time: %.2f sec, RSS: %ld MB, peakRSS: %ld MB]\n", (((float) (clock())) / CLOCKS_PER_SEC), getCurrentRSS() / (1024 * 1024), getPeakRSS() / (1024 * 1024));
 
   uint64_t readlength = read->get_sequence_length();
@@ -46,9 +46,15 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, std::shared_ptr<is::Minimize
     data_end = region_length_joined - parameters->k_graph + 1;
   }
 
+  int8_t *seed = (int8_t *) &(data_ptr[data_start]);
+  uint64_t buffer = index_read->CalculateInitialBuffer(seed, parameters->k_graph);
+
   // Go through all kmers from the reference (bounded by region coordinates).
   for (uint64_t i = data_start; i <= data_end; i++) {  // i+=parameters->kmer_step) {
-    ProcessKmerCacheFriendly_((int8_t *) &(data_ptr[i]), i, local_score, mapping_data, index_read, read, parameters);
+	bool is_start = i == data_start;
+	int8_t data = is_start ? (int8_t) (data_ptr[i]) : (int8_t) (data_ptr[i + parameters->k_graph - 1]);
+	ProcessKmerCacheFriendly_(&data, i, local_score, mapping_data, index_read, read, parameters, hits, num_hits, keys, &buffer, is_start);
+
     mapping_data->iteration += 1;
   }
 
@@ -70,16 +76,12 @@ int GraphMap::GraphMap_(ScoreRegistry* local_score, std::shared_ptr<is::Minimize
   return 0;
 }
 
-int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, std::shared_ptr<is::MinimizerIndex> index_read, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_position, ScoreRegistry *local_score, MappingData* mapping_data, std::shared_ptr<is::MinimizerIndex> index_read, const SingleSequence* read, const ProgramParameters* parameters, std::vector<const uint128_t*>& hits_ptr,std::vector<int64_t> &num_hits_ptr, std::vector<uint64_t> &keys, uint64_t *buffer, bool is_start) {
 
   int64_t k = parameters->k_graph;
   int64_t num_links = parameters->num_links;
 
-//  std::vector<uint128_t> hits;
-//  int ret_search = index_read->FindAndJoin(kmer, k, false, hits);
-  std::vector<const uint128_t*> hits_ptr;
-  std::vector<int64_t> num_hits_ptr;
-  int ret_search = index_read->Find(kmer, k, false, hits_ptr, num_hits_ptr);
+  int ret_search = is_start ? index_read->Find(kmer, k, false, hits_ptr, num_hits_ptr) : index_read->FindWithBuffer(kmer, k, buffer, false, hits_ptr, num_hits_ptr, keys);
 
   if (ret_search == 1) {      // There are no hits for the current kmer.
     return 1;
@@ -89,25 +91,10 @@ int GraphMap::ProcessKmerCacheFriendly_(int8_t *kmer, int64_t kmer_start_positio
     return 2;
   }
 
-  // Sorting ensures the correct order of processing vertices.
-  // Hits are sorted in descending order, because for each vertex, l previous vertices
-  // are checked. Sorting solves the problem of repeats that occur very near each other
-  // (for short kmers very often, i.e. any homopolymer run longer than k), and remove the
-  // need for a backbufffer, thus reduced memory consumption and faster execution.
-//  std::vector<int64_t> sorted_index_vector;
-//  sorted_index_vector.resize(num_hits);
-//  for (int64_t i=0; i<num_hits; i++) {
-//    sorted_index_vector[i] = hits[i + hits_start];
-//  }
-//  std::sort(sorted_index_vector.begin(), sorted_index_vector.end(), std::greater<int64_t>());
-
   int64_t num_vertices = mapping_data->vertices.num_vertices;
 
-//  int64_t *hits_start_ptr = &hits[hits_start];
-
   for (int64_t i = 0; i < (num_hits_ptr[0]); i++) {
-    // Each hit position is a location on the read. Reference position is passed through function parameter kmer_start.
-    int64_t hit = is::MinimizerIndex::seed_position(hits_ptr[0][i]);
+    int64_t hit = is::Seed::seed_position(hits_ptr[0][i]);
     int64_t position = num_vertices - hit - 1;
     int64_t best_vertex_idx = -1;
 

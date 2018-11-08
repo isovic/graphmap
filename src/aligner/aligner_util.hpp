@@ -28,7 +28,7 @@ std::vector<is::CigarOp> ConvertBasicToExtCIGAR(const char* qseq, int64_t qlen,
 
 int64_t EditDistFromExtCIGAR(const std::vector<is::CigarOp>& extended_cigar);
 
-std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::CigarOp>& cigar, int64_t qstart, int64_t qend);
+std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::CigarOp>& cigar, int64_t qstart, int64_t qend, int64_t *cigar_length);
 
 std::string CigarToString(const std::vector<is::CigarOp>& cigar);
 

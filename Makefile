@@ -16,7 +16,7 @@ CODEBASE_SRC_FOLDERS = $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" 
 # $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" -exec echo "-I"{}"/*/" \;)
 
 # ? allows override by user using env var
-GCC ?= /usr/local/bin/g++-7	
+GCC ?= g++
 # define variables for GCC version check here
 GCC_MAJOR_VERSION_GE_4 := $(shell expr `$(GCC) -dumpversion | cut -f1 -d.` \>= 4)
 GCC_MINOR_VERSION_GE_7 := $(shell expr `$(GCC) -dumpversion | cut -f2 -d.` \>= 7)
@@ -44,11 +44,11 @@ CC_LIBS = -static-libgcc -static-libstdc++ -D__cplusplus=201103L
 # INCLUDE = -I"./src/" -I"/usr/include/" -I"src/libs/seqan-library-1.4.2/include"
 INCLUDE = -I"./src/" -I"/usr/include/" -I"$(CODEBASE)/seqlib/src/libs/seqan-library-2.0.1/include" -I"$(CODEBASE)/seqlib/src/libs/libdivsufsort-2.0.1-64bit/" $(CODEBASE_SRC_FOLDERS)
 
-CC_FLAGS_DEBUG = -O0 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
-CC_FLAGS_RELEASE = -DRELEASE_VERSION -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread # -march=native
-CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
-CC_FLAGS_NOT_RELEASE = -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
-CC_FLAGS_NOT_RELEASE_EXT = -O3 -DUSE_EXTENDED_CIGAR_FORMAT -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
+CC_FLAGS_DEBUG = -O3 -g -rdynamic -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
+CC_FLAGS_RELEASE = -DRELEASE_VERSION -g -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread # -march=native
+CC_FLAGS_EXTCIGAR = -DRELEASE_VERSION -DUSE_EXTENDED_CIGAR_FORMAT -g -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -pthread -march=native
+CC_FLAGS_NOT_RELEASE = -g -O3 -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
+CC_FLAGS_NOT_RELEASE_EXT = -g -O3 -DUSE_EXTENDED_CIGAR_FORMAT -fdata-sections -ffunction-sections -c -fmessage-length=0 -ffreestanding -fopenmp -m64 -std=c++11 -Werror=return-type -Wuninitialized -pthread -march=native
 LD_FLAGS = -static-libgcc -static-libstdc++ -m64 -ffreestanding
 # LD_LIBS = -lpthread -lgomp -lm -lz -ldivsufsort64
 LD_LIBS = -lpthread -lgomp -lm -lz

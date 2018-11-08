@@ -42,13 +42,14 @@ class AnchorAligner {
   /* Sorts the anchors, and aligns every neighboring pair of anchors. It does not extend beyond
      the ends of the first and last anchor.
   */
-  std::shared_ptr<AlignmentResult> GlobalAnchored(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors);
+  std::shared_ptr<AlignmentResult> GlobalAnchored(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors, bool type);
+  std::shared_ptr<AlignmentResult> GlobalAnchoredWithClipping(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors);
 
   /* Sorts the anchors, and aligns every neighboring pair of anchors. This extends alignments beyond
      the ends of the first and last anchor in an attempt to produce end-to-end alignment.
   */
   std::shared_ptr<AlignmentResult> GlobalAnchoredWithExtend(const char *query, int64_t qlen, const char *ref, int64_t rlen,
-                                                            const std::vector<AlignmentAnchor>& anchors, int32_t bandwidth, int32_t zdrop);
+                                                            const std::vector<AlignmentAnchor>& anchors, int32_t bandwidth, int32_t zdrop, bool type);
 
  private:
   AnchorAligner(const AnchorAligner&) = delete;

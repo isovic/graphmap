@@ -28,7 +28,7 @@ class AlignerKSW2 : public AlignerBase {
 
   ~AlignerKSW2();
 
-  AlignmentReturnValue Global(const char* q, int64_t qlen, const char* t, int64_t tlen);   // Global alignment mode.
+  AlignmentReturnValue Global(const char* q, int64_t qlen, const char* t, int64_t tlen, bool type);   // Global alignment mode.
 
   AlignmentReturnValue Local(const char* q, int64_t qlen, const char* t, int64_t tlen);    // Local alignment mode.
 
@@ -51,7 +51,7 @@ class AlignerKSW2 : public AlignerBase {
                         const int8_t *qseq_, int qlen, const int8_t *tseq_, int tlen,
                         int8_t m, const int8_t *mat,
                         int8_t q, int8_t e, int8_t q2, int8_t e2,
-                        int w, int zdrop, int flag, ksw_extz_t *ez);
+                        int w, int zdrop, int flag, ksw_extz_t *ez, bool type);
 
   const is::PiecewisePenalties& p_;
   const is::AlignmentOptions& opt_;

@@ -94,8 +94,8 @@ int Owler::CollectHits_(std::shared_ptr<is::MinimizerIndex> index, const SingleS
 }
 
 void Owler::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::MinimizerIndex> index, bool threshold_hits, double count_cutoff, bool is_overlapper, int64_t qid, std::vector<uint128_t> &all_hits) {
-  int64_t key = is::MinimizerIndex::seed_key(seed);
-  int32_t pos_read_int32 = is::MinimizerIndex::seed_position(seed);
+  int64_t key = is::Seed::seed_key(seed);
+  int32_t pos_read_int32 = is::Seed::seed_position(seed);
   uint128_t pos_read = pos_read_int32;
 
   int32_t num_targets_fwd = index->get_num_sequences_forward();
@@ -128,14 +128,14 @@ void Owler::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::Minimizer
       continue;
     }
 
-    int32_t seq_id_int32 = is::MinimizerIndex::seed_seq_id(found_seeds[k]);
+    int32_t seq_id_int32 = is::Seed::seed_seq_id(found_seeds[k]);
     int32_t seq_id_int32_fwd = seq_id_int32 % num_targets_fwd;
     uint128_t seq_id = seq_id_int32;
     if (is_overlapper && seq_id_int32_fwd <= qid) {
       continue;
     }
 
-    int32_t pos_ref_int32 = is::MinimizerIndex::seed_position(found_seeds[k]);
+    int32_t pos_ref_int32 = is::Seed::seed_position(found_seeds[k]);
     uint128_t diag = ((uint128_t) (pos_ref_int32 - pos_read_int32)) & kSeedMask32_1;      // Diagonals can be negative values.
     uint128_t pos_ref = pos_ref_int32;
 

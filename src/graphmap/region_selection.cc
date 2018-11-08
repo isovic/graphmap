@@ -20,7 +20,7 @@ struct DenseType2 {
 
 typedef unsigned __int128 uint128_t;
 
-int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters) {
+int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data, std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes, const SingleSequence* read, const ProgramParameters* parameters, std::vector<uint64_t> &keys) {
   clock_t begin_clock = clock();
   clock_t diff_clock = begin_clock;
 
@@ -77,17 +77,30 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
   mapping_data->time_region_seed_lookup = 0.0;
   int64_t total_num_hits = 0;
   diff_clock = clock();
-  for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
-    int8_t *seed = (int8_t *) &(read->get_data()[i]);
 
+  std::vector<const uint128_t *> hit_vector;
+  hit_vector.reserve(100);
+  std::vector<int64_t> hit_counts;
+  hit_vector.reserve(100);
+
+  uint64_t buffer = 0;
+
+  for (int64_t i = 0; i < (readlength - k + 1); i += parameters->kmer_step) {  // i++) {
     for (int64_t index_id = 0; index_id < indexes.size(); index_id++) {
       auto& index = indexes[index_id];
 
       if (index != NULL) {
         clock_t diff_find_seeds = clock();
-        std::vector<const uint128_t *> hit_vector;
-        std::vector<int64_t> hit_counts;
-        int ret_search = index->Find(seed, k, parameters->threshold_hits, hit_vector, hit_counts);
+
+        int ret_search = 0;
+        if (i == 0) {
+      	  int8_t *seed = (int8_t *) &(read->get_data()[i]);
+        	  buffer = index->CalculateInitialBuffer(seed, k);
+        	  ret_search = index->Find(seed, k, parameters->threshold_hits, hit_vector, hit_counts);
+		} else {
+      	  int8_t *seed = (int8_t *) &(read->get_data()[i+ k - 1]);
+		  ret_search = index->FindWithBuffer(seed, k, &buffer, parameters->threshold_hits, hit_vector, hit_counts, keys);
+		}
         mapping_data->time_region_seed_lookup += ((double) clock() - diff_find_seeds) / CLOCKS_PER_SEC;
 
         // Check if there is too many hits (or too few).
@@ -113,8 +126,8 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
             }
 
 //            int64_t position = hits[j];
-            int64_t local_position = is::MinimizerIndex::seed_position(hits[j]);
-            int64_t reference_index = is::MinimizerIndex::seed_seq_id(hits[j]);
+            int64_t local_position = is::Seed::seed_position(hits[j]);
+            int64_t reference_index = is::Seed::seed_seq_id(hits[j]);
 //            int64_t local_position = (int64_t) (((uint64_t) position) & MASK_32_BIT);
 //            int64_t reference_index = (int64_t) (((uint64_t) position) >> 32);  // (raw_position - reference_starting_pos_[(uint64_t) reference_index]);
 
@@ -228,8 +241,8 @@ int GraphMap::RegionSelectionNoCopy_(int64_t bin_size, MappingData* mapping_data
 }
 
 void GraphMap::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::MinimizerIndex> index, bool threshold_hits, double count_cutoff, std::vector<uint128_t> &all_hits) {
-  int64_t key = is::MinimizerIndex::seed_key(seed);
-  int32_t pos_read = is::MinimizerIndex::seed_position(seed);
+  int64_t key = is::Seed::seed_key(seed);
+  int32_t pos_read = is::Seed::seed_position(seed);
 
   const uint128_t *found_seeds = NULL;
   int64_t num_found_seeds = 0;
@@ -262,9 +275,9 @@ void GraphMap::AppendSeedHits_(const uint128_t& seed, std::shared_ptr<is::Minimi
 //      exit(1);
     }
 
-    uint128_t pos_ref = is::MinimizerIndex::seed_position(found_seeds[k]);
+    uint128_t pos_ref = is::Seed::seed_position(found_seeds[k]);
     uint128_t diag = pos_ref - pos_read;
-    uint128_t seq_id = is::MinimizerIndex::seed_seq_id(found_seeds[k]);
+    uint128_t seq_id = is::Seed::seed_seq_id(found_seeds[k]);
     phits[k] = (seq_id << 64) | (diag << 32) | (pos_ref);
   }
 }

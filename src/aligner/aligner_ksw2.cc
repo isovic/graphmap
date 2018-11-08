@@ -6,6 +6,7 @@
 #include <zlib.h>
 // #include "ksw2/kseq.h"
 #include "aligner_util.hpp"
+#include <iostream>
 
 // KSEQ_INIT(gzFile, gzread)
 
@@ -56,7 +57,7 @@ AlignerKSW2::~AlignerKSW2() {
 
 }
 
-is::AlignmentReturnValue AlignerKSW2::Global(const char* qseq, int64_t qlen, const char* tseq, int64_t tlen) {
+is::AlignmentReturnValue AlignerKSW2::Global(const char* qseq, int64_t qlen, const char* tseq, int64_t tlen, bool type) {
 	void *km = 0;
 	ksw_extz_t ez;  // Alignment result.
 	int w = -1, flag = 0, zdrop = -1;
@@ -74,7 +75,7 @@ is::AlignmentReturnValue AlignerKSW2::Global(const char* qseq, int64_t qlen, con
   int8_t q2 = -p_.w[1].v;
   int8_t e2 = -p_.w[1].u;
 
-  KSW2GlobalAlnWrapper_(km, (const int8_t*) qseq, qlen, (const int8_t*) tseq, tlen, 5, &mat[0], q, e, q2, e2, w, zdrop, flag, &ez);
+  KSW2GlobalAlnWrapper_(km, (const int8_t*) qseq, qlen, (const int8_t*) tseq, tlen, 5, &mat[0], q, e, q2, e2, w, zdrop, flag, &ez, type);
 
   // print_aln("Query", "Target", &ez);
 
@@ -87,7 +88,7 @@ is::AlignmentReturnValue AlignerKSW2::Global(const char* qseq, int64_t qlen, con
   result_->cigar.clear();
   std::vector<is::CigarOp> basic_cigar;
   for (size_t i=0; i<ez.n_cigar; i++) {
-    basic_cigar.push_back(is::CigarOp("MID"[ez.cigar[i]&0xf], ez.cigar[i]>>4));
+    basic_cigar.push_back(is::CigarOp("MIDN"[ez.cigar[i]&0xf], ez.cigar[i]>>4));
   }
   result_->cigar = is::ConvertBasicToExtCIGAR(qseq, qlen, tseq, tlen, basic_cigar);
 
@@ -132,7 +133,7 @@ is::AlignmentReturnValue AlignerKSW2::Extend(const char* qseq, int64_t qlen, con
   int8_t q2 = -p_.w[1].v;
   int8_t e2 = -p_.w[1].u;
 
-  KSW2GlobalAlnWrapper_(km, (const int8_t*) qseq, qlen, (const int8_t*) tseq, tlen, 5, &mat[0], q, e, q2, e2, bandwidth, zdrop, flag, &ez);
+  KSW2GlobalAlnWrapper_(km, (const int8_t*) qseq, qlen, (const int8_t*) tseq, tlen, 5, &mat[0], q, e, q2, e2, bandwidth, zdrop, flag, &ez, true);
 
   // print_aln("Query", "Target", &ez);
 
@@ -184,7 +185,7 @@ void AlignerKSW2::KSW2GlobalAlnWrapper_(void *km,
                        const int8_t *qseq_, int qlen, const int8_t *tseq_, int tlen,
                        int8_t m, const int8_t *mat,
                        int8_t q, int8_t e, int8_t q2, int8_t e2,
-                       int w, int zdrop, int flag, ksw_extz_t *ez) {
+                       int w, int zdrop, int flag, ksw_extz_t *ez, bool type) {
 	int i;
 	ez->max_q = ez->max_t = ez->mqe_t = ez->mte_q = -1;
 	ez->max = 0, ez->mqe = ez->mte = KSW_NEG_INF;
@@ -193,9 +194,22 @@ void AlignerKSW2::KSW2GlobalAlnWrapper_(void *km,
   auto qseq = ConvertSeqAlphabet(qseq_, qlen, &seq_nt4_table[0]);
   auto tseq = ConvertSeqAlphabet(tseq_, tlen, &seq_nt4_table[0]);
 
-	ksw_extd2_sse(km, qlen, (const uint8_t*) &qseq[0],
-                tlen, (const uint8_t*) &tseq[0],
-                m, mat, q, e, q2, e2, w, zdrop, flag, ez);
+  if (type) {
+		ksw_extd2_sse(km, qlen, (const uint8_t*) &qseq[0],
+	                tlen, (const uint8_t*) &tseq[0],
+	                m, mat, q, e, q2, e2, w, zdrop, flag, ez);
+  } else {
+	  	int noncan = 9;
+	  	q = 4;
+	  	e = 2;
+	  	q2 = 32;
+	  	zdrop = 200;
+	  	flag = 1600;
+
+		ksw_exts2_sse(km, qlen, (const uint8_t*) &qseq[0],
+	                tlen, (const uint8_t*) &tseq[0],
+	                m, mat, q, e, q2, noncan, zdrop, flag, ez);
+  }
 
   // const char *algo = "extd2_sse";
 	// if (strcmp(algo, "extz2_sse") == 0)   ksw_extz2_sse(km, qlen, (const uint8_t*)&qseq[0], tlen, (const uint8_t*)&tseq[0], m, mat, q, e, w, zdrop, flag, ez);
@@ -206,7 +220,5 @@ void AlignerKSW2::KSW2GlobalAlnWrapper_(void *km,
 	// 	exit(1);
 	// }
 }
-
-
 
 }

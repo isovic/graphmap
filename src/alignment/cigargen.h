@@ -63,6 +63,9 @@ int ConvertInsertionsToClipping(unsigned char* alignment, int alignmentLength);
 int CountClippedBases(unsigned char* alignment, int alignmentLength, int64_t *ret_num_clipped_front, int64_t *ret_num_clipped_back);
 /// Sums up the bases on the reference the alignment spans through (EDLIB_M and EDLIB_D operations).
 int64_t CalculateReconstructedLength(unsigned char *alignment, int alignmentLength);
+
+int CalculateAlignmentScore(std::vector<unsigned char>& alignment, int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend);
+
 /// Counts each operation type, and calculates the alignment score as well (while rescoring the alignment with the given scores/penalties).
 int CountAlignmentOperations(std::vector<unsigned char> &alignment, const int8_t *read_data, const int8_t *ref_data, int64_t reference_hit_id, int64_t alignment_position_start, SeqOrientation orientation,
                              int64_t match, int64_t mismatch, int64_t gap_open, int64_t gap_extend,

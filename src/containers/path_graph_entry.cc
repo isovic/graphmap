@@ -8,7 +8,7 @@
 #include "containers/path_graph_entry.h"
 #include "alignment/cigargen.h"
 
-
+#include <iostream>
 
 //PathGraphEntry::PathGraphEntry() {
 ////  local_scores_id = -1;
@@ -321,8 +321,13 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << qname_for_out << "\t";
   ss << flag << "\t";
   ss << rname_for_out << "\t";
-  ss << alignment_info.ref_start + 1 << "\t";
+  if (alignment_info.is_reverse) {
+	  ss << alignment_info.ref_start + 1 << "\t";
+  } else {
+	  ss << alignment_info.ref_start + 1 << "\t";
+  }
   ss << ((int64_t) alignment_info.mapping_quality) << "\t";      // To avoid confusion with the definition of mapping quality, we will use the value of 255, and report the actual quality as AS optional parameter.
+
   ss << alignment_info.cigar << "\t";
   ss << rnext << "\t";
   ss << pnext << "\t";

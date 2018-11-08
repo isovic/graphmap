@@ -138,7 +138,7 @@ void GraphMap::RNAFilterClustersWithHugeGaps_(MappingData* mapping_data, std::ve
 
 	    for (int i = 0; i < clustersGroups.size(); i++) {
 	    		int coverage = 0;
-	    		ClusterGroup tmpGroup;
+	    		ClusterGroup tmpGroup = clustersGroups[i];
 	    		for(int j = tmpGroup.start; j < tmpGroup.stop; j++) {
 	    			coverage += clustersTmp[j].coverage;
 	    		}
