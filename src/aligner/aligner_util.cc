@@ -70,12 +70,13 @@ int64_t EditDistFromExtCIGAR(const std::vector<is::CigarOp>& extended_cigar) {
   return edit_dist;
 }
 
-std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::CigarOp>& cigar, int64_t qstart, int64_t qend, int64_t *cigar_length) {
+std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::CigarOp>& cigar, int64_t qstart, int64_t qend, int64_t *cigar_length, int64_t *cigar_length_q) {
   std::vector<is::CigarOp> ret;
 
   int64_t qpos = 0;
 
   int lengthOfRef = 0;
+  int lengthOfRead = 0;
 
   for (auto& c: cigar) {
 
@@ -97,7 +98,10 @@ std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::Ci
       ret.emplace_back(is::CigarOp(c.op, (e - b)));
 
       if (c.op != 'I') {
-    	  lengthOfRef += (e - b);
+    	  	  lengthOfRef += (e - b);
+      }
+      if(c.op != 'D' && c.op != 'N') {
+    	  	  lengthOfRead += (e - b);
       }
     }
 
@@ -105,6 +109,7 @@ std::vector<is::CigarOp> ExtractCigarBetweenQueryCoords(const std::vector<is::Ci
   }
 
   *cigar_length = lengthOfRef;
+  *cigar_length_q = lengthOfRead;
 
   return ret;
 }

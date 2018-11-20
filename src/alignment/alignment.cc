@@ -307,11 +307,11 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
 
   if (read != NULL && read_length != read->get_sequence_length()) {
     LOG_DEBUG("CheckAlignmentSane returned false! return 3. Mismatch in length of the read determined from the alignmend and the actual length. Calculated read length = %ld (from alignment), read->get_sequence_length() = %ld.\n", read_length, read->get_sequence_length());
-    return 0;
+    return 3;
   }
   if ((index != NULL && reference_hit_id >= 0 && reference_hit_pos >= 0) && ref_length > index->get_reference_lengths()[reference_hit_id]) {
     LOG_DEBUG("CheckAlignmentSane returned false! return 4. Calculated reference length (from alignment) is longer than the actual reference. (ref_length = %ld, index->get_reference_lengths()[reference_hit_id] = %ld", ref_length, index->get_reference_lengths()[reference_hit_id]);
-    return 0;
+    return 4;
   }
   if ((index != nullptr && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
       (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id])) {

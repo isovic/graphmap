@@ -12,6 +12,9 @@
 #include "aligner_base.h"
 #include "containers/results.h"
 
+#include <deque>
+#include <stack>
+
 namespace is {
 
 class AnchorAligner;
@@ -34,6 +37,8 @@ class AnchorAligner {
   friend std::shared_ptr<AnchorAligner> createAnchorAligner(std::shared_ptr<is::AlignerBase> aligner);
 
   ~AnchorAligner();
+
+  void AdjustEnds(int left_offset_ref, int right_offset_ref, const char *query, const char *ref, int64_t *start_position_ref, int64_t *start_position_read, int number_of_bases, std::stack<is::CigarOp> *cigar_stack, std::deque<is::CigarOp> *cigar_queue, bool type);
 
   /* Sorts anchors and then performs global alignment between the minimum and maximum anchor coordinates.
   */

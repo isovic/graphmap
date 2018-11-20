@@ -321,11 +321,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   ss << qname_for_out << "\t";
   ss << flag << "\t";
   ss << rname_for_out << "\t";
-  if (alignment_info.is_reverse) {
-	  ss << alignment_info.ref_start + 1 << "\t";
-  } else {
-	  ss << alignment_info.ref_start + 1 << "\t";
-  }
+  ss << alignment_info.ref_start + 1 << "\t";
   ss << ((int64_t) alignment_info.mapping_quality) << "\t";      // To avoid confusion with the definition of mapping quality, we will use the value of 255, and report the actual quality as AS optional parameter.
 
   ss << alignment_info.cigar << "\t";
