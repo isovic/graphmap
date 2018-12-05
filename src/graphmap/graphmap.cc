@@ -837,7 +837,12 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 
 				  std::vector<CigarExon> cigarExons2;
 
-				  clock_t time_startReal = clock();
+//				  std::ofstream output;
+//				  output.open ("testX.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//				  output << read->get_header();
+//				  std::cout << read->get_header() << std::endl;
+//				  output << std::endl;
+//				  output.close();
 
 				  if (orientation == kReverse) {
 					  ss->ReverseComplement();

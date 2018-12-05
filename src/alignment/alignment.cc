@@ -306,6 +306,7 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
   }
 
   if (read != NULL && read_length != read->get_sequence_length()) {
+//	  std::cout << "counted: " << read_length << "   " << read->get_sequence_length() << std::endl;
     LOG_DEBUG("CheckAlignmentSane returned false! return 3. Mismatch in length of the read determined from the alignmend and the actual length. Calculated read length = %ld (from alignment), read->get_sequence_length() = %ld.\n", read_length, read->get_sequence_length());
     return 3;
   }

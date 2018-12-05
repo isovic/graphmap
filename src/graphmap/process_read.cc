@@ -788,6 +788,7 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
 
     LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
     int res_check = CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, abs_ref_id, curr_aln->raw_pos_start);
+//    std::cout << "res_check " << res_check << std::endl;
     if (res_check != 0) {
       curr_aln->is_aligned = false;
       LOG_DEBUG_SPEC("Alignment is insane!\n");
@@ -1208,6 +1209,16 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
       }
     }
   }
+//
+//  std::ofstream output;
+//  output.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//  output << read->get_header() << std::endl;
+//  output.close();
+//
+//  std::ofstream output2;
+//  output2.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//  output2 << read->get_header() << std::endl;
+//  output2.close();
 
   std::sort(alignment_anchors.begin(), alignment_anchors.end(), [](const is::AlignmentAnchor& a, const is::AlignmentAnchor& b) { return b.rstart > a.rstart; });
 
@@ -1235,10 +1246,12 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
 
   // Generate the alignment.
   double score;
-  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result, &score);
-
   PathGraphEntry *tmp_entry = NULL;
-  tmp_entry = mapping_data->intermediate_mappings.back();
+
+  if(aln_result->rv == is::AlignmentReturnValue::OK) {
+	  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result, &score);
+	  tmp_entry = mapping_data->intermediate_mappings.back();
+  }
 
   auto aln_result2 = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
                                                 ((const char *) ref_data), total_ref_data_len, alignment_anchors, -1, 400, false);
@@ -1247,6 +1260,22 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
     if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
       c.op = 'N';
     }
+  }
+
+//		  std::ofstream output3;
+//		  output3.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//		  output3 << std::endl;
+//		  output3.close();
+//
+//		  std::ofstream output4;
+//		  output4.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+//		  output4 << std::endl;
+//		  output4.close();
+
+  double score22;
+
+  if(aln_result2->rv == is::AlignmentReturnValue::OK) {
+	  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result2, &score22);
   }
 
   std::vector<CigarExon> betterCigarExons;
@@ -1322,201 +1351,204 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
 	  cigarExons2.push_back(cigExon);
   }
 
-  double score22;
-  HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result2, &score22);
-
   double difference = abs(score22-score);
   betterCigarExons = cigarExons1;
 
-  bool didWrite = false;
-
-  if (score22 > score+0.05) {
-	  tmp_entry = mapping_data->intermediate_mappings.back();
-	  score = score22;
-	  betterCigarExons = cigarExons2;
-  } else if(difference < 0.05) {
-	  if (cigarExons1.size() != cigarExons2.size()) {
+  if(aln_result2->rv == is::AlignmentReturnValue::OK) {
+	  if (score22 > score+0.05) {
 		  tmp_entry = mapping_data->intermediate_mappings.back();
 		  score = score22;
 		  betterCigarExons = cigarExons2;
-	  } else {
-		  std::vector<int> visitingGaps;
+	  } else if(difference < 0.05) {
+		  if (cigarExons1.size() != cigarExons2.size()) {
+			  tmp_entry = mapping_data->intermediate_mappings.back();
+			  score = score22;
+			  betterCigarExons = cigarExons2;
+		  } else {
+			  std::vector<int> visitingGaps;
 
-		  for (int varz = 0; varz < cigarExonsGaps1.size(); ++varz) {
-			  visitingGaps.push_back(0);
-		  }
-
-		  int currentGap = -1;
-		  int firstCigarSum = 0;
-		  int secondCigarSum = 0;
-
-		  for (int vary = 0; vary < cigarExons1.size()-1; ++vary) {
-			  CigarExon c1 = cigarExons1[vary];
-			  CigarExon c2 = cigarExons2[vary];
-
-			  if (abs(firstCigarSum-secondCigarSum) > 5) {
-				  visitingGaps[currentGap] = 1;
+			  for (int varz = 0; varz < cigarExonsGaps1.size(); ++varz) {
+				  visitingGaps.push_back(0);
 			  }
 
-			  if (!c1.isGap) {
+			  int currentGap = -1;
+			  int firstCigarSum = 0;
+			  int secondCigarSum = 0;
+
+			  for (int vary = 0; vary < cigarExons1.size()-1; ++vary) {
+				  CigarExon c1 = cigarExons1[vary];
+				  CigarExon c2 = cigarExons2[vary];
+
+				  if (abs(firstCigarSum-secondCigarSum) > 5) {
+					  visitingGaps[currentGap] = 1;
+				  }
+
+				  if (!c1.isGap) {
+					  currentGap += 1;
+				  }
+
+				  firstCigarSum += c1.length;
+				  secondCigarSum += c2.length;
+
+				  if (abs(firstCigarSum-secondCigarSum) > 5) {
+					  visitingGaps[currentGap] = 1;
+				  }
+			  }
+
+			  currentGap = 0;
+			  CigarExon previousExon1 = cigarExons1[0];
+			  CigarExon previousExon2 = cigarExons2[0];
+
+			  bool isVisiting = false;
+			  for (int varvisiting = 0; varvisiting < visitingGaps.size(); ++varvisiting) {
+				  if (visitingGaps[varvisiting]) {
+					  isVisiting = true;
+					  break;
+				  }
+			  }
+
+			  int total1Sum = 0;
+			  int total2Sum = 0;
+
+			  for (int vary = 1; vary < cigarExons1.size()-1; ++vary) {
+				  CigarExon currentExon1 = cigarExons1[vary];
+				  CigarExon currentExon2 = cigarExons2[vary];
+
+				  if (!currentExon1.isGap) {
+					  previousExon1 = currentExon1;
+					  previousExon2 = currentExon2;
+					  continue;
+				  }
+
+				  CigarExon nextExon1 = cigarExons1[vary+1];
+				  CigarExon nextExon2 = cigarExons2[vary+1];
+
+				  if (visitingGaps[currentGap]) {
+
+					  int sum1 = 0;
+					  int count1 = 0;
+					  for (auto& c: nextExon1.cigar) {
+							int numberOfBases = (int) c.count;
+							if (numberOfBases + count1 > 10) {
+								if (c.op == '=') {
+									sum1 += (10-count1) * 5;
+								} else {
+									sum1 += (10-count1) * -4;
+								}
+								break;
+							} else {
+								if (c.op == '=') {
+									sum1 += numberOfBases * 5;
+								} else {
+									sum1 += numberOfBases * -4;
+								}
+								count1 += numberOfBases;
+							}
+					  }
+
+					  int sum1Back = 0;
+					  int count1Back = 0;
+					  for (int unutar1 = previousExon1.cigar.size()-1; unutar1 >= 0; unutar1--) {
+
+							int numberOfBases = (int) previousExon1.cigar[unutar1].count;
+							if (numberOfBases + count1Back > 10) {
+								if (previousExon1.cigar[unutar1].op == '=') {
+									sum1Back += (10-count1Back) * 5;
+								} else {
+									sum1Back += (10-count1Back) * -4;
+								}
+								break;
+							} else {
+								if (previousExon1.cigar[unutar1].op == '=') {
+									sum1Back += numberOfBases * 5;
+								} else {
+									sum1Back += numberOfBases * -4;
+								}
+								count1Back += numberOfBases;
+							}
+					  }
+
+					  int sum2 = 0;
+					  int count2 = 0;
+					  for (auto& c: nextExon2.cigar) {
+							int numberOfBases = (int) c.count;
+							if (numberOfBases + count2 > 10) {
+								if (c.op == '=') {
+									sum2 += (10-count2) * 5;
+								} else {
+									sum2 += (10-count2) * -4;
+								}
+								break;
+							} else {
+								if (c.op == '=') {
+									sum2 += numberOfBases * 5;
+								} else {
+									sum2 += numberOfBases * -4;
+								}
+								count2 += numberOfBases;
+							}
+					  }
+
+					  int sum2Back = 0;
+					  int count2Back = 0;
+					  for (int unutar1 = previousExon2.cigar.size()-1; unutar1 >= 0; unutar1--) {
+
+							int numberOfBases = (int) previousExon2.cigar[unutar1].count;
+							if (numberOfBases + count2Back > 10) {
+								if (previousExon2.cigar[unutar1].op == '=') {
+									sum2Back += (10-count2Back) * 5;
+								} else {
+									sum2Back += (10-count2Back) * -4;
+								}
+								break;
+							} else {
+								if (previousExon2.cigar[unutar1].op == '=') {
+									sum2Back += numberOfBases * 5;
+								} else {
+									sum2Back += numberOfBases * -4;
+								}
+								count2Back += numberOfBases;
+							}
+					  }
+					  total1Sum += (sum1 + sum1Back);
+					  total2Sum += (sum2 + sum2Back);
+				  }
+
 				  currentGap += 1;
 			  }
 
-			  firstCigarSum += c1.length;
-			  secondCigarSum += c2.length;
-
-			  if (abs(firstCigarSum-secondCigarSum) > 5) {
-				  visitingGaps[currentGap] = 1;
-			  }
-		  }
-
-		  currentGap = 0;
-		  CigarExon previousExon1 = cigarExons1[0];
-		  CigarExon previousExon2 = cigarExons2[0];
-
-		  bool isVisiting = false;
-		  for (int varvisiting = 0; varvisiting < visitingGaps.size(); ++varvisiting) {
-			  if (visitingGaps[varvisiting]) {
-				  isVisiting = true;
-				  break;
-			  }
-		  }
-
-		  int total1Sum = 0;
-		  int total2Sum = 0;
-
-		  for (int vary = 1; vary < cigarExons1.size()-1; ++vary) {
-			  CigarExon currentExon1 = cigarExons1[vary];
-			  CigarExon currentExon2 = cigarExons2[vary];
-
-			  if (!currentExon1.isGap) {
-				  previousExon1 = currentExon1;
-				  previousExon2 = currentExon2;
-				  continue;
-			  }
-
-			  CigarExon nextExon1 = cigarExons1[vary+1];
-			  CigarExon nextExon2 = cigarExons2[vary+1];
-
-			  if (visitingGaps[currentGap]) {
-
-				  int sum1 = 0;
-				  int count1 = 0;
-				  for (auto& c: nextExon1.cigar) {
-						int numberOfBases = (int) c.count;
-						if (numberOfBases + count1 > 10) {
-							if (c.op == '=') {
-								sum1 += (10-count1) * 5;
-							} else {
-								sum1 += (10-count1) * -4;
-							}
-							break;
-						} else {
-							if (c.op == '=') {
-								sum1 += numberOfBases * 5;
-							} else {
-								sum1 += numberOfBases * -4;
-							}
-							count1 += numberOfBases;
-						}
+			  if (!isVisiting) {
+				  if (score22 >= score) {
+					  tmp_entry = mapping_data->intermediate_mappings.back();
+					  score = score22;
+					  betterCigarExons = cigarExons2;
 				  }
-
-				  int sum1Back = 0;
-				  int count1Back = 0;
-				  for (int unutar1 = previousExon1.cigar.size()-1; unutar1 >= 0; unutar1--) {
-
-						int numberOfBases = (int) previousExon1.cigar[unutar1].count;
-						if (numberOfBases + count1Back > 10) {
-							if (previousExon1.cigar[unutar1].op == '=') {
-								sum1Back += (10-count1Back) * 5;
-							} else {
-								sum1Back += (10-count1Back) * -4;
-							}
-							break;
-						} else {
-							if (previousExon1.cigar[unutar1].op == '=') {
-								sum1Back += numberOfBases * 5;
-							} else {
-								sum1Back += numberOfBases * -4;
-							}
-							count1Back += numberOfBases;
-						}
-				  }
-
-				  int sum2 = 0;
-				  int count2 = 0;
-				  for (auto& c: nextExon2.cigar) {
-						int numberOfBases = (int) c.count;
-						if (numberOfBases + count2 > 10) {
-							if (c.op == '=') {
-								sum2 += (10-count2) * 5;
-							} else {
-								sum2 += (10-count2) * -4;
-							}
-							break;
-						} else {
-							if (c.op == '=') {
-								sum2 += numberOfBases * 5;
-							} else {
-								sum2 += numberOfBases * -4;
-							}
-							count2 += numberOfBases;
-						}
-				  }
-
-				  int sum2Back = 0;
-				  int count2Back = 0;
-				  for (int unutar1 = previousExon2.cigar.size()-1; unutar1 >= 0; unutar1--) {
-
-						int numberOfBases = (int) previousExon2.cigar[unutar1].count;
-						if (numberOfBases + count2Back > 10) {
-							if (previousExon2.cigar[unutar1].op == '=') {
-								sum2Back += (10-count2Back) * 5;
-							} else {
-								sum2Back += (10-count2Back) * -4;
-							}
-							break;
-						} else {
-							if (previousExon2.cigar[unutar1].op == '=') {
-								sum2Back += numberOfBases * 5;
-							} else {
-								sum2Back += numberOfBases * -4;
-							}
-							count2Back += numberOfBases;
-						}
-				  }
-				  total1Sum += (sum1 + sum1Back);
-				  total2Sum += (sum2 + sum2Back);
-			  }
-
-			  currentGap += 1;
-		  }
-
-		  if (!isVisiting) {
-			  if (score22 >= score) {
+			  } else if (total1Sum <= total2Sum) {
 				  tmp_entry = mapping_data->intermediate_mappings.back();
 				  score = score22;
 				  betterCigarExons = cigarExons2;
 			  }
-		  } else if (total1Sum <= total2Sum) {
-			  tmp_entry = mapping_data->intermediate_mappings.back();
-			  score = score22;
-			  betterCigarExons = cigarExons2;
 		  }
 	  }
   }
 
   mapping_data->final_mapping_ptrs.clear();
-
   int reference_id_translated = abs_ref_id % index->get_num_sequences_forward();
-
   RealignmentStructure *rs = NULL;
-  rs = new RealignmentStructure(order_number, read, tmp_entry, reference_id_translated, score, betterCigarExons);
-  #pragma omp critical
-  low_scored_reads->push_back(rs);
-  mapping_data->final_mapping_ptrs.push_back(tmp_entry);
-  return 0;
 
+  if(tmp_entry != NULL) {
+	rs = new RealignmentStructure(order_number, read, tmp_entry, reference_id_translated, score, betterCigarExons);
+	#pragma omp critical
+	low_scored_reads->push_back(rs);
+	mapping_data->final_mapping_ptrs.push_back(tmp_entry);
+	return 0;
+  } else {
+	std::vector<CigarExon> placeholder;
+	RealignmentStructure *rs = new RealignmentStructure(order_number, read, NULL, -1, -10000, placeholder);
+	#pragma omp critical
+	low_scored_reads->push_back(rs);
+	return 1;
+  }
 }
 
 int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParameters *parameters, MappingData *mapping_data, std::string &ret_aln_lines) {
