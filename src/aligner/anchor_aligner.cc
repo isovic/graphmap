@@ -699,7 +699,7 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
   int64_t exon_min_value = 15;
   int64_t window = 8000;
   int64_t windowBase = 8000;
-  int64_t minimumWindow = 800;
+  int64_t minimumWindow = 8000000;
 
   int backS = qlen - anchors.back().qend;
 
