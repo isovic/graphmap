@@ -988,114 +988,114 @@ ExonMatch findExonMatch(const char *ref, const SingleSequence *read, std::shared
 	return em;
 }
 
-PathGraphEntry* ExtendAlignmentForAnotherExonIfNeeded(std::shared_ptr<is::AlignmentResult> aln_result,
-		const char *ref,
-		std::vector<is::AlignmentAnchor> alignment_anchors,
-		const SingleSequence *read,
-		int64_t abs_ref_id,
-		const ProgramParameters *parameters,
-		MappingData *mapping_data,
-		int64_t total_ref_data_len,
-		std::shared_ptr<is::MinimizerIndex> index,
-		double* score) {
-
-	is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
-	is::AlignmentOptions aln_opt;
-
-	double back_extended_score;
-	double front_extended_score;
-
-	auto aligner = is::createAlignerKSW2(p, aln_opt);
-	auto anchor_aligner = is::createAnchorAligner(aligner);
-
-	std::string cigar = convertCigarString(aln_result->cigar);
-	int backClippingLength = getLengthOfBackClipping(cigar);
-
-	int windowLength = 10000;
-	const char *readPointer = (const char *) read->get_data();
-
-	PathGraphEntry* entry_candidate = NULL;
-
-	if (backClippingLength > 15) {
-
-		int64_t ref_data_start = index->get_reference_starting_pos()[abs_ref_id];
-		int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
-
-		int64_t startCalc = std::min(alignment_anchors.back().rend,(int64_t) ref_data_start+ref_data_len);
-		int64_t lengthCalc = startCalc+windowLength > ref_data_start+ref_data_len ? (ref_data_start+ref_data_len) - startCalc : windowLength;
-		aligner->Global(readPointer+(read->get_sequence_length()-backClippingLength), backClippingLength, ref+startCalc, lengthCalc, true);
-
-		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
-
-		if ((exonMatch.stop - exonMatch.start) / (double) backClippingLength > 0.4) {
-			alignment_anchors.emplace_back(is::AlignmentAnchor(read->get_sequence_length()-backClippingLength, read->get_sequence_length(), alignment_anchors.back().rend + exonMatch.start, alignment_anchors.back().rend + exonMatch.stop));
-
-			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
-				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400, true);
-			std::string cigar_upgraded;
-
-			for (auto& c: aln_result_upgraded->cigar) {
-				int numberOfBases = (int) c.count;
-				char str[20] = {0};
-				std::sprintf(str, "%d", numberOfBases);
-				cigar_upgraded += str;
-				cigar_upgraded += c.op;
-			}
-
-			const int64_t MIN_INTRON_LEN = 10;
-			for (auto& c: aln_result_upgraded->cigar) {
-				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
-					c.op = 'N';
-				}
-			}
-
-			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &back_extended_score);
-			if (isAligned) {
-				entry_candidate = mapping_data->intermediate_mappings.back();
-				*score = back_extended_score;
-			} else {
-				alignment_anchors.pop_back();
-			}
-		}
-	}
-
-	int frontClippingLength = getLengthOfFrontClipping(cigar);
-
-	if (frontClippingLength > 15) {
-		int64_t startCalc = std::max(alignment_anchors.front().rstart-windowLength, (int64_t) 0);
-		int64_t lengtCalc = alignment_anchors.front().rstart-windowLength < 0 ? alignment_anchors.front().rstart : windowLength;
-
-		aligner->Global(readPointer, frontClippingLength, ref+startCalc, lengtCalc, true);
-		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
-
-		if ((exonMatch.stop - exonMatch.start) / (double) frontClippingLength > 0.4) {
-
-			alignment_anchors.insert(alignment_anchors.begin(), is::AlignmentAnchor(0, frontClippingLength, (alignment_anchors.front().rstart-lengtCalc) + exonMatch.start, (alignment_anchors.front().rstart-lengtCalc) + exonMatch.stop));
-
-			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
-				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400, true);
-
-			const int64_t MIN_INTRON_LEN = 10;
-			for (auto& c: aln_result_upgraded->cigar) {
-				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
-					c.op = 'N';
-				}
-			}
-
-			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &front_extended_score);
-			if (isAligned) {
-				if (entry_candidate == NULL || front_extended_score > back_extended_score) {
-					entry_candidate = mapping_data->intermediate_mappings.back();
-					*score = front_extended_score;
-				}
-			} else {
-				alignment_anchors.erase(alignment_anchors.begin());
-			}
-		}
-	}
-
-	return entry_candidate;
-}
+//PathGraphEntry* ExtendAlignmentForAnotherExonIfNeeded(std::shared_ptr<is::AlignmentResult> aln_result,
+//		const char *ref,
+//		std::vector<is::AlignmentAnchor> alignment_anchors,
+//		const SingleSequence *read,
+//		int64_t abs_ref_id,
+//		const ProgramParameters *parameters,
+//		MappingData *mapping_data,
+//		int64_t total_ref_data_len,
+//		std::shared_ptr<is::MinimizerIndex> index,
+//		double* score) {
+//
+//	is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
+//	is::AlignmentOptions aln_opt;
+//
+//	double back_extended_score;
+//	double front_extended_score;
+//
+//	auto aligner = is::createAlignerKSW2(p, aln_opt);
+//	auto anchor_aligner = is::createAnchorAligner(aligner);
+//
+//	std::string cigar = convertCigarString(aln_result->cigar);
+//	int backClippingLength = getLengthOfBackClipping(cigar);
+//
+//	int windowLength = 10000;
+//	const char *readPointer = (const char *) read->get_data();
+//
+//	PathGraphEntry* entry_candidate = NULL;
+//
+//	if (backClippingLength > 15) {
+//
+//		int64_t ref_data_start = index->get_reference_starting_pos()[abs_ref_id];
+//		int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
+//
+//		int64_t startCalc = std::min(alignment_anchors.back().rend,(int64_t) ref_data_start+ref_data_len);
+//		int64_t lengthCalc = startCalc+windowLength > ref_data_start+ref_data_len ? (ref_data_start+ref_data_len) - startCalc : windowLength;
+//		aligner->Global(readPointer+(read->get_sequence_length()-backClippingLength), backClippingLength, ref+startCalc, lengthCalc, true);
+//
+//		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
+//
+//		if ((exonMatch.stop - exonMatch.start) / (double) backClippingLength > 0.4) {
+//			alignment_anchors.emplace_back(is::AlignmentAnchor(read->get_sequence_length()-backClippingLength, read->get_sequence_length(), alignment_anchors.back().rend + exonMatch.start, alignment_anchors.back().rend + exonMatch.stop));
+//
+//			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+//				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400, true);
+//			std::string cigar_upgraded;
+//
+//			for (auto& c: aln_result_upgraded->cigar) {
+//				int numberOfBases = (int) c.count;
+//				char str[20] = {0};
+//				std::sprintf(str, "%d", numberOfBases);
+//				cigar_upgraded += str;
+//				cigar_upgraded += c.op;
+//			}
+//
+//			const int64_t MIN_INTRON_LEN = 10;
+//			for (auto& c: aln_result_upgraded->cigar) {
+//				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
+//					c.op = 'N';
+//				}
+//			}
+//
+//			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &back_extended_score);
+//			if (isAligned) {
+//				entry_candidate = mapping_data->intermediate_mappings.back();
+//				*score = back_extended_score;
+//			} else {
+//				alignment_anchors.pop_back();
+//			}
+//		}
+//	}
+//
+//	int frontClippingLength = getLengthOfFrontClipping(cigar);
+//
+//	if (frontClippingLength > 15) {
+//		int64_t startCalc = std::max(alignment_anchors.front().rstart-windowLength, (int64_t) 0);
+//		int64_t lengtCalc = alignment_anchors.front().rstart-windowLength < 0 ? alignment_anchors.front().rstart : windowLength;
+//
+//		aligner->Global(readPointer, frontClippingLength, ref+startCalc, lengtCalc, true);
+//		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
+//
+//		if ((exonMatch.stop - exonMatch.start) / (double) frontClippingLength > 0.4) {
+//
+//			alignment_anchors.insert(alignment_anchors.begin(), is::AlignmentAnchor(0, frontClippingLength, (alignment_anchors.front().rstart-lengtCalc) + exonMatch.start, (alignment_anchors.front().rstart-lengtCalc) + exonMatch.stop));
+//
+//			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+//				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400, true);
+//
+//			const int64_t MIN_INTRON_LEN = 10;
+//			for (auto& c: aln_result_upgraded->cigar) {
+//				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
+//					c.op = 'N';
+//				}
+//			}
+//
+//			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &front_extended_score);
+//			if (isAligned) {
+//				if (entry_candidate == NULL || front_extended_score > back_extended_score) {
+//					entry_candidate = mapping_data->intermediate_mappings.back();
+//					*score = front_extended_score;
+//				}
+//			} else {
+//				alignment_anchors.erase(alignment_anchors.begin());
+//			}
+//		}
+//	}
+//
+//	return entry_candidate;
+//}
 
 double GraphMap::RealignRead(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, MappingData *mapping_data, const ProgramParameters *parameters, std::string cutted_reference, ExonsCluster exonsClusters, SeqOrientation orientation, int64_t ref_number, std::vector<CigarExon> *cigarExons) {
 
@@ -1209,16 +1209,6 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
       }
     }
   }
-//
-//  std::ofstream output;
-//  output.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//  output << read->get_header() << std::endl;
-//  output.close();
-//
-//  std::ofstream output2;
-//  output2.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//  output2 << read->get_header() << std::endl;
-//  output2.close();
 
   std::sort(alignment_anchors.begin(), alignment_anchors.end(), [](const is::AlignmentAnchor& a, const is::AlignmentAnchor& b) { return b.rstart > a.rstart; });
 
@@ -1233,7 +1223,7 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
   int8_t *ref_data  = (int8_t *) &index->get_data()[0];       // The data of the region.
   int64_t total_ref_data_len = index->get_data_length();
 
-  auto aln_result = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+  auto aln_result = anchor_aligner->GlobalAnchoredWithExtend(abs_ref_id, index, (const char *) read->get_data(), read->get_sequence_length(),
                                                 ((const char *) ref_data), total_ref_data_len, alignment_anchors, -1, 400, true);
 
   // Mark introns.
@@ -1253,7 +1243,7 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
 	  tmp_entry = mapping_data->intermediate_mappings.back();
   }
 
-  auto aln_result2 = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
+  auto aln_result2 = anchor_aligner->GlobalAnchoredWithExtend(abs_ref_id, index ,(const char *) read->get_data(), read->get_sequence_length(),
                                                 ((const char *) ref_data), total_ref_data_len, alignment_anchors, -1, 400, false);
 
   for (auto& c: aln_result2->cigar) {
@@ -1261,16 +1251,6 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
       c.op = 'N';
     }
   }
-
-//		  std::ofstream output3;
-//		  output3.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//		  output3 << std::endl;
-//		  output3.close();
-//
-//		  std::ofstream output4;
-//		  output4.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//		  output4 << std::endl;
-//		  output4.close();
 
   double score22;
 

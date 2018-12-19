@@ -23,13 +23,13 @@ AnchorAligner::~AnchorAligner() {
 
 }
 
-std::shared_ptr<AlignmentResult> AnchorAligner::GlobalEndToEnd(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors) {
+std::shared_ptr<AlignmentResult> AnchorAligner::GlobalEndToEnd(int64_t abs_ref_id, std::shared_ptr<is::MinimizerIndex> index, const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
   std::vector<AlignmentAnchor> final_anchors;
   if (anchors.size() > 0) {
     final_anchors.emplace_back(AlignmentAnchor(anchors.front().qstart, anchors.back().qend, anchors.front().rstart, anchors.back().rend));
   }
-  return GlobalAnchored(query, qlen, ref, rlen, final_anchors, true);
+  return GlobalAnchored(abs_ref_id, index, query, qlen, ref, rlen, final_anchors, true);
 }
 
 bool FindRefOffsets(const char *ref, char first_base, char second_base, char third_base, char fourth_base, int64_t *left_offset, int64_t *right_offset, int64_t start_position, int number_of_bases) {
@@ -192,7 +192,6 @@ int FindReadRightOffset(const char *query, int right_offset_ref, int64_t start_p
 	int read_offset = 0;
 
 	while (!cigar_queue->empty()) {
-//		std::cout << "read offset: " << read_offset << std::endl;
 		is::CigarOp c = cigar_queue->front();
 		cigar_queue->pop_front();
 		int count = c.count;
@@ -241,8 +240,6 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 	int left_offset_read = left_offset_ref > 0 ? 0 : FindReadLeftOffset(query, left_offset_ref, *start_position_read, cigar_stack);
 	int right_offset_read = right_offset_ref < 0 ? 0 : FindReadRightOffset(query, right_offset_ref, *start_position_read + number_of_bases, cigar_queue);
 
-//	std::cout << "left_offset_read " << left_offset_read << std::endl;
-//	std::cout << "right_offset_read " << right_offset_read << std::endl;
 	if (left_offset_ref >= 0 && right_offset_ref <= 0) {
 		if(left_offset_ref > 0) {
 			is::CigarOp c_left = is::CigarOp('D', left_offset_ref);
@@ -254,6 +251,9 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 			is::CigarOp c_right = is::CigarOp('D', -right_offset_ref);
 			cigar_stack->push(c_right);
 		}
+
+		*start_position_ref += number_of_bases;
+
 	} else if (left_offset_ref <= 0 && right_offset_ref >= 0) {
 		if(left_offset_read > 0) {
 			is::CigarOp c_left = is::CigarOp('I', left_offset_read);
@@ -265,6 +265,10 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 			is::CigarOp c_right = is::CigarOp('I', right_offset_read);
 			cigar_stack->push(c_right);
 		}
+
+		*start_position_ref += (number_of_bases + right_offset_ref);
+		*start_position_read += (right_offset_read);
+
 	} else if (left_offset_ref >= 0 && right_offset_ref >= 0) {
 		std::string ref_string;
 		for(int i = 0; i < left_offset_ref; i++) {
@@ -280,16 +284,15 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 		aligner_->Global(read_sub, right_offset_read, ref_sub, left_offset_ref, type);
 		auto aln_result_sub = aligner_->getResults();
 
-//		std::cout << "ref_string " << ref_string << std::endl;
-//		std::cout << "read_string " << read_string << std::endl;
-//		std::cout << "aln_result_sub.size() " << aln_result_sub->cigar.size() << std::endl;
-
 		for (auto& c: aln_result_sub->cigar) {
 			cigar_stack->push(c);
 		}
 
 		is::CigarOp c_gap = is::CigarOp('N', number_of_bases + right_offset_ref + (-left_offset_ref));
 		cigar_stack->push(c_gap);
+
+		*start_position_ref += (number_of_bases + right_offset_ref);
+		*start_position_read += (right_offset_read);
 
 	} else if (left_offset_ref <= 0 && right_offset_ref <= 0) {
 		std::string ref_string;
@@ -303,24 +306,18 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 		const char* ref_sub = ref_string.c_str();
 		const char* read_sub = read_string.c_str();
 
-//		std::cout << ref_string << std::endl;
-//		std::cout << read_string << std::endl;
-
 		aligner_->Global(read_sub, left_offset_read, ref_sub, -right_offset_ref, type);
 		auto aln_result_sub = aligner_->getResults();
 
 		is::CigarOp c_gap = is::CigarOp('N', number_of_bases + right_offset_ref + (-left_offset_ref));
 		cigar_stack->push(c_gap);
 
-//		std::cout << "aln_result_sub cigar size " << aln_result_sub->cigar.size() << std::endl;
-
 		for (auto& c: aln_result_sub->cigar) {
 			cigar_stack->push(c);
 		}
-	}
 
-	*start_position_ref += number_of_bases + right_offset_ref;
-	*start_position_read += right_offset_read;
+		*start_position_ref += (number_of_bases);
+	}
 }
 
 
@@ -376,9 +373,6 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithClipping(const
 	  }
   }
 
-//  std::cout << "qlen " << qlen << std::endl;
-//  std::cout << "cigar_length_q " << cigar_length_q << std::endl;
-
   result->cigar.push_back(is::CigarOp('S', (qlen- cigar_length_q)));
 
   std::vector<is::CigarOp> cigarTmp = result->cigar;
@@ -391,12 +385,6 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithClipping(const
   std::vector<is::CigarOp> cigarInterContainer;
 
   bool foundLastGap = true;
-
-//  std::cout << std::endl;
-//  for (auto& c: result->cigar) {
-//	  std::cout << c.count << c.op;
-//  }
-//  std::cout << std::endl;
 
   int sub_offset = 0;
 
@@ -561,153 +549,99 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithClipping(const
     }
   }
 
-  //	std::cout << "XXXXX" << std::endl;
+	if(result_After->cigar.size() < 2) {
+	  return result;
+	}
 
-//    if(result_After->cigar.size() < 2) {
-//  	  return result;
-//    }
-//
-//    int64_t start_position_ref = result_After->position.tstart;
-//    int64_t start_position_read = result_After->position.qstart;
-//
-//    std::stack<is::CigarOp> cigar_stack;
-//    std::deque<is::CigarOp> cigar_queue;
-//
-//    for(int i = 0; i < result_After->cigar.size(); i++) {
-//  	  cigar_queue.push_back(result_After->cigar[i]);
-//    }
-//
-//    while (!cigar_queue.empty()) {
-//  	is::CigarOp cigar_op = cigar_queue.front();
-//  	cigar_queue.pop_front();
-//  	int number_of_bases = cigar_op.count;
-//
-//  	if (cigar_op.op == 'S') {
-//  		cigar_stack.push(cigar_op);
-//  		continue;
-//  	}
-//
-//  	if (cigar_op.op == 'N') {
-//  //		std::cout << "found N" << std::endl;
-//  		int64_t left_offset_ref = 0;
-//  		int64_t right_offset_ref = 0;
-//  		bool found_base_pairs = FindRefOffsets(ref, 'G', 'T', 'A', 'G', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
-//  //		std::cout << "left_offset_ref " << left_offset_ref << std::endl;
-//  //		std::cout << "right_offset_ref " << right_offset_ref << std::endl;
-//  		if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
-//  			AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
-//  		} else {
-//  			int64_t left_offset_ref = 0;
-//  			int64_t right_offset_ref = 0;
-//  			bool found_base_pairs = FindRefOffsets(ref, 'C', 'T', 'A', 'C', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
-//  //			std::cout << "left_offset_ref " << left_offset_ref << std::endl;
-//  //			std::cout << "right_offset_ref " << right_offset_ref << std::endl;
-//  			if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
-//  				AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
-//  			} else {
-//  				cigar_stack.push(cigar_op);
-//
-//  				if(cigar_op.op != 'I') {
-//  					start_position_ref += cigar_op.count;
-//  				}
-//  				if(cigar_op.op != 'D' && cigar_op.op != 'N') {
-//  					start_position_read += cigar_op.count;
-//  				}
-//  			}
-//  		}
-//  	} else {
-//  		cigar_stack.push(cigar_op);
-//
-//  		if(cigar_op.op != 'I') {
-//  			start_position_ref += cigar_op.count;
-//  		}
-//  		if(cigar_op.op != 'D' && cigar_op.op != 'N') {
-//  			start_position_read += cigar_op.count;
-//  		}
-//  	}
-//    }
-//
-//  //  std::cout << std::endl;
-//  //  for (auto& c: result->cigar) {
-//  //	  std::cout << c.count << c.op;
-//  //  }
-//  //  std::cout << std::endl;
-//
-//    std::stack<is::CigarOp> tmp_stack;
-//
-//    is::CigarOp previous_op = cigar_stack.top();
-//    cigar_stack.pop();
-//
-//    while(!cigar_stack.empty()) {
-//  	  is::CigarOp tmp_op = cigar_stack.top();
-//  	  cigar_stack.pop();
-//  	  if(tmp_op.op == previous_op.op) {
-//  		  previous_op = is::CigarOp(previous_op.op, previous_op.count + tmp_op.count);
-//  	  } else {
-//  		  tmp_stack.push(previous_op);
-//  		  previous_op = tmp_op;
-//  	  }
-//    }
-//    tmp_stack.push(previous_op);
-//
-//    result_After->cigar.clear();
-//
-//    while(!tmp_stack.empty()) {
-//  	  is::CigarOp c = tmp_stack.top();
-//  	  tmp_stack.pop();
-//  	result_After->cigar.push_back(c);
-//    }
+	int64_t start_position_ref = result_After->position.tstart;
+	int64_t start_position_read = result_After->position.qstart;
 
-//    for (auto& c: result->cigar) {
-//  	  std::cout << c.count << c.op;
-//    }
-//
-//    std::cout << std::endl;
-//
-//    for (auto& c: result_After->cigar) {
-//  	  std::cout << c.count << c.op;
-//    }
-//
-//    std::cout << std::endl;
-//
-//    std::cout << "done " << std::endl;
-//
-//    std::ofstream output;
-//    output.open ("testX.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//    for (auto& c: result->cigar) {
-//  	  output << c.count << c.op;
-//    }
-//    output << std::endl;
-//    output.close();
-//
-//  output.open ("testX.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//  for (auto& c: result_After->cigar) {
-//	  output << c.count << c.op;
-//  }
-//  output << std::endl;
-//  output.close();
+	std::stack<is::CigarOp> cigar_stack;
+	std::deque<is::CigarOp> cigar_queue;
+
+	for(int i = 0; i < result_After->cigar.size(); i++) {
+	  cigar_queue.push_back(result_After->cigar[i]);
+	}
+
+	while (!cigar_queue.empty()) {
+		is::CigarOp cigar_op = cigar_queue.front();
+		cigar_queue.pop_front();
+		int number_of_bases = cigar_op.count;
+
+		if (cigar_op.op == 'S') {
+			cigar_stack.push(cigar_op);
+			continue;
+		}
+
+		if (cigar_op.op == 'N') {
+			int64_t left_offset_ref = 0;
+			int64_t right_offset_ref = 0;
+			bool found_base_pairs = FindRefOffsets(ref, 'G', 'T', 'A', 'G', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
+			if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
+				AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
+			} else {
+				int64_t left_offset_ref = 0;
+				int64_t right_offset_ref = 0;
+				bool found_base_pairs = FindRefOffsets(ref, 'C', 'T', 'A', 'C', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
+				if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
+					AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
+				} else {
+					cigar_stack.push(cigar_op);
+
+					if(cigar_op.op != 'I') {
+						start_position_ref += cigar_op.count;
+					}
+					if(cigar_op.op != 'D' && cigar_op.op != 'N') {
+						start_position_read += cigar_op.count;
+					}
+				}
+			}
+		} else {
+			cigar_stack.push(cigar_op);
+
+			if(cigar_op.op != 'I') {
+				start_position_ref += cigar_op.count;
+			}
+			if(cigar_op.op != 'D' && cigar_op.op != 'N') {
+				start_position_read += cigar_op.count;
+			}
+		}
+	}
+
+    std::stack<is::CigarOp> tmp_stack;
+
+    is::CigarOp previous_op = cigar_stack.top();
+    cigar_stack.pop();
+
+    while(!cigar_stack.empty()) {
+  	  is::CigarOp tmp_op = cigar_stack.top();
+  	  cigar_stack.pop();
+  	  if(tmp_op.op == previous_op.op) {
+  		  previous_op = is::CigarOp(previous_op.op, previous_op.count + tmp_op.count);
+  	  } else {
+  		  tmp_stack.push(previous_op);
+  		  previous_op = tmp_op;
+  	  }
+    }
+    tmp_stack.push(previous_op);
+
+    result_After->cigar.clear();
+
+    while(!tmp_stack.empty()) {
+  	  is::CigarOp c = tmp_stack.top();
+  	  tmp_stack.pop();
+  	  result_After->cigar.push_back(c);
+    }
 
   return result_After;
 }
 
-std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors, bool type) {
+std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_id, std::shared_ptr<is::MinimizerIndex> index, const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors, bool type) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
 
   if (anchors.size() == 0) {
     return result;
   }
-
-//	if(type) {
-//		  std::ofstream output2;
-//		  output2.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//		  output << read->get_header() << std::endl;
-//		  output2.close();
-//	} else {
-//		  std::ofstream output2;
-//		  output2.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//		  output << read->get_header() << std::endl;
-//		  output2.close();
-//	}
 
   result->cigar.clear();
   result->score = 0;
@@ -720,33 +654,17 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
   int64_t firstQuery_q = anchors[0].qstart;
   int64_t refLen_q = 0;
 
-//  for (int64_t i = 0; i < (anchors.size() - 1); i++) {
-//	  std::cout << anchors[i].rstart << " " << anchors[i].rend << std::endl;
-//	  std::cout << anchors[i].qstart << " " << anchors[i].qend << std::endl;
-//  }
-
   // Align between anchors.
   for (int64_t i = 0; i < (anchors.size() - 1); i++) {
 	  int64_t start_ref = anchors[i].rstart + offset;
 	  int64_t start_ref_q = anchors[i].qstart + offset_q;
 
-//		std::cout << "before" << std::endl;
-//
-//		std::cout << "start_ref " << start_ref << std::endl;
-//		std::cout << "start_ref_q " << start_ref_q << std::endl;
-//
-//		std::cout << "anchors[i+1].qend - start_ref_q " << (anchors[i+1].qend - start_ref_q) << std::endl;
-//		std::cout << "anchors[i+1].rend - start_ref " << (anchors[i+1].rend - start_ref) << std::endl;
-
 	  if(((anchors[i+1].qend - start_ref_q) > 85000 || (anchors[i+1].rend - start_ref) > 85000) && type == 0) {
-		  std::cout << "key " << (anchors[i+1].qend - start_ref_q) << " " << (anchors[i+1].rend - start_ref) << std::endl;
 		  return result;
 	  }
 
 	  aligner_->Global(query + start_ref_q, anchors[i+1].qend - start_ref_q,
 		                      ref + start_ref, anchors[i+1].rend - start_ref, type);
-
-//		std::cout << "after" << std::endl;
 
 	  auto aln_result = aligner_->getResults();
 	  int64_t cigar_length = 0;
@@ -760,14 +678,8 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
 	  refLen += cigar_length;
 	  refLen_q += cigar_length_q;
 
-//		std::cout << "refLen " << refLen << std::endl;
-//		std::cout << "refLen_q " << refLen_q << std::endl;
-
 	  offset = refLen - (anchors[i+1].rstart - firstQuery);
 	  offset_q = refLen_q - (anchors[i+1].qstart - firstQuery_q);
-
-//		std::cout << "offset " << refLen << std::endl;
-//		std::cout << "offset_q " << refLen_q << std::endl;
 
 	  result->cigar.insert(result->cigar.end(), left_part.begin(), left_part.end());
 	  result->score += aln_result->score;
@@ -781,28 +693,229 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
 
   result->cigar.insert(result->cigar.end(), aln_result->cigar.begin(), aln_result->cigar.end());
 
-  // Add the soft clippings at front and back.
-  if ( anchors.front().qstart > 0) {
-    result->cigar.insert(result->cigar.begin(), is::CigarOp('S', anchors.front().qstart));
+  const int64_t MIN_INTRON_LEN = 10;
+
+  int64_t s_min_value = 13;
+  int64_t exon_min_value = 15;
+  int64_t window = 8000;
+  int64_t windowBase = 8000;
+  int64_t minimumWindow = 800;
+
+  int backS = qlen - anchors.back().qend;
+
+  std::vector<is::CigarOp> tmp_cigar;
+  int64_t len_tmp = 0;
+  int64_t current_len = 0;
+  int64_t current_ref_len = 0;
+  int64_t minimum_found_exon = 0;
+  bool isFirst = true;
+
+  int64_t lower_bound = index->get_reference_starting_pos()[abs_ref_id];
+  int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
+  int64_t upper_bound = lower_bound + ref_data_len;
+
+  double threshold = 0.85;
+
+  window = std::min(windowBase, upper_bound - anchors.back().rend);
+
+  if(backS > s_min_value && window > minimumWindow) {
+
+	  bool isAdapter = false;
+	  int countA = 0;
+	  int countT = 0;
+
+	  for(int i = 0; i < anchors.front().qstart; i++) {
+		  if(query[i] == 'A') {
+			  countA += 1;
+			  countT = 0;
+		  } else if(query[i] == 'T') {
+			  countT += 1;
+			  countA = 0;
+		  } else {
+			  countA = 0;
+			  countT = 0;
+		  }
+
+		  if(countA >= 10 || countT >= 10) {
+			  isAdapter = true;
+		  }
+	  }
+
+	  if(!isAdapter && backS < 100) {
+		  aligner_->Global(query + anchors.back().qend, backS, ref + anchors.back().rend, window, false);
+
+		  auto aln_result_tmp = aligner_->getResults();
+
+		  for (auto& c: aln_result_tmp->cigar) {
+			  if ((c.op == 'N' || c.op == 'D') && c.count >= MIN_INTRON_LEN) {
+				  if(isFirst) {
+					  isFirst = false;
+					  tmp_cigar.push_back(c);
+				  } else {
+					  double rez = (double) minimum_found_exon / (double) len_tmp;
+					  if((minimum_found_exon < exon_min_value) && rez > threshold) {
+						  break;
+					  } else {
+						  current_len += len_tmp;
+						  len_tmp = 0;
+						  minimum_found_exon = 0;
+						  for (auto& c1: tmp_cigar) {
+							  if(c1.op != 'I') {
+								  current_ref_len += c1.count;
+							  }
+							  result->cigar.push_back(c1);
+						  }
+						  tmp_cigar.clear();
+						  tmp_cigar.push_back(c);
+					  }
+				  }
+			  } else {
+				  isFirst = false;
+				if(c.op != 'D') {
+					len_tmp += c.count;
+					if(c.op == '=') {
+						minimum_found_exon += c.count;
+					}
+				}
+				tmp_cigar.push_back(c);
+			  }
+		  }
+		  double rez = (double) minimum_found_exon / (double) len_tmp;
+		  if(minimum_found_exon >= exon_min_value  && rez > threshold && aln_result_tmp->cigar.size() > 0) {
+			  current_len += len_tmp;
+			  len_tmp = 0;
+			  minimum_found_exon = 0;
+			  for (auto& c1: tmp_cigar) {
+				  if(c1.op != 'I') {
+					  current_ref_len += c1.count;
+				  }
+				  result->cigar.push_back(c1);
+			  }
+			  tmp_cigar.clear();
+		  }
+	  }
   }
-  if ((qlen - anchors.back().qend) > 0) {
-    result->cigar.insert(result->cigar.end(), is::CigarOp('S', (qlen - anchors.back().qend)));
+
+  window = std::min(windowBase, anchors.front().rstart - lower_bound);
+
+  int64_t frontS = anchors.front().qstart;
+
+  tmp_cigar.clear();
+  len_tmp = 0;
+  minimum_found_exon = 0;
+  int64_t current_len2 = 0;
+  int64_t current_ref_len2 = 0;
+  isFirst = true;
+
+  if(frontS > s_min_value && window > minimumWindow) {
+
+	  std::string read_String;
+
+	  bool isAdapter = false;
+	  int countA = 0;
+	  int countT = 0;
+
+	  for(int i = 0; i < anchors.front().qstart; i++) {
+		  read_String.insert(0, 1, query[i]);
+		  if(query[i] == 'A') {
+			  countA += 1;
+			  countT = 0;
+		  } else if(query[i] == 'T') {
+			  countT += 1;
+			  countA = 0;
+		  } else {
+			  countA = 0;
+			  countT = 0;
+		  }
+
+		  if(countA >= 10 || countT >= 10) {
+			  isAdapter = true;
+		  }
+	  }
+
+	  if(!isAdapter && frontS < 100) {
+		  std::string ref_String;
+
+		  for(int i = anchors.front().rstart-window; i < anchors.front().rstart; i++) {
+			  ref_String.insert(0, 1, ref[i]);
+		  }
+
+		  aligner_->Global(read_String.c_str(), read_String.size(), ref_String.c_str(), ref_String.size(), false);
+
+		  auto aln_result_tmp = aligner_->getResults();
+
+		  for (auto& c: aln_result_tmp->cigar) {
+			  if ((c.op == 'N' || c.op == 'D') && c.count >= MIN_INTRON_LEN) {
+				  if(isFirst) {
+					  isFirst = false;
+					  tmp_cigar.push_back(c);
+				  } else {
+					  double rez = (double) minimum_found_exon / (double) len_tmp;
+					  if(minimum_found_exon < exon_min_value && rez > threshold) {
+						  break;
+					  } else {
+						  current_len2 += len_tmp;
+						  len_tmp = 0;
+						  minimum_found_exon = 0;
+						  for (auto& c1: tmp_cigar) {
+							  if(c1.op != 'I') {
+								  current_ref_len2 += c1.count;
+							  }
+							  result->cigar.insert(result->cigar.begin(), c1);
+						  }
+						  tmp_cigar.clear();
+						  tmp_cigar.push_back(c);
+					  }
+				  }
+			  } else {
+				  isFirst = false;
+				if(c.op != 'D') {
+					len_tmp += c.count;
+					if(c.op == '=') {
+						minimum_found_exon += c.count;
+					}
+				}
+				tmp_cigar.push_back(c);
+			  }
+		  }
+
+		  double rez = (double) minimum_found_exon / (double) len_tmp;
+		  if(minimum_found_exon >= exon_min_value  && rez > threshold && aln_result_tmp->cigar.size() > 0) {
+			  current_len2 += len_tmp;
+			  len_tmp = 0;
+			  minimum_found_exon = 0;
+			  for (auto& c1: tmp_cigar) {
+				  if(c1.op != 'I') {
+					  current_ref_len2 += c1.count;
+				  }
+				  result->cigar.insert(result->cigar.begin(), c1);
+			  }
+			  tmp_cigar.clear();
+		  }
+
+  	  } else {
+  	  }
+  }
+
+  // Add the soft clippings at front and back.
+  if ( (anchors.front().qstart-current_len2) > 0) {
+    result->cigar.insert(result->cigar.begin(), is::CigarOp('S', anchors.front().qstart - current_len2));
+  }
+  if ((qlen - (anchors.back().qend+current_len)) > 0) {
+    result->cigar.insert(result->cigar.end(), is::CigarOp('S', (qlen - (anchors.back().qend+current_len))));
   }
 
   //  // Fill the other alignment info.
   result->edit_dist = EditDistFromExtCIGAR(result->cigar);
-  result->position = is::AlignmentPosition(anchors.front().qstart, anchors.back().qend, anchors.front().rstart, anchors.back().rend);
+  result->position = is::AlignmentPosition(anchors.front().qstart-current_len2, anchors.back().qend+current_len, anchors.front().rstart-current_ref_len2, anchors.back().rend + current_ref_len);
   result->k = -1;
   result->rv = is::AlignmentReturnValue::OK;
 
-  const int64_t MIN_INTRON_LEN = 10;
   for (auto& c: result->cigar) {
     if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
       c.op = 'N';
     }
   }
-
-//	std::cout << "XXXXX" << std::endl;
 
   if(result->cigar.size() < 2) {
 	  return result;
@@ -829,47 +942,16 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
 	}
 
 	if (cigar_op.op == 'N') {
-//		std::cout << "found N" << std::endl;
 		int64_t left_offset_ref = 0;
 		int64_t right_offset_ref = 0;
 		bool found_base_pairs = FindRefOffsets(ref, 'G', 'T', 'A', 'G', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
-//		std::cout << "left_offset_ref " << left_offset_ref << std::endl;
-//		std::cout << "right_offset_ref " << right_offset_ref << std::endl;
 		if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
-//
-//			if(type) {
-//				  std::ofstream output2;
-//				  output2.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//				  output2 << "F";
-//				  output2.close();
-//			} else {
-//				  std::ofstream output2;
-//				  output2.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//				  output2 << "F";
-//				  output2.close();
-//			}
-
 			AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
 		} else {
 			int64_t left_offset_ref = 0;
 			int64_t right_offset_ref = 0;
 			bool found_base_pairs = FindRefOffsets(ref, 'C', 'T', 'A', 'C', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
-//			std::cout << "left_offset_ref " << left_offset_ref << std::endl;
-//			std::cout << "right_offset_ref " << right_offset_ref << std::endl;
 			if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
-
-//				if(type) {
-//					  std::ofstream output2;
-//					  output2.open ("firstKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//					  output2 << "R";
-//					  output2.close();
-//				} else {
-//					  std::ofstream output2;
-//					  output2.open ("secondKsw.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//					  output2 << "R";
-//					  output2.close();
-//				}
-
 				AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
 			} else {
 				cigar_stack.push(cigar_op);
@@ -893,12 +975,6 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
 		}
 	}
   }
-
-//  std::cout << std::endl;
-//  for (auto& c: result->cigar) {
-//	  std::cout << c.count << c.op;
-//  }
-//  std::cout << std::endl;
 
   std::stack<is::CigarOp> tmp_stack;
 
@@ -925,27 +1001,11 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(const char *query
 	  result->cigar.push_back(c);
   }
 
-//  for (auto& c: result->cigar) {
-//	  std::cout << c.count << c.op;
-//  }
-//
-//  std::cout << std::endl;
-
-//  std::cout << "done " << std::endl;
-
-//  std::ofstream output;
-//  output.open ("testX.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//  for (auto& c: result->cigar) {
-//	  output << c.count << c.op;
-//  }
-//  output << std::endl;
-//  output.close();
-
-
   return result;
 }
 
-std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithExtend(const char *query, int64_t qlen,
+std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithExtend(int64_t abs_ref_id, std::shared_ptr<is::MinimizerIndex> index,
+																	   const char *query, int64_t qlen,
                                                                          const char *ref, int64_t rlen,
                                                                          const std::vector<AlignmentAnchor>& anchors,
                                                                          int32_t bandwidth, int32_t zdrop, bool type) {
@@ -993,7 +1053,7 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithExtend(const c
   }
 
   // Align the updated coordinates.
-  return GlobalAnchored(query, qlen, ref, rlen, updated_anchors, type);
+  return GlobalAnchored(abs_ref_id, index, query, qlen, ref, rlen, updated_anchors, type);
 }
 
 }

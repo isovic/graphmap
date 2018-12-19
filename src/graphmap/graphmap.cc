@@ -795,14 +795,14 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 		  const char *ref_data = (const char *) ref_data_int;
 		  int64_t ref_data_lenInner = first_index->get_reference_lengths()[0];
 
-//		  if (ec.isValid()) {
-			  if (false) {
+		  if (ec.isValid()) {
+//			  if (false) {
 			  int start = ec.exons[0].start;
 			  int stop = ec.exons[ec.exons.size()-1].stop;
 
 			  std::string testRef = "";
 
-			  for (int j = start; j < stop; ++j) {
+			  for (int j = start; j < stop+1; ++j) {
 				  testRef += ref_data_int[j];
 			  }
 
@@ -836,13 +836,6 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 				  ss->CopyFrom(*read);
 
 				  std::vector<CigarExon> cigarExons2;
-
-//				  std::ofstream output;
-//				  output.open ("testX.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-//				  output << read->get_header();
-//				  std::cout << read->get_header() << std::endl;
-//				  output << std::endl;
-//				  output.close();
 
 				  if (orientation == kReverse) {
 					  ss->ReverseComplement();
