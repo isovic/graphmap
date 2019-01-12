@@ -15,9 +15,6 @@
 #include "transcriptome.h"
 #include "index/index_util.h"
 #include <iostream>
-#include <ctime>
-#include <chrono>
-
 
 GraphMap::GraphMap() : transcriptome_(nullptr) {
   indexes_.clear();
@@ -31,8 +28,10 @@ void GraphMap::Run(ProgramParameters& parameters) {
   clock_t time_start = clock();
   clock_t last_time = time_start;
 
-  parameters.output_in_original_order = true;
-  parameters.batch_size_in_mb = -1;
+  if (parameters.composite_parameters == "rnaseq") {
+	  parameters.output_in_original_order = true;
+	  parameters.batch_size_in_mb = -1;
+  }
 
   // Set the verbose level for the execution of this program.
   LogSystem::GetInstance().SetProgramVerboseLevelFromInt(parameters.verbose_level);
@@ -206,6 +205,7 @@ std::shared_ptr<is::MinimizerIndex> GraphMap::SetupIndex_(std::shared_ptr<Sequen
     LOG_ALL("Building the index for shape: '%s'.\n", shape.c_str());
 
     index->Create(*ref, 0.0f, true, parameters.use_minimizers, parameters.minimizer_window, num_threads, true);
+    LOG_ALL("Finished building index.\n");
 
     if (store) {
       LOG_ALL("Storing the index to file: '%s'.\n", index_path.c_str());
@@ -265,24 +265,6 @@ int GraphMap::BuildIndexes(ProgramParameters &parameters) {
     auto index_sec = SetupIndex_(refs, sec_index_path, "1111110111111", parameters, num_threads);
     indexes_.push_back(index_sec);
   }
-
-  return 0;
-}
-
-int GraphMap::BuildCuttedIndex(ProgramParameters parameters) {
-
-  // Division by 2 to to avoid hyperthreading cores, and limit
-  // to 24 to avoid clogging a shared SMP.
-  int64_t num_threads = (parameters.num_threads > 0) ?
-                              parameters.num_threads :
-                              std::min(24, ((int) omp_get_num_procs()) / 2);
-
-  std::shared_ptr<SequenceFile> refs = nullptr;
-  refs = std::shared_ptr<SequenceFile>(new SequenceFile(parameters.reference_path+"cut.fa"));
-
-  std::string index_path = parameters.index_file+"cut.fa";
-
-  indexes_.push_back(SetupIndex_(refs, index_path, "11110111101111", parameters, num_threads));
 
   return 0;
 }
@@ -456,24 +438,459 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
   reads.CloseFileAfterBatchLoading();
 }
 
-int get_new_position(std::vector<ExonMatch> covered_regions, int pos) {
-	if (pos == 0) {
-		return 0;
-	}
-	int sum = 0;
-	for (int i = 1; i < covered_regions.size(); i++) {
-		ExonMatch d = covered_regions[i];
-		sum += d.stop-d.start;
-		if (pos < sum) {
-			int lastStart = (int) (sum - (0 + (d.stop-d.start)));
-			int movement = pos - lastStart;
-			return (int) (d.start + movement);
-		}
-	}
-	return pos;
-}
-
 bool GraphMap::comparePtrToNode(RealignmentStructure* a, RealignmentStructure* b) { return ((*a).start < (*b).start); }
+
+void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignment_structures, std::vector<std::string> *sam_lines, int64_t num_threads, ProgramParameters *parameters, EValueParams *evalue_params) {
+	std::shared_ptr<is::MinimizerIndex> first_index = indexes_[0];
+	std::vector<int64_t*> coverages_array;
+
+	int number_of_refs = first_index->get_reference_lengths().size() / 2;
+
+	for (int i = 0; i < number_of_refs; ++i) {
+	  int64_t ref_data_start = first_index->get_reference_starting_pos()[i];
+	  int64_t ref_data_len = first_index->get_reference_lengths()[i];
+
+	  int64_t *coverage_array = new int64_t[ref_data_len];
+	  for (int var = 0; var < ref_data_len; ++var) {
+		  coverage_array[var] = 0;
+	  }
+	  coverages_array.push_back(coverage_array);
+	}
+
+	std::cout << "processed all" << std::endl;
+
+	std::vector<std::string> ref_names;
+	std::vector<std::vector<RealignmentStructure*>> reads_by_chromosome;
+
+	std::cout << "number_of_refs " << number_of_refs << std::endl;
+
+	for (int i = 0; i < number_of_refs; ++i) {
+	  std::string ref_name = indexes_.front()->get_headers()[i];
+	  ref_names.push_back(ref_name);
+	  std::vector<RealignmentStructure *> vector;
+	  reads_by_chromosome.push_back(vector);
+	}
+
+	std::cout << "realignment_structures.size() " << realignment_structures.size() << std::endl;
+
+	for (int var = 0; var < realignment_structures.size(); ++var) {
+	  RealignmentStructure *rs = realignment_structures[var];
+	  if (rs->ref_number >= 0) {
+		  reads_by_chromosome[rs->ref_number].push_back(rs);
+	  }
+	}
+
+	for (int var = 0; var < reads_by_chromosome.size(); ++var) {
+	  std::sort(reads_by_chromosome[var].begin(), reads_by_chromosome[var].end(), GraphMap::comparePtrToNode);
+	}
+
+	std::vector<std::vector<RealignmentStructure *>> realignment_clusters;
+	std::vector<RealignmentStructure *> current_realignment_cluster;
+
+	for (int var = 0; var < reads_by_chromosome.size(); ++var) {
+		std::vector<RealignmentStructure *> current_realignment_chromosome = reads_by_chromosome[var];
+
+		if (current_realignment_chromosome.size() <= 0) {
+			continue;
+		}
+
+		current_realignment_cluster.push_back(current_realignment_chromosome[0]);
+
+		int current_structure_index = 0;
+		int next_structure_index = 1;
+
+		while(next_structure_index < current_realignment_chromosome.size()) {
+		  RealignmentStructure* current_structure = current_realignment_chromosome[current_structure_index];
+		  RealignmentStructure* next_structure = current_realignment_chromosome[next_structure_index];
+
+		  if (next_structure_index == current_structure_index) {
+			  realignment_clusters.push_back(current_realignment_cluster);
+			  current_realignment_cluster.clear();
+			  current_realignment_cluster.push_back(current_structure);
+			  next_structure_index += 1;
+		  } else if (current_structure->stop < next_structure->start) {
+			  current_structure_index += 1;
+		  } else {
+			  current_realignment_cluster.push_back(next_structure);
+			  next_structure_index += 1;
+		  }
+		}
+		realignment_clusters.push_back(current_realignment_cluster);
+		current_realignment_cluster.clear();
+	}
+
+	std::cout << "realignment_clusters.size() " << realignment_clusters.size() << std::endl;
+
+	#pragma omp parallel for num_threads(num_threads) firstprivate(evalue_params) shared(parameters, sam_lines) schedule(dynamic, 1)
+	for (int var = 0; var < realignment_clusters.size(); ++var) {
+	  std::vector<RealignmentStructure *> current_realignment_cluster = realignment_clusters[var];
+
+	  uint32_t thread_id = omp_get_thread_num();
+
+	  int min_index = INT_MAX;
+	  int max_index = 0;
+	  int ref_number = 0;
+	  std::cout << "current_realignment_cluster.size() " << current_realignment_cluster.size() << std::endl;
+
+	  for (int j = 0; j < current_realignment_cluster.size(); ++j) {
+		RealignmentStructure* rs = current_realignment_cluster[j];
+
+		if(rs->ref_number < 0) {
+		 continue;
+		}
+
+		ref_number = rs->ref_number;
+
+		int64_t ref_data_len = first_index->get_reference_lengths()[rs->ref_number];
+		int64_t *coverage_array = coverages_array[rs->ref_number];
+		int counter = std::max(7, rs->start);
+
+		if (rs->start < min_index) {
+			min_index = std::max(0, rs->start);
+		}
+
+		if (rs->stop > max_index) {
+			max_index = std::min((int64_t) rs->stop, ref_data_len);
+		}
+
+		int gapCounter = 0;
+
+		for (int i = 0; i < rs->raw_alignment.size(); ++i) {
+		  char align_op = 255;
+		  align_op = rs->raw_alignment[i];
+
+		  if (rs->raw_alignment[i] != 1 && rs->raw_alignment[i] != 4) {
+			if (rs->raw_alignment[i] != 7) {
+			  if (gapCounter > 20) {
+				coverage_array[counter-1] += 1;
+				coverage_array[counter-2] += 1;
+				coverage_array[counter-3] += 1;
+				coverage_array[counter-4] += 1;
+				coverage_array[counter-5] += 1;
+				coverage_array[counter-6] += 1;
+				coverage_array[counter-7] += 1;
+			  }
+			  gapCounter = 0;
+			  coverage_array[counter] += 1;
+			} else {
+				  gapCounter += 1;
+				  if (gapCounter < 8) {
+					coverage_array[counter] += 1;
+				  }
+			}
+			counter += 1;
+		  } else {
+			if (gapCounter > 20) {
+			  coverage_array[counter-1] += 1;
+			  coverage_array[counter-2] += 1;
+			  coverage_array[counter-3] += 1;
+			  coverage_array[counter-4] += 1;
+			  coverage_array[counter-5] += 1;
+			  coverage_array[counter-6] += 1;
+			  coverage_array[counter-7] += 1;
+			}
+			gapCounter = 0;
+		  }
+		}
+	  }
+
+	  int64_t offset_ref = 0;
+
+	  for (int i = 0; i < first_index->get_reference_lengths().size(); ++i) {
+		if (ref_number == i) {
+		  break;
+		}
+		int64_t ref_data_len = first_index->get_reference_lengths()[i];
+		offset_ref += ref_data_len;
+	  }
+
+	  int current_start = min_index;
+	  int current_stop = min_index;
+
+	  std::vector<ExonMatch> covered_regions;
+
+	  int sum = 0;
+	  for (int i = min_index; i < max_index; ++i) {
+		if (coverages_array[ref_number][i] > 4) {
+		  sum += coverages_array[ref_number][i];
+		  if (current_stop+10 < i) {
+		    ExonMatch em = ExonMatch();
+			em.start = current_start + offset_ref;
+			em.stop = current_stop + offset_ref;
+			em.coverage = sum;
+			sum = 0;
+			current_start = i;
+			current_stop = i;
+			if ((em.stop - em.start) > 4) {
+			  covered_regions.push_back(em);
+			}
+		  } else {
+			current_stop = i;
+		  }
+		}
+	  }
+
+	  ExonMatch em = ExonMatch();
+	  em.start = current_start + offset_ref;
+	  em.stop = current_stop + offset_ref;
+	  em.coverage = sum;
+	  covered_regions.push_back(em);
+
+	  ExonsCluster exon_cluster = ExonsCluster(covered_regions);
+
+	  if(covered_regions.size() <= 0) {
+		continue;
+	  }
+
+	  int8_t *ref_data_int  = (int8_t *) &first_index->get_data()[0];
+	  const char *ref_data = (const char *) ref_data_int;
+	  int64_t ref_data_lenInner = first_index->get_reference_lengths()[0];
+
+	  if(!exon_cluster.isValid() || exon_cluster.exons.size() <= 0) {
+		  continue;
+	  }
+
+	  int start = exon_cluster.exons[0].start;
+	  int stop = exon_cluster.exons[exon_cluster.exons.size()-1].stop;
+
+	  std::string cutted_reference;
+
+	  for (int i = start; i < stop+1; ++i) {
+		  cutted_reference += ref_data[i];
+	  }
+
+	  if (cutted_reference.size() > 10000) {
+		continue;
+	  }
+
+	  exon_cluster.cuttedRefStart = 0;
+	  exon_cluster.cuttedRefEnd = cutted_reference.size();
+
+	  for (int i = 0; i < current_realignment_cluster.size(); ++i) {
+		RealignmentStructure* realignment_structure = current_realignment_cluster[i];
+		const SingleSequence *read = realignment_structure->sequence;
+
+		double old_score = realignment_structure->score;
+
+		SeqOrientation orientation = realignment_structure->orientation;
+		std::string sam_line_realigned = "";
+		auto mapping_data_realing = std::unique_ptr<MappingData>(new MappingData);
+
+		double score = -10000;
+		SingleSequence *ss = new SingleSequence();
+		ss->CopyFrom(*read);
+
+		std::vector<CigarExon> new_cigar_exons;
+
+		if (orientation == kReverse) {
+		  ss->ReverseComplement();
+		  score = RealignRead(ss, indexes_[0], &(*mapping_data_realing), parameters, cutted_reference, exon_cluster, orientation, ref_number, &new_cigar_exons);
+		} else {
+		  score = RealignRead(read, indexes_[0], &(*mapping_data_realing), parameters, cutted_reference, exon_cluster, orientation, ref_number, &new_cigar_exons);
+		}
+
+		if (mapping_data_realing->final_mapping_ptrs.size() <= 0) {
+			continue;
+		}
+
+		std::vector<CigarExon> previous_cigar_exons = realignment_structure->previousCigarExons;
+
+		PathGraphEntry* entry = mapping_data_realing->final_mapping_ptrs.back();
+		std::vector<AlignmentResults> alignments = entry->get_alignments();
+		if (alignments.size() > 0) {
+		  AlignmentResults ar = alignments.back();
+		  if (orientation == kReverse) {
+			CollectAlignments(ss, parameters, &(*mapping_data_realing), sam_line_realigned);
+		  } else {
+			CollectAlignments(realignment_structure->sequence, parameters, &(*mapping_data_realing), sam_line_realigned);
+		  }
+		  mapping_data_realing->clear();
+
+		  double difference = abs(score-old_score);
+		  if (old_score > score+0.05) {
+		  } else if(difference < 0.05) {
+			if (previous_cigar_exons.size() != new_cigar_exons.size()) {
+			} else {
+			  std::vector<int> visitingGaps;
+
+			  int numberOfGaps = 0;
+			  for (int varGaps = 0; varGaps < previous_cigar_exons.size(); varGaps++) {
+				  if (previous_cigar_exons[varGaps].isGap) {
+					  numberOfGaps += 1;
+				  }
+			  }
+
+			  for (int varz = 0; varz < numberOfGaps; ++varz) {
+				  visitingGaps.push_back(0);
+			  }
+
+			  int currentGap = -1;
+			  int firstCigarSum = 0;
+			  int secondCigarSum = 0;
+
+			  for (int vary = 0; vary < previous_cigar_exons.size()-1; ++vary) {
+				  CigarExon c1 = previous_cigar_exons[vary];
+				  CigarExon c2 = new_cigar_exons[vary];
+
+				  if (abs(firstCigarSum-secondCigarSum) > 5) {
+					  visitingGaps[currentGap] = 1;
+				  }
+
+				  if (!c1.isGap) {
+					  currentGap += 1;
+				  }
+
+				  firstCigarSum += c1.length;
+				  secondCigarSum += c2.length;
+
+				  if (abs(firstCigarSum-secondCigarSum) > 5) {
+					  visitingGaps[currentGap] = 1;
+				  }
+			  }
+
+			  currentGap = 0;
+			  CigarExon previousExon1 = previous_cigar_exons[0];
+			  CigarExon previousExon2 = new_cigar_exons[0];
+
+			  bool isVisiting = false;
+			  for (int varvisiting = 0; varvisiting < visitingGaps.size(); ++varvisiting) {
+				  if (visitingGaps[varvisiting]) {
+					  isVisiting = true;
+					  break;
+				  }
+			  }
+
+			  int total1Sum = 0;
+			  int total2Sum = 0;
+
+			  for (int vary = 1; vary < previous_cigar_exons.size()-1; ++vary) {
+				  CigarExon currentExon1 = previous_cigar_exons[vary];
+				  CigarExon currentExon2 = new_cigar_exons[vary];
+
+				  if (!currentExon1.isGap) {
+					  previousExon1 = currentExon1;
+					  previousExon2 = currentExon2;
+					  continue;
+				  }
+
+				  CigarExon nextExon1 = previous_cigar_exons[vary+1];
+				  CigarExon nextExon2 = new_cigar_exons[vary+1];
+
+				  if (visitingGaps[currentGap]) {
+					  int sum1 = 0;
+					  int count1 = 0;
+					  for (auto& c: nextExon1.cigar) {
+							int numberOfBases = (int) c.count;
+							if (numberOfBases + count1 > 10) {
+								if (c.op == '=') {
+									sum1 += (10-count1) * 5;
+								} else {
+									sum1 += (10-count1) * -4;
+								}
+								break;
+							} else {
+								if (c.op == '=') {
+									sum1 += numberOfBases * 5;
+								} else {
+									sum1 += numberOfBases * -4;
+								}
+								count1 += numberOfBases;
+							}
+					  }
+
+					  int sum1Back = 0;
+					  int count1Back = 0;
+					  for (int unutar1 = previousExon1.cigar.size()-1; unutar1 >= 0; unutar1--) {
+
+							int numberOfBases = (int) previousExon1.cigar[unutar1].count;
+							if (numberOfBases + count1Back > 10) {
+								if (previousExon1.cigar[unutar1].op == '=') {
+									sum1Back += (10-count1Back) * 5;
+								} else {
+									sum1Back += (10-count1Back) * -4;
+								}
+								break;
+							} else {
+								if (previousExon1.cigar[unutar1].op == '=') {
+									sum1Back += numberOfBases * 5;
+								} else {
+									sum1Back += numberOfBases * -4;
+								}
+								count1Back += numberOfBases;
+							}
+					  }
+
+					  int sum2 = 0;
+					  int count2 = 0;
+					  for (auto& c: nextExon2.cigar) {
+							int numberOfBases = (int) c.count;
+							if (numberOfBases + count2 > 10) {
+								if (c.op == '=') {
+									sum2 += (10-count2) * 5;
+								} else {
+									sum2 += (10-count2) * -4;
+								}
+								break;
+							} else {
+								if (c.op == '=') {
+									sum2 += numberOfBases * 5;
+								} else {
+									sum2 += numberOfBases * -4;
+								}
+								count2 += numberOfBases;
+							}
+					  }
+
+					  int sum2Back = 0;
+					  int count2Back = 0;
+					  for (int unutar1 = previousExon2.cigar.size()-1; unutar1 >= 0; unutar1--) {
+
+							int numberOfBases = (int) previousExon2.cigar[unutar1].count;
+							if (numberOfBases + count2Back > 10) {
+								if (previousExon2.cigar[unutar1].op == '=') {
+									sum2Back += (10-count2Back) * 5;
+								} else {
+									sum2Back += (10-count2Back) * -4;
+								}
+								break;
+							} else {
+								if (previousExon2.cigar[unutar1].op == '=') {
+									sum2Back += numberOfBases * 5;
+								} else {
+									sum2Back += numberOfBases * -4;
+								}
+								count2Back += numberOfBases;
+							}
+					  }
+
+					  total1Sum += (sum1 + sum1Back);
+					  total2Sum += (sum2 + sum2Back);
+				  }
+
+				  currentGap += 1;
+			  }
+
+			  if (!isVisiting) {
+				  if (score >= old_score) {
+					  #pragma omp critical
+					  (*sam_lines)[realignment_structure->order_number] = sam_line_realigned;
+				  }
+			  } else if (total1Sum <= total2Sum) {
+				  #pragma omp critical
+				  (*sam_lines)[realignment_structure->order_number] = sam_line_realigned;
+			  }
+			}
+		  }
+		}
+		delete ss;
+	  }
+	}
+	std::cout << "end " << " end " << std::endl;
+
+	for (int var = 0; var < number_of_refs; ++var) {
+	  delete [] coverages_array[var];
+	}
+}
 
 int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
   int64_t num_reads = reads->get_sequences().size();
@@ -489,7 +906,6 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 //  if (parameters->num_threads > 0)
 
   int64_t num_threads = (int64_t) parameters->num_threads;
-//  int64_t num_threads = 1;
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.", num_threads), "ProcessReads");
 
   // Set up the starting and ending read index.
@@ -516,25 +932,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
   int64_t num_mapped=0, num_unmapped=0, num_ambiguous=0, num_errors=0;
   int64_t num_reads_processed_in_thread_0 = 0;
 
-  std::vector<RealignmentStructure *> low_scored_reads;
-  std::vector<RealignmentStructure *> high_scored_reads;
-
-  std::shared_ptr<is::MinimizerIndex> first_index = indexes_[0];
-
-  std::vector<int64_t*> coverages_array;
-
-  int number_of_refs = first_index->get_reference_lengths().size() / 2;
-
-  for (int i = 0; i < number_of_refs; ++i) {
-	  int64_t ref_data_start = first_index->get_reference_starting_pos()[i];
-	  int64_t ref_data_len = first_index->get_reference_lengths()[i];
-
-	  int64_t *coverage_array = new int64_t[ref_data_len];
-	  for (int var = 0; var < ref_data_len; ++var) {
-		  coverage_array[var] = 0;
-	  }
-	  coverages_array.push_back(coverage_array);
-  }
+  std::vector<RealignmentStructure *> realignment_structures;
 
   EValueParams *evalue_params;
   SetupScorer((char *) "EDNA_FULL_5_4", indexes_[0]->get_data_length_forward(), -parameters->evalue_gap_open, -parameters->evalue_gap_extend, &evalue_params);
@@ -576,7 +974,7 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
     std::string sam_line = "";
     // The actual interesting part.
     auto mapping_data = std::unique_ptr<MappingData>(new MappingData);
-    ProcessRead(i, &(*mapping_data), reads->get_sequences()[i], parameters, evalue_params, &low_scored_reads, &high_scored_reads);
+    ProcessRead(i, &(*mapping_data), reads->get_sequences()[i], parameters, evalue_params, &realignment_structures);
 
     // Generate the output.
     mapped_state = CollectAlignments(reads->get_sequences()[i], parameters, &(*mapping_data), sam_line);
@@ -613,442 +1011,8 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
     }
   }
 
-  std::vector<std::string> ref_names;
-  std::vector<std::vector<RealignmentStructure*>> vector_of_reads;
-
-  for (int i = 0; i < number_of_refs; ++i) {
-	  std::string ref_name = indexes_.front()->get_headers()[i];
-	  ref_names.push_back(ref_name);
-	  std::vector<RealignmentStructure *> vectors;
-	  vector_of_reads.push_back(vectors);
-  }
-
-  for (int var = 0; var < low_scored_reads.size(); ++var) {
-	  RealignmentStructure *rs = low_scored_reads[var];
-	  if (rs->ref_number >= 0) {
-		  vector_of_reads[rs->ref_number].push_back(rs);
-	  }
-  }
-
-  for (int var = 0; var < vector_of_reads.size(); ++var) {
-	  std::sort(vector_of_reads[var].begin(), vector_of_reads[var].end(), GraphMap::comparePtrToNode);
-  }
-
-  std::vector<std::vector<RealignmentStructure *>> clustersRealign;
-  std::vector<RealignmentStructure *> currentClusterRealign;
-
-  clock_t time_start111 = clock();
-
-  for (int var = 0; var < vector_of_reads.size(); ++var) {
-	  std::vector<RealignmentStructure *> low_scored_readsTmp = vector_of_reads[var];
-
-	  if (low_scored_readsTmp.size() <= 0) {
-		continue;
-	  }
-
-	  currentClusterRealign.push_back(low_scored_readsTmp[0]);
-
-	  int current_one_index = 0;
-	  int next_one_index = 1;
-
-	  while(next_one_index < low_scored_readsTmp.size()) {
-		  RealignmentStructure* current = low_scored_readsTmp[current_one_index];
-		  RealignmentStructure* next = low_scored_readsTmp[next_one_index];
-
-		  if (current_one_index == next_one_index) {
-			  clustersRealign.push_back(currentClusterRealign);
-			  currentClusterRealign.clear();
-			  currentClusterRealign.push_back(current);
-			  next_one_index += 1;
-		  } else if (current->stop < next->start) {
-			  current_one_index += 1;
-		  } else {
-			  currentClusterRealign.push_back(next);
-			  next_one_index += 1;
-		  }
-	  }
-	  clustersRealign.push_back(currentClusterRealign);
-	  currentClusterRealign.clear();
-  }
-
-  #pragma omp parallel for num_threads(num_threads) firstprivate(evalue_params) shared(reads, parameters, sam_lines) schedule(dynamic, 1)
-  for (int var = 0; var < clustersRealign.size(); ++var) {
-
-	  std::vector<RealignmentStructure *> currentClusterRealign = clustersRealign[var];
-
-	  uint32_t thread_id = omp_get_thread_num();
-
-	  int min_index = INT_MAX;
-	  int max_index = 0;
-	  int ref_number = 0;
-
-	  for (int var2 = 0; var2 < currentClusterRealign.size(); ++var2) {
-		  RealignmentStructure* rs = currentClusterRealign[var2];
-
-		  if (rs->ref_number >= 0) {
-			  ref_number = rs->ref_number;
-
-			  int64_t ref_data_len = first_index->get_reference_lengths()[rs->ref_number];
-			  int64_t *coverage_array = coverages_array[rs->ref_number];
-			  int counter = std::max(7, rs->start);
-
-			  if (rs->start < min_index) {
-				  min_index = std::max(0, rs->start);
-			  }
-
-			  if (rs->stop > max_index) {
-				  max_index = std::min((int64_t) rs->stop, ref_data_len);
-			  }
-
-			  int gapCounter = 0;
-
-			  for (int i = 0; i < rs->raw_alignment.size(); ++i) {
-				  char align_op = 255;
-				  align_op = rs->raw_alignment[i];
-
-				  if (rs->raw_alignment[i] != 1 && rs->raw_alignment[i] != 4) {
-					  if (rs->raw_alignment[i] != 7) {
-						  if (gapCounter > 20) {
-							  coverage_array[counter-1] += 1;
-							  coverage_array[counter-2] += 1;
-							  coverage_array[counter-3] += 1;
-							  coverage_array[counter-4] += 1;
-							  coverage_array[counter-5] += 1;
-							  coverage_array[counter-6] += 1;
-							  coverage_array[counter-7] += 1;
-						  }
-						  gapCounter = 0;
-						  coverage_array[counter] += 1;
-					  } else {
-						  gapCounter += 1;
-						  if (gapCounter < 8) {
-							  coverage_array[counter] += 1;
-						  }
-					  }
-					  counter += 1;
-				  } else {
-					  if (gapCounter > 20) {
-						  coverage_array[counter-1] += 1;
-						  coverage_array[counter-2] += 1;
-						  coverage_array[counter-3] += 1;
-						  coverage_array[counter-4] += 1;
-						  coverage_array[counter-5] += 1;
-						  coverage_array[counter-6] += 1;
-						  coverage_array[counter-7] += 1;
-					  }
-					  gapCounter = 0;
-				  }
-			  }
-		  }
-	  }
-
-	  int64_t offset_ref = 0;
-
-	  for (int varNemoj = 0; varNemoj < first_index->get_reference_lengths().size(); ++varNemoj) {
-		  if (ref_number == varNemoj) {
-			  break;
-		  }
-		  int64_t ref_data_len = first_index->get_reference_lengths()[varNemoj];
-		  offset_ref += ref_data_len;
-	  }
-
-	  std::string cutted_reference;
-
-	  int current_start = min_index;
-	  int current_stop = min_index;
-
-	  std::vector<ExonMatch> covered_regions;
-
-	  int sum = 0;
-	  for (int i = min_index; i < max_index; ++i) {
-		  if (coverages_array[ref_number][i] > 4) {
-			  sum += coverages_array[ref_number][i];
-			  if (current_stop+10 < i) {
-				  ExonMatch em = ExonMatch();
-				  em.start = current_start + offset_ref;
-				  em.stop = current_stop + offset_ref;
-				  em.coverage = sum;
-				  sum = 0;
-
-				  current_start = i;
-				  current_stop = i;
-				  if ((em.stop - em.start) > 4) {
-					  covered_regions.push_back(em);
-				  }
-			  } else {
-				  current_stop = i;
-			  }
-		  }
-	  }
-
-	  ExonMatch em = ExonMatch();
-	  em.start = current_start + offset_ref;
-	  em.stop = current_stop + offset_ref;
-	  em.coverage = sum;
-	  covered_regions.push_back(em);
-
-	  ExonsCluster ec = ExonsCluster(covered_regions);
-
-	  if (covered_regions.size() > 0) {
-
-		  int8_t *ref_data_int  = (int8_t *) &first_index->get_data()[0];
-		  const char *ref_data = (const char *) ref_data_int;
-		  int64_t ref_data_lenInner = first_index->get_reference_lengths()[0];
-
-		  if (ec.isValid()) {
-//			  if (false) {
-			  int start = ec.exons[0].start;
-			  int stop = ec.exons[ec.exons.size()-1].stop;
-
-			  std::string testRef = "";
-
-			  for (int j = start; j < stop+1; ++j) {
-				  testRef += ref_data_int[j];
-			  }
-
-			  if (testRef.size() > 10000) {
-				  continue;
-			  }
-
-			  for (int var88 = 0; var88 < ec.exons.size(); ++var88) {
-				  ExonMatch emInner = ec.exons[var88];
-				  for (int j = emInner.start; j < emInner.stop; ++j) {
-					  cutted_reference += ref_data[j];
-				  }
-			  }
-
-			  ec.cuttedRefEnd = cutted_reference.size();
-			  ec.cuttedRefStart = 0;
-
-			  for (int varInner = 0; varInner < currentClusterRealign.size(); ++varInner) {
-				  RealignmentStructure* realStruct = currentClusterRealign[varInner];
-				  const SingleSequence *read = realStruct->sequence;
-
-				  double old_score = realStruct->score;
-
-				  SeqOrientation orientation = realStruct->orientation;
-				  std::string sam_line_realigned = "";
-				  auto mapping_data_realing = std::unique_ptr<MappingData>(new MappingData);
-
-				  double score = -10000;
-
-				  SingleSequence *ss = new SingleSequence();
-				  ss->CopyFrom(*read);
-
-				  std::vector<CigarExon> cigarExons2;
-
-				  if (orientation == kReverse) {
-					  ss->ReverseComplement();
-					  const char * echoOut = (const char *) ss->get_data();
-					  score = RealignRead(ss, indexes_[0], &(*mapping_data_realing), parameters, testRef, ec, orientation, ref_number, &cigarExons2);
-				  } else {
-					  const char * echoOut = (const char *) read->get_data();
-					  score = RealignRead(read, indexes_[0], &(*mapping_data_realing), parameters, testRef, ec, orientation, ref_number, &cigarExons2);
-				  }
-
-				  std::vector<CigarExon> cigarExons1 = realStruct->previousCigarExons;
-
-				  if (mapping_data_realing->final_mapping_ptrs.size() > 0) {
-				    PathGraphEntry* entry = mapping_data_realing->final_mapping_ptrs.back();
-					  std::vector<AlignmentResults> alignments = entry->get_alignments();
-					  if (alignments.size() > 0) {
-
-						  AlignmentResults ar = alignments.back();
-						  if (orientation == kReverse) {
-							  CollectAlignments(ss, parameters, &(*mapping_data_realing), sam_line_realigned);
-						  } else {
-							  CollectAlignments(realStruct->sequence, parameters, &(*mapping_data_realing), sam_line_realigned);
-						  }
-						  mapping_data_realing->clear();
-
-						  double difference = abs(score-old_score);
-
-						  if (old_score > score+0.05) {
-						  } else if(difference < 0.05) {
-							  if (cigarExons1.size() != cigarExons2.size()) {
-							  } else {
-								  std::vector<int> visitingGaps;
-
-								  int numberOfGaps = 0;
-								  for (int varGaps = 0; varGaps < cigarExons1.size(); varGaps++) {
-									  if (cigarExons1[varGaps].isGap) {
-										  numberOfGaps += 1;
-									  }
-								  }
-
-								  for (int varz = 0; varz < numberOfGaps; ++varz) {
-									  visitingGaps.push_back(0);
-								  }
-
-								  int currentGap = -1;
-								  int firstCigarSum = 0;
-								  int secondCigarSum = 0;
-
-								  for (int vary = 0; vary < cigarExons1.size()-1; ++vary) {
-									  CigarExon c1 = cigarExons1[vary];
-									  CigarExon c2 = cigarExons2[vary];
-
-									  if (abs(firstCigarSum-secondCigarSum) > 5) {
-										  visitingGaps[currentGap] = 1;
-									  }
-
-									  if (!c1.isGap) {
-										  currentGap += 1;
-									  }
-
-									  firstCigarSum += c1.length;
-									  secondCigarSum += c2.length;
-
-									  if (abs(firstCigarSum-secondCigarSum) > 5) {
-										  visitingGaps[currentGap] = 1;
-									  }
-								  }
-
-								  currentGap = 0;
-								  CigarExon previousExon1 = cigarExons1[0];
-								  CigarExon previousExon2 = cigarExons2[0];
-
-								  bool isVisiting = false;
-								  for (int varvisiting = 0; varvisiting < visitingGaps.size(); ++varvisiting) {
-									  if (visitingGaps[varvisiting]) {
-										  isVisiting = true;
-										  break;
-									  }
-								  }
-
-								  int total1Sum = 0;
-								  int total2Sum = 0;
-
-								  for (int vary = 1; vary < cigarExons1.size()-1; ++vary) {
-									  CigarExon currentExon1 = cigarExons1[vary];
-									  CigarExon currentExon2 = cigarExons2[vary];
-
-									  if (!currentExon1.isGap) {
-										  previousExon1 = currentExon1;
-										  previousExon2 = currentExon2;
-										  continue;
-									  }
-
-									  CigarExon nextExon1 = cigarExons1[vary+1];
-									  CigarExon nextExon2 = cigarExons2[vary+1];
-
-									  if (visitingGaps[currentGap]) {
-										  int sum1 = 0;
-										  int count1 = 0;
-										  for (auto& c: nextExon1.cigar) {
-												int numberOfBases = (int) c.count;
-												if (numberOfBases + count1 > 10) {
-													if (c.op == '=') {
-														sum1 += (10-count1) * 5;
-													} else {
-														sum1 += (10-count1) * -4;
-													}
-													break;
-												} else {
-													if (c.op == '=') {
-														sum1 += numberOfBases * 5;
-													} else {
-														sum1 += numberOfBases * -4;
-													}
-													count1 += numberOfBases;
-												}
-										  }
-
-										  int sum1Back = 0;
-										  int count1Back = 0;
-										  for (int unutar1 = previousExon1.cigar.size()-1; unutar1 >= 0; unutar1--) {
-
-												int numberOfBases = (int) previousExon1.cigar[unutar1].count;
-												if (numberOfBases + count1Back > 10) {
-													if (previousExon1.cigar[unutar1].op == '=') {
-														sum1Back += (10-count1Back) * 5;
-													} else {
-														sum1Back += (10-count1Back) * -4;
-													}
-													break;
-												} else {
-													if (previousExon1.cigar[unutar1].op == '=') {
-														sum1Back += numberOfBases * 5;
-													} else {
-														sum1Back += numberOfBases * -4;
-													}
-													count1Back += numberOfBases;
-												}
-										  }
-
-										  int sum2 = 0;
-										  int count2 = 0;
-										  for (auto& c: nextExon2.cigar) {
-												int numberOfBases = (int) c.count;
-												if (numberOfBases + count2 > 10) {
-													if (c.op == '=') {
-														sum2 += (10-count2) * 5;
-													} else {
-														sum2 += (10-count2) * -4;
-													}
-													break;
-												} else {
-													if (c.op == '=') {
-														sum2 += numberOfBases * 5;
-													} else {
-														sum2 += numberOfBases * -4;
-													}
-													count2 += numberOfBases;
-												}
-										  }
-
-										  int sum2Back = 0;
-										  int count2Back = 0;
-										  for (int unutar1 = previousExon2.cigar.size()-1; unutar1 >= 0; unutar1--) {
-
-												int numberOfBases = (int) previousExon2.cigar[unutar1].count;
-												if (numberOfBases + count2Back > 10) {
-													if (previousExon2.cigar[unutar1].op == '=') {
-														sum2Back += (10-count2Back) * 5;
-													} else {
-														sum2Back += (10-count2Back) * -4;
-													}
-													break;
-												} else {
-													if (previousExon2.cigar[unutar1].op == '=') {
-														sum2Back += numberOfBases * 5;
-													} else {
-														sum2Back += numberOfBases * -4;
-													}
-													count2Back += numberOfBases;
-												}
-										  }
-
-										  total1Sum += (sum1 + sum1Back);
-										  total2Sum += (sum2 + sum2Back);
-									  }
-
-									  currentGap += 1;
-								  }
-
-								  if (!isVisiting) {
-									  if (score >= old_score) {
-										  #pragma omp critical
-										  sam_lines[realStruct->order_number] = sam_line_realigned;
-									  }
-								  } else if (total1Sum <= total2Sum) {
-									  #pragma omp critical
-									  sam_lines[realStruct->order_number] = sam_line_realigned;
-								  }
-							  }
-						  }
-					  }
-				  } else {
-				  }
-				  delete ss;
-			  }
-		  } else {
-		  }
-	  }
-  }
-
-  for (int var = 0; var < number_of_refs; ++var) {
-	  delete [] coverages_array[var];
+  if (parameters->composite_parameters == "rnaseq") {
+	  PostprocessRNAData(realignment_structures, &sam_lines, num_threads, parameters, evalue_params);
   }
 
   (*ret_num_mapped) = num_mapped;

@@ -15,7 +15,7 @@
 #include "alignment/alignment.h"
 #include "utility/tictoc.h"
 
-int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *low_scored_reads, std::vector<RealignmentStructure *> *high_scored_reads) {
+int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *realignment_structures) {
   std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes = indexes_;
   std::shared_ptr<is::Transcriptome> transcriptome = transcriptome_;
 
@@ -247,7 +247,7 @@ int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const Sin
   begin_clock = clock();
 
   if (parameters->composite_parameters == "rnaseq") {
-    RNAGenerateAlignments_(order_number, mapping_data, indexes[0], transcriptome, read, parameters, evalue_params, low_scored_reads, high_scored_reads);
+    RNAGenerateAlignments_(order_number, mapping_data, indexes[0], transcriptome, read, parameters, evalue_params, realignment_structures);
   } else {
     GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
   }
@@ -1176,13 +1176,12 @@ double GraphMap::RealignRead(const SingleSequence *read, std::shared_ptr<is::Min
 
 int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data, std::shared_ptr<is::MinimizerIndex> index,
                                      std::shared_ptr<is::Transcriptome> transcriptome, const SingleSequence *read,
-                                     const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *low_scored_reads, std::vector<RealignmentStructure *> *high_scored_reads) {
+                                     const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *realignment_structures) {
   if (mapping_data->intermediate_mappings.size() == 0) {
-	std::vector<CigarExon> placeholder;
-	RealignmentStructure *rs = new RealignmentStructure(order_number, read, NULL, -1, -10000, placeholder);
+	std::vector<CigarExon> empty_cigar;
+	RealignmentStructure *rs = new RealignmentStructure(order_number, read, NULL, -1, -10000, empty_cigar);
 	#pragma omp critical
-	low_scored_reads->push_back(rs);
-
+	realignment_structures->push_back(rs);
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("mapping_data->intermediate_mappings.size() == 0\n"), "GenerateAlignments_");
     return 1;
   }
@@ -1519,14 +1518,14 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
   if(tmp_entry != NULL) {
 	rs = new RealignmentStructure(order_number, read, tmp_entry, reference_id_translated, score, betterCigarExons);
 	#pragma omp critical
-	low_scored_reads->push_back(rs);
+	realignment_structures->push_back(rs);
 	mapping_data->final_mapping_ptrs.push_back(tmp_entry);
 	return 0;
   } else {
 	std::vector<CigarExon> placeholder;
 	RealignmentStructure *rs = new RealignmentStructure(order_number, read, NULL, -1, -10000, placeholder);
 	#pragma omp critical
-	low_scored_reads->push_back(rs);
+	realignment_structures->push_back(rs);
 	return 1;
   }
 }
