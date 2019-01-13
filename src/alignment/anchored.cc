@@ -34,10 +34,6 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
   aln.is_aligned = true;
   aln.raw_alignment.clear();
 
-//  int64_t absolute_reference_id = region_results->get_region_data().reference_id;
-//  int64_t reference_id = region_results->get_region_data().reference_id;
-//  int64_t reference_start = index->get_reference_starting_pos()[absolute_reference_id];
-//  int64_t reference_length = index->get_reference_lengths()[absolute_reference_id];
   int64_t reference_start = 0;
 
   LOG_DEBUG_SPEC("Aligning the beginning of the read (overhang).\n");
@@ -54,12 +50,10 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     LOG_DEBUG_SPEC("Performing the alignment.\n");
 
     /// Reversing the sequences to make the semiglobal alignment of the trailing and leading parts.
-//    int8_t *reversed_query_front = reverse_data(read->get_data(), clip_count_front);
     LOG_DEBUG_SPEC("Reversing the query.\n");
     std::vector<int8_t> reversed_query_front;
     reverse_data2(read->get_data(), clip_count_front, reversed_query_front);
 
-//    int8_t *reversed_ref_front = NULL;
     LOG_DEBUG_SPEC("Reversing the ref.\n");
     std::vector<int8_t> reversed_ref_front;
     int64_t reversed_ref_len = 0;
@@ -75,7 +69,6 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
     }
 
     int64_t bandwidth = -1;
-//    bandwidth = 0.30f*read->get_sequence_length();
 
     LOG_DEBUG_SPEC("Running AlignmentFunctionSHW.\n");
     int64_t leftover_left_start = 0, leftover_left_end = 0, leftover_left_edit_distance = 0;
@@ -141,11 +134,6 @@ int AlignFront(AlignmentFunctionType AlignmentFunctionSHW,
         if (reversed_alignment)
           free(reversed_alignment);
       }
-
-//      if (reversed_query_front)
-//        free(reversed_query_front);
-//      if (reversed_ref_front)
-//        free(reversed_ref_front);
     }
   }
 

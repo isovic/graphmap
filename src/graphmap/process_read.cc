@@ -15,6 +15,13 @@
 #include "alignment/alignment.h"
 #include "utility/tictoc.h"
 
+
+#include "aligner/aligner_containers.h"
+#include "aligner/aligner_ksw2.h"
+#include "aligner/anchor_aligner.h"
+#include "aligner/aligner_util.hpp"
+#include "aligner/pairwise_penalties.h"
+
 int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const SingleSequence *read, const ProgramParameters *parameters, const EValueParams *evalue_params, std::vector<RealignmentStructure *> *realignment_structures) {
   std::vector<std::shared_ptr<is::MinimizerIndex>> &indexes = indexes_;
   std::shared_ptr<is::Transcriptome> transcriptome = transcriptome_;
@@ -112,7 +119,11 @@ int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const Sin
 ////    min_allowed_bin_value = 0.0f;
 //  }
 
-  int64_t max_num_regions = 12;
+  int64_t max_num_regions = parameters->max_num_regions;
+  if (parameters->composite_parameters == "rnaseq") {
+	 max_num_regions = 12;
+  }
+
   if (max_num_regions < 0) { max_num_regions = mapping_data->bins.size(); }
 
 // This was commented out on 14.04.2016.
@@ -138,20 +149,18 @@ int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const Sin
     }
   }
 
-//#ifndef RELEASE_VERSION
-//  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
-//
-//    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
-//    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
-//    if (fp_cluster_path) {
-//      fclose(fp_cluster_path);
-//    }
-//  }
-//#endif
+#ifndef RELEASE_VERSION
+  if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
+
+    std::string cluster_path = FormatString("temp/clusters/clusters-read-%ld.csv", read->get_sequence_id());
+    FILE *fp_cluster_path = fopen(cluster_path.c_str(), "w");
+    if (fp_cluster_path) {
+      fclose(fp_cluster_path);
+    }
+  }
+#endif
 
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, "\n\n", "ProcessRead");
-
-//  std::vector<ScoreRegistry *> all_local_scores;
 
   int64_t num_regions_processed = 0;
   // Process regions one by one.
@@ -189,7 +198,6 @@ int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const Sin
 
     Region region = CalcRegionFromBin_(i, mapping_data, read, parameters);
     ScoreRegistry local_score(region, i);
-//    all_local_scores.push_back(local_score);
 
     bool is_reverse = (region.start >= indexes[0]->get_data_length_forward());
     LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("[i = %ld] location_start = %ld, location_end = %ld, is_reverse = %d, vote = %ld, region_index = %ld\n", i, region.start, region.end, (int) (region.start >= indexes[0]->get_data_length_forward()), region.region_votes, region.region_index), "ProcessRead");
@@ -207,17 +215,12 @@ int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const Sin
     if (parameters->composite_parameters == "rnaseq") {
       int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters, 10);
     } else if (parameters->alignment_algorithm != "sg" && parameters->alignment_algorithm != "sggotoh") {
-      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters, 0);
-    } else {
       int ret_value_lcs = SemiglobalPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters);
+    } else {
+      int ret_value_lcs = AnchoredPostProcessRegionWithLCS_(&local_score, mapping_data, indexes, read, parameters, 0);
     }
 
-//    // Unless we are mapping RNA-seq data, we've taken all we need from the local scores.
-//    if (parameters->composite_parameters != "rnaseq") {
-//    local_score->Clear();
-//    if (local_score) { delete local_score; }
-//    all_local_scores.clear();
-//    }
+    local_score.Clear();
 
     if (parameters->verbose_level > 5 && read->get_sequence_id() == parameters->debug_read) {
       LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH_DEBUG, read->get_sequence_id() == parameters->debug_read, FormatString("-----\n\n"), "ProcessRead");
@@ -621,8 +624,6 @@ int GraphMap::GenerateAlignments_(MappingData *mapping_data, std::shared_ptr<is:
   return 0;
 }
 
-// std::string VerboseCluster(const ClusterAndIndices& cluster);
-
 std::string VerboseCluster(const Cluster& cluster) {
   std::stringstream ss;
 
@@ -630,12 +631,6 @@ std::string VerboseCluster(const Cluster& cluster) {
 
   return ss.str();
 }
-
-#include "aligner/aligner_containers.h"
-#include "aligner/aligner_ksw2.h"
-#include "aligner/anchor_aligner.h"
-#include "aligner/aligner_util.hpp"
-#include "aligner/pairwise_penalties.h"
 
 inline uint8_t CigarCharToEdlibOp(char cigar) {
   uint8_t ret = EDLIB_NOP;
@@ -853,249 +848,6 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
   return isGlobalyAligned;
 
 }
-
-/////////////////////////
-///// EXON FINDER ///////
-/////////////////////////
-
-int getNumberOfSBack(std::string read) {
-	int number = 0;
-	int base = 1;
-	for(int i = read.length()-2; i >= 0; i--) {
-		if(isdigit(read[i])) {
-			int znam = read[i] - '0';
-			number += base * znam;
-			base *= 10;
-		} else {
-			break;
-		}
-	}
-
-	return number;
-}
-
-int getNumberOfSFront(std::string read) {
-	int number = 0;
-	for(int i = 0; i < read.length(); i++) {
-		if(isdigit(read[i])) {
-			int znam = read[i] - '0';
-			number *= 10;
-			number += znam;
-		} else {
-			break;
-		}
-	}
-
-	return number;
-}
-
-int hasSOnBegining(std::string read) {
-	for (int i = 0; i < read.length(); i++) {
-		if (isdigit(read[i])) {
-		} else if (read[i] == 'S') {
-			return 1;
-		} else {
-			return 0;
-		}
-	}
-	return 0;
-}
-
-int hasSOnEnd(std::string cigar) {
-	if (cigar[cigar.length()-1] == 'S') {
-		return 1;
-	}
-	return 0;
-}
-
-int getLengthOfBackClipping(std::string cigar) {
-	if (hasSOnEnd(cigar)) {
-		int length = getNumberOfSBack(cigar);
-		if (length <=15) {
-			return 0;
-		}
-		return length;
-	}
-	return 0;
-}
-
-int getLengthOfFrontClipping(std::string cigar) {
-	if (hasSOnBegining(cigar)) {
-		int length = getNumberOfSFront(cigar);
-		if (length <=15) {
-			return 0;
-		}
-		return length;
-	}
-	return 0;
-}
-
-std::string convertCigarString(std::vector<is::CigarOp> cigarIn) {
-	  std::string cigar;
-
-	  for (auto& c: cigarIn) {
-		  int tmp = (int) c.count;
-		  char str[20] = {0};
-		  std::sprintf(str, "%d", tmp);
-		  cigar += str;
-		  cigar += c.op;
-	  }
-
-	  return  cigar;
-}
-
-ExonMatch findExonMatch(const char *ref, const SingleSequence *read, std::shared_ptr<is::AlignerBase> aligner) {
-
-	auto aln_result_extended = aligner->getResults();
-	std::string cigar;
-
-	int biggestMatch = 0;
-	int bigMatchStart = 0;
-	int bigMatchStop = 0;
-	int currentMatch = 0;
-	int currentMatchStart = 0;
-	int currentMatchStop = 0;
-
-	for (auto& c: aln_result_extended->cigar) {
-		int numberOfBases = (int) c.count;
-		char str[20] = {0};
-		std::sprintf(str, "%d", numberOfBases);
-		cigar += str;
-		cigar += c.op;
-
-		if (c.op == 'D') {
-			if (biggestMatch < currentMatch) {
-				if (abs(currentMatch - (currentMatchStop - currentMatchStart)) < 12) {
-					biggestMatch = currentMatch;
-					bigMatchStart = currentMatchStart;
-					bigMatchStop = currentMatchStop;
-				}
-			}
-			currentMatch = 0;
-			currentMatchStart = bigMatchStop + numberOfBases;
-			currentMatchStop = bigMatchStop + numberOfBases;
-		} else if (c.op == '=') {
-			currentMatch += numberOfBases;
-			currentMatchStop += numberOfBases;
-		} else {
-			currentMatchStop += numberOfBases;
-		}
-	}
-
-	ExonMatch em = ExonMatch();
-	em.start = bigMatchStart;
-	em.stop = bigMatchStop;
-	return em;
-}
-
-//PathGraphEntry* ExtendAlignmentForAnotherExonIfNeeded(std::shared_ptr<is::AlignmentResult> aln_result,
-//		const char *ref,
-//		std::vector<is::AlignmentAnchor> alignment_anchors,
-//		const SingleSequence *read,
-//		int64_t abs_ref_id,
-//		const ProgramParameters *parameters,
-//		MappingData *mapping_data,
-//		int64_t total_ref_data_len,
-//		std::shared_ptr<is::MinimizerIndex> index,
-//		double* score) {
-//
-//	is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
-//	is::AlignmentOptions aln_opt;
-//
-//	double back_extended_score;
-//	double front_extended_score;
-//
-//	auto aligner = is::createAlignerKSW2(p, aln_opt);
-//	auto anchor_aligner = is::createAnchorAligner(aligner);
-//
-//	std::string cigar = convertCigarString(aln_result->cigar);
-//	int backClippingLength = getLengthOfBackClipping(cigar);
-//
-//	int windowLength = 10000;
-//	const char *readPointer = (const char *) read->get_data();
-//
-//	PathGraphEntry* entry_candidate = NULL;
-//
-//	if (backClippingLength > 15) {
-//
-//		int64_t ref_data_start = index->get_reference_starting_pos()[abs_ref_id];
-//		int64_t ref_data_len = index->get_reference_lengths()[abs_ref_id];
-//
-//		int64_t startCalc = std::min(alignment_anchors.back().rend,(int64_t) ref_data_start+ref_data_len);
-//		int64_t lengthCalc = startCalc+windowLength > ref_data_start+ref_data_len ? (ref_data_start+ref_data_len) - startCalc : windowLength;
-//		aligner->Global(readPointer+(read->get_sequence_length()-backClippingLength), backClippingLength, ref+startCalc, lengthCalc, true);
-//
-//		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
-//
-//		if ((exonMatch.stop - exonMatch.start) / (double) backClippingLength > 0.4) {
-//			alignment_anchors.emplace_back(is::AlignmentAnchor(read->get_sequence_length()-backClippingLength, read->get_sequence_length(), alignment_anchors.back().rend + exonMatch.start, alignment_anchors.back().rend + exonMatch.stop));
-//
-//			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
-//				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400, true);
-//			std::string cigar_upgraded;
-//
-//			for (auto& c: aln_result_upgraded->cigar) {
-//				int numberOfBases = (int) c.count;
-//				char str[20] = {0};
-//				std::sprintf(str, "%d", numberOfBases);
-//				cigar_upgraded += str;
-//				cigar_upgraded += c.op;
-//			}
-//
-//			const int64_t MIN_INTRON_LEN = 10;
-//			for (auto& c: aln_result_upgraded->cigar) {
-//				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
-//					c.op = 'N';
-//				}
-//			}
-//
-//			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &back_extended_score);
-//			if (isAligned) {
-//				entry_candidate = mapping_data->intermediate_mappings.back();
-//				*score = back_extended_score;
-//			} else {
-//				alignment_anchors.pop_back();
-//			}
-//		}
-//	}
-//
-//	int frontClippingLength = getLengthOfFrontClipping(cigar);
-//
-//	if (frontClippingLength > 15) {
-//		int64_t startCalc = std::max(alignment_anchors.front().rstart-windowLength, (int64_t) 0);
-//		int64_t lengtCalc = alignment_anchors.front().rstart-windowLength < 0 ? alignment_anchors.front().rstart : windowLength;
-//
-//		aligner->Global(readPointer, frontClippingLength, ref+startCalc, lengtCalc, true);
-//		ExonMatch exonMatch = findExonMatch(ref, read, aligner);
-//
-//		if ((exonMatch.stop - exonMatch.start) / (double) frontClippingLength > 0.4) {
-//
-//			alignment_anchors.insert(alignment_anchors.begin(), is::AlignmentAnchor(0, frontClippingLength, (alignment_anchors.front().rstart-lengtCalc) + exonMatch.start, (alignment_anchors.front().rstart-lengtCalc) + exonMatch.stop));
-//
-//			auto aln_result_upgraded = anchor_aligner->GlobalAnchoredWithExtend((const char *) read->get_data(), read->get_sequence_length(),
-//				                                                    ref, total_ref_data_len, alignment_anchors, -1, 400, true);
-//
-//			const int64_t MIN_INTRON_LEN = 10;
-//			for (auto& c: aln_result_upgraded->cigar) {
-//				if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
-//					c.op = 'N';
-//				}
-//			}
-//
-//			bool isAligned = HackIntermediateMapping(mapping_data, index, read, parameters, abs_ref_id, aln_result_upgraded, &front_extended_score);
-//			if (isAligned) {
-//				if (entry_candidate == NULL || front_extended_score > back_extended_score) {
-//					entry_candidate = mapping_data->intermediate_mappings.back();
-//					*score = front_extended_score;
-//				}
-//			} else {
-//				alignment_anchors.erase(alignment_anchors.begin());
-//			}
-//		}
-//	}
-//
-//	return entry_candidate;
-//}
 
 double GraphMap::RealignRead(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, MappingData *mapping_data, const ProgramParameters *parameters, std::string cutted_reference, ExonsCluster exonsClusters, SeqOrientation orientation, int64_t ref_number, std::vector<CigarExon> *cigarExons) {
 
