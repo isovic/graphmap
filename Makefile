@@ -16,7 +16,7 @@ CODEBASE_SRC_FOLDERS = $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" 
 # $(shell find $(CODEBASE) -maxdepth 2 -type d -name "src" -exec echo "-I"{}"/*/" \;)
 
 # ? allows override by user using env var
-GCC ?= /usr/local/bin/g++-7
+GCC ?= /usr/local/bin/g++-8
 # define variables for GCC version check here
 GCC_MAJOR_VERSION_GE_4 := $(shell expr `$(GCC) -dumpversion | cut -f1 -d.` \>= 4)
 GCC_MINOR_VERSION_GE_7 := $(shell expr `$(GCC) -dumpversion | cut -f2 -d.` \>= 7)

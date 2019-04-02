@@ -7,8 +7,6 @@
 
 #include "alignment/cigargen.h"
 #include "utility/utility_general.h"
-#include <iostream>
-
 
 std::string AlignmentToCigar(unsigned char *alignment, int alignmentLength, bool extended_format) {
   if (alignment == NULL || alignmentLength == 0)

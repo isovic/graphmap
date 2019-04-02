@@ -14,6 +14,7 @@
 
 #include "libs/edlib.h"
 #include "libs/edlibcigar.h"
+#include "minimizer_index/seed.h"
 
 
 

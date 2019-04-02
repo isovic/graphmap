@@ -55,7 +55,7 @@ public:
 		cuttedRefEnd = 0;
 	}
 
-	bool isValid() {
+	int avg_covereage() {
 		int coverageSum = 0;
 		int length = 0;
 		for (int var = 0; var < exons.size(); ++var) {
@@ -63,8 +63,11 @@ public:
 			length += exons[var].stop - exons[var].start;
 		}
 		double ratio = (double) coverageSum / (double) length;
-		return ratio > 30;
-//		return false;
+		return ratio;
+	}
+
+	bool isValid() {
+		return avg_covereage() > 30;
 	}
 };
 

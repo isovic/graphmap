@@ -457,12 +457,8 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 	  coverages_array.push_back(coverage_array);
 	}
 
-	std::cout << "processed all" << std::endl;
-
 	std::vector<std::string> ref_names;
 	std::vector<std::vector<RealignmentStructure*>> reads_by_chromosome;
-
-	std::cout << "number_of_refs " << number_of_refs << std::endl;
 
 	for (int i = 0; i < number_of_refs; ++i) {
 	  std::string ref_name = indexes_.front()->get_headers()[i];
@@ -470,8 +466,6 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 	  std::vector<RealignmentStructure *> vector;
 	  reads_by_chromosome.push_back(vector);
 	}
-
-	std::cout << "realignment_structures.size() " << realignment_structures.size() << std::endl;
 
 	for (int var = 0; var < realignment_structures.size(); ++var) {
 	  RealignmentStructure *rs = realignment_structures[var];
@@ -519,8 +513,6 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 		current_realignment_cluster.clear();
 	}
 
-	std::cout << "realignment_clusters.size() " << realignment_clusters.size() << std::endl;
-
 	#pragma omp parallel for num_threads(num_threads) firstprivate(evalue_params) shared(parameters, sam_lines) schedule(dynamic, 1)
 	for (int var = 0; var < realignment_clusters.size(); ++var) {
 	  std::vector<RealignmentStructure *> current_realignment_cluster = realignment_clusters[var];
@@ -530,7 +522,6 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 	  int min_index = INT_MAX;
 	  int max_index = 0;
 	  int ref_number = 0;
-	  std::cout << "current_realignment_cluster.size() " << current_realignment_cluster.size() << std::endl;
 
 	  for (int j = 0; j < current_realignment_cluster.size(); ++j) {
 		RealignmentStructure* rs = current_realignment_cluster[j];
@@ -551,6 +542,10 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 
 		if (rs->stop > max_index) {
 			max_index = std::min((int64_t) rs->stop, ref_data_len);
+		}
+
+		if(ref_data_len < 50) {
+			continue;
 		}
 
 		int gapCounter = 0;
@@ -641,6 +636,8 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 	  if(covered_regions.size() <= 0) {
 		continue;
 	  }
+
+//	  myfile << "exon_cluster_avg_coverage: " << exon_cluster.avg_covereage() << std::endl;
 
 	  int8_t *ref_data_int  = (int8_t *) &first_index->get_data()[0];
 	  const char *ref_data = (const char *) ref_data_int;
@@ -885,11 +882,12 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 		delete ss;
 	  }
 	}
-	std::cout << "end " << " end " << std::endl;
 
 	for (int var = 0; var < number_of_refs; ++var) {
 	  delete [] coverages_array[var];
 	}
+
+//	myfile.close();
 }
 
 int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
