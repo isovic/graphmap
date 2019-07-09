@@ -16,6 +16,12 @@
 #include "index/index_util.h"
 #include <iostream>
 
+#include "aligner/aligner_containers.h"
+#include "aligner/aligner_ksw2.h"
+#include "aligner/anchor_aligner.h"
+#include "aligner/aligner_util.hpp"
+#include "aligner/pairwise_penalties.h"
+
 GraphMap::GraphMap() : transcriptome_(nullptr) {
   indexes_.clear();
 }
@@ -440,6 +446,388 @@ void GraphMap::ProcessReadsFromSingleFile(ProgramParameters &parameters, FILE *f
 
 bool GraphMap::comparePtrToNode(RealignmentStructure* a, RealignmentStructure* b) { return ((*a).start < (*b).start); }
 
+int get_read_for_reference_begining(std::vector<is::CigarOp> cigar, int len) {
+	int reference_covered = 0;
+	int read_covered = 0;
+
+	for(is::CigarOp &c: cigar) {
+		int count = c.count;
+
+		if(c.op == '=' || c.op == 'X') {
+			if(reference_covered + count > len) {
+				read_covered += len - reference_covered;
+				break;
+			} else if(reference_covered + count == len) {
+				read_covered += count;
+				break;
+			} else {
+				read_covered += count;
+				reference_covered += count;
+			}
+		}
+
+		if(c.op == 'D') {
+			if(reference_covered + count >= len) {
+				break;
+			} else {
+				reference_covered += count;
+			}
+		}
+
+		if(c.op == 'I') {
+			read_covered += count;
+		}
+	}
+
+	return read_covered;
+}
+
+std::vector<is::CigarOp> GraphMap::ProcessReadExons(std::vector<ExonInfo> &exonsInfos, const char *ref_data) {
+	if (exonsInfos.size() <= 0) {
+		std::vector<is::CigarOp> temp;
+//		std::cout << "bad exit" << std::endl;
+		return temp;
+	}
+
+	std::vector<is::CigarOp> complete_cigar1;
+
+//	std::cout << exonsInfos[0].read_id << std::endl;
+
+	std::sort(std::begin(exonsInfos), std::end(exonsInfos), [](ExonInfo a, ExonInfo b) {return a.order_number < b.order_number; });
+
+	std::vector<ExonInfo> merged_exons;
+
+	ExonInfo previous_exon = exonsInfos[0];
+	int index = 1;
+	while(index != exonsInfos.size()) {
+		ExonInfo current_exon = exonsInfos[index];
+		if (abs((previous_exon.start-previous_exon.leftOffset)-(current_exon.start-current_exon.leftOffset)) <  5 ||
+				abs((previous_exon.stop-previous_exon.rightOffset)-(current_exon.stop-current_exon.rightOffset)) <  5) {
+			ExonInfo new_exon = ExonInfo(previous_exon, current_exon);
+			new_exon.reference = previous_exon.reference;
+			for (long var = previous_exon.stop; var < current_exon.start; ++var) {
+				new_exon.reference.push_back(ref_data[var]);
+			}
+			new_exon.reference += current_exon.reference;
+			previous_exon = new_exon;
+		} else {
+			merged_exons.push_back(previous_exon);
+			previous_exon = current_exon;
+		}
+		index += 1;
+	}
+	merged_exons.push_back(previous_exon);
+
+	previous_exon = merged_exons[0];
+	index = 1;
+
+	int base_offset = 0;
+
+	int front_clipping = 0;
+	if (previous_exon.cigar.size() > 0 && previous_exon.cigar[0].op == 'S') {
+		front_clipping = previous_exon.cigar[0].count;
+	}
+
+	int first_offset_left = base_offset + std::max(-previous_exon.rightOffset, 0);
+	int first_offset_right = base_offset + std::max(previous_exon.rightOffset, 0);
+
+	int first_ref_len = ((previous_exon.reference.size() - first_offset_left) + first_offset_right);
+
+	std::string ref;
+
+	for (int var = previous_exon.start; var < previous_exon.stop - first_offset_left; ++var) {
+		ref.push_back(ref_data[var]);
+	}
+
+	if(first_offset_right > 0) {
+		for (int var = previous_exon.stop - first_offset_left; var < previous_exon.stop + first_offset_right; ++var) {
+			ref.push_back(ref_data[var]);
+		}
+	}
+
+	std::string read = previous_exon.content.substr(front_clipping, previous_exon.content.size()-front_clipping);
+
+	bool shouldAling = previous_exon.rightOffset != 0;
+
+	is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
+	is::AlignmentOptions aln_opt;
+
+	auto aligner = is::createAlignerKSW2(p, aln_opt);
+
+	std::vector<is::CigarOp> complete_cigar;
+
+	bool did_adjust_read = false;
+
+	std::vector<is::CigarOp> container_vector;
+
+//	for(ExonInfo ei: merged_exons) {
+//		std::cout << ei.start << "-" << ei.stop << "  " << ei.leftOffset << " " << ei.rightOffset << " (" << ei.invalid << ")" << std::endl;
+//	}
+
+	while(index != merged_exons.size()) {
+		ExonInfo current_exon = merged_exons[index];
+
+		if (current_exon.invalid) {
+			shouldAling = true;
+			read += current_exon.content;
+		} else {
+			if (current_exon.leftOffset != 0 || shouldAling) {
+
+				int second_offset_left = base_offset + std::max(current_exon.leftOffset, 0);
+				int second_offset_right = base_offset + std::max(-current_exon.leftOffset, 0);
+
+				std::vector<is::CigarOp> first_vector;
+				std::vector<is::CigarOp> second_vector;
+
+				int back_clipping = 0;
+				if (current_exon.cigar.size() > 0 && current_exon.cigar[current_exon.cigar.size()-1].op == 'S') {
+					back_clipping = current_exon.cigar[current_exon.cigar.size()-1].count;
+				}
+
+				for (int var = current_exon.start - second_offset_left; var < current_exon.start; ++var) {
+					ref.push_back(ref_data[var]);
+				}
+
+				for (int var = current_exon.start + second_offset_right; var < current_exon.stop; ++var) {
+					ref.push_back(ref_data[var]);
+				}
+
+				std::string total_read = read + current_exon.content.substr(0, current_exon.content.size()-back_clipping);
+
+				did_adjust_read = true;
+
+				aligner->Global(total_read.c_str(), total_read.size(), ref.c_str(), ref.size(), true);
+
+				auto aln_result = aligner->getResults();
+
+				int reference_covered = 0;
+				int read_covered = 0;
+				bool found_first_vector = false;
+
+				for (auto& c: aln_result->cigar) {
+					int count = c.count;
+
+					if (found_first_vector) {
+						second_vector.push_back(c);
+						continue;
+					}
+
+					if(c.op == '=' || c.op == 'X') {
+						if (	reference_covered + count == first_ref_len) {
+							is::CigarOp left_op = is::CigarOp(c.op, first_ref_len-reference_covered);
+							first_vector.push_back(left_op);
+							reference_covered += count;
+							read_covered += count;
+							found_first_vector = true;
+
+//							std::cout << "Ags: " << ref[reference_covered-4] << ref[reference_covered-3] << ref[reference_covered-2] << ref[reference_covered-1] << std::endl;
+//							std::cout << ref[reference_covered] << ref[reference_covered+1] << ref[reference_covered+2] << ref[reference_covered+3] << ref[reference_covered+4] << ref[reference_covered+5] << ref[reference_covered+6] << ref[reference_covered+7] <<  ref[reference_covered+8] <<  std::endl;
+						}
+						else if(reference_covered + count > first_ref_len) {
+							is::CigarOp left_op = is::CigarOp(c.op, first_ref_len-reference_covered);
+							first_vector.push_back(left_op);
+							is::CigarOp right_op = is::CigarOp(c.op, (reference_covered + count)-first_ref_len);
+							second_vector.push_back(right_op);
+
+							read_covered += (first_ref_len-reference_covered);
+							reference_covered += (first_ref_len-reference_covered);
+							found_first_vector = true;
+//							std::cout << "Ags: " << ref[reference_covered-4] << ref[reference_covered-3] << ref[reference_covered-2] << ref[reference_covered-1] << std::endl;
+//							std::cout << ref[reference_covered] << ref[reference_covered+1] << ref[reference_covered+2] << ref[reference_covered+3] << ref[reference_covered+4] << ref[reference_covered+5] << ref[reference_covered+6] << ref[reference_covered+7] <<  ref[reference_covered+8] <<  std::endl;
+						} else {
+							first_vector.push_back(c);
+							reference_covered += count;
+							read_covered += count;
+						}
+					}
+
+					if(c.op == 'D') {
+						if (	reference_covered + count == first_ref_len) {
+							is::CigarOp left_op = is::CigarOp(c.op, first_ref_len-reference_covered);
+							first_vector.push_back(left_op);
+							reference_covered += (first_ref_len-reference_covered);
+
+//							std::cout << "Ags: " << ref[reference_covered-4] << ref[reference_covered-3] << ref[reference_covered-2] << ref[reference_covered-1] << std::endl;
+//							std::cout << ref[reference_covered] << ref[reference_covered+1] << ref[reference_covered+2] << ref[reference_covered+3] << ref[reference_covered+4] << ref[reference_covered+5] << ref[reference_covered+6] << ref[reference_covered+7] <<  ref[reference_covered+8] <<  std::endl;
+							found_first_vector = true;
+						}
+						else if(reference_covered + count > first_ref_len) {
+							is::CigarOp left_op = is::CigarOp(c.op, first_ref_len-reference_covered);
+							first_vector.push_back(left_op);
+							is::CigarOp right_op = is::CigarOp(c.op, (reference_covered + count)-first_ref_len);
+							second_vector.push_back(right_op);
+
+							reference_covered += (first_ref_len-reference_covered);
+
+							found_first_vector = true;
+//							std::cout << "Ags: " << ref[reference_covered-4] << ref[reference_covered-3] << ref[reference_covered-2] << ref[reference_covered-1] << std::endl;
+//							std::cout << ref[reference_covered] << ref[reference_covered+1] << ref[reference_covered+2] << ref[reference_covered+3] << ref[reference_covered+4] << ref[reference_covered+5] << ref[reference_covered+6] << ref[reference_covered+7] <<  ref[reference_covered+8] <<  std::endl;
+						} else {
+							first_vector.push_back(c);
+							reference_covered += count;
+						}
+					}
+
+					if(c.op == 'I') {
+						read_covered += count;
+						first_vector.push_back(c);
+					}
+				}
+
+				if(front_clipping > 0 && complete_cigar.size() == 0) {
+					complete_cigar.push_back(is::CigarOp('S', front_clipping));
+				}
+
+				int size_temp = 0;
+				for (auto& c: first_vector) {
+					complete_cigar.push_back(c);
+					if(c.op == '=' || c.op == 'X' || c.op == 'I') {
+						size_temp += c.count;
+					}
+				}
+				int gap_length = ((((current_exon.start - previous_exon.stop) + first_offset_left) - first_offset_right) - second_offset_left) + second_offset_right;
+
+				complete_cigar.push_back(is::CigarOp('N', gap_length));
+
+				container_vector = second_vector;
+
+				if (index == merged_exons.size() - 1) {
+
+					int size_temp = 0;
+					for (auto& c: second_vector) {
+						if(c.op == '=' || c.op == 'X' || c.op == 'I') {
+							size_temp += c.count;
+						}
+						complete_cigar.push_back(c);
+					}
+
+					if (back_clipping > 0) {
+						complete_cigar.push_back(is::CigarOp('S', back_clipping));
+					}
+
+					index += 1;
+					continue;
+				}
+
+				previous_exon = current_exon;
+
+				ref = "";
+
+				if (read_covered > total_read.size()) {
+					std::vector<is::CigarOp> temp;
+//					std::cout << "bad exit 2" << std::endl;
+					return temp;
+				}
+
+				read = total_read.substr(read_covered, total_read.size() - read_covered);
+
+				first_offset_left = base_offset + std::max(-previous_exon.rightOffset, 0);
+				first_offset_right = base_offset + std::max(previous_exon.rightOffset, 0);
+
+
+				for (int var = previous_exon.start - second_offset_left; var < previous_exon.start; ++var) {
+					ref.push_back(ref_data[var]);
+				}
+
+				for (int var = previous_exon.start + second_offset_right; var < previous_exon.stop - first_offset_left; ++var) {
+					ref.push_back(ref_data[var]);
+				}
+
+				if(first_offset_right > 0) {
+					for (int var = previous_exon.stop - first_offset_left; var < previous_exon.stop + first_offset_right; ++var) {
+						ref.push_back(ref_data[var]);
+					}
+				}
+
+				first_ref_len = (((previous_exon.reference.size() - first_offset_left) + first_offset_right) + second_offset_left) - second_offset_right;
+
+				shouldAling = previous_exon.rightOffset != 0;
+			} else {
+				if (container_vector.size() > 0) {
+					int size_temp = 0;
+					for (auto& c: container_vector) {
+						complete_cigar.push_back(c);
+						if(c.op == '=' || c.op == 'X' || c.op == 'I') {
+							size_temp += c.count;
+						}
+					}
+				} else {
+					int size_temp = 0;
+					for (auto& c: previous_exon.cigar) {
+						complete_cigar.push_back(c);
+						if(c.op == '=' || c.op == 'X' || c.op == 'I') {
+							size_temp += c.count;
+						}
+					}
+				}
+
+				int gap_length = current_exon.start - previous_exon.stop;
+				complete_cigar.push_back(is::CigarOp('N', gap_length));
+
+				container_vector.clear();
+
+				if (index == merged_exons.size() - 1) {
+					int size_temp = 0;
+					for (auto& c: current_exon.cigar) {
+						complete_cigar.push_back(c);
+						if(c.op == '=' || c.op == 'X' || c.op == 'I') {
+							size_temp += c.count;
+						}
+					}
+					index += 1;
+					continue;
+				}
+
+				previous_exon = current_exon;
+
+				ref = "";
+
+				read = previous_exon.content;
+
+				first_offset_left = base_offset + std::max(-previous_exon.rightOffset, 0);
+				first_offset_right = base_offset + std::max(previous_exon.rightOffset, 0);
+
+				for (int var = previous_exon.start; var < previous_exon.stop - first_offset_left; ++var) {
+					ref.push_back(ref_data[var]);
+				}
+
+				if(first_offset_right > 0) {
+					for (int var = previous_exon.stop - first_offset_left; var < previous_exon.stop + first_offset_right; ++var) {
+						ref.push_back(ref_data[var]);
+					}
+				}
+
+				first_ref_len = (previous_exon.reference.size() - first_offset_left) + first_offset_right;
+
+				shouldAling = previous_exon.rightOffset != 0;
+			}
+		}
+		index += 1;
+	}
+
+	if (did_adjust_read) {
+		return complete_cigar;
+	} else {
+		std::vector<is::CigarOp> temp;
+		return temp;
+	}
+}
+
+void FindEquivavlencyClasses(std::vector<std::vector<int> >* classes, std::vector<std::vector<int>> *equivalency_matrix, std::vector<int>* visited_nodes, int k, int n) {
+	for(int i = k+1; i < n; i++) {
+//		std::cout << "i " << i << std::endl;
+		if((*equivalency_matrix)[k][i] == 1) {
+			if((*visited_nodes)[i] != 1) {
+				(*classes)[classes->size()-1].push_back(i);
+				(*visited_nodes)[i] = 1;
+				FindEquivavlencyClasses(classes, equivalency_matrix, visited_nodes, i, n);
+			}
+		}
+	}
+
+//	std::cout << "returning FindEquivavlencyClasses" << std::endl;
+}
+
 void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignment_structures, std::vector<std::string> *sam_lines, int64_t num_threads, ProgramParameters *parameters, EValueParams *evalue_params) {
 	std::shared_ptr<is::MinimizerIndex> first_index = indexes_[0];
 	std::vector<int64_t*> coverages_array;
@@ -513,7 +901,23 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 		current_realignment_cluster.clear();
 	}
 
-	#pragma omp parallel for num_threads(num_threads) firstprivate(evalue_params) shared(parameters, sam_lines) schedule(dynamic, 1)
+	for (int var = 0; var < realignment_clusters.size(); ++var) {
+	  std::vector<RealignmentStructure *> current_realignment_cluster = realignment_clusters[var];
+
+//	  std::ofstream myfile;
+//	  myfile.open ("clusters "+ std::to_string(var) +".txt");
+
+	  for (int i = 0; i < current_realignment_cluster.size(); ++i) {
+		RealignmentStructure* realignment_structure = current_realignment_cluster[i];
+		const SingleSequence *read = realignment_structure->sequence;
+
+//		myfile << read->get_header() << std::endl;
+	  }
+
+//	  myfile.close();
+	}
+
+	#pragma omp parallel for num_threads(1) firstprivate(evalue_params) shared(parameters, sam_lines) schedule(dynamic, 1)
 	for (int var = 0; var < realignment_clusters.size(); ++var) {
 	  std::vector<RealignmentStructure *> current_realignment_cluster = realignment_clusters[var];
 
@@ -522,6 +926,12 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 	  int min_index = INT_MAX;
 	  int max_index = 0;
 	  int ref_number = 0;
+
+	  int halvening = 0;
+	  for(int i = 0; i < first_index->get_reference_lengths().size()/2; i++) {
+		  int len = first_index->get_reference_lengths()[i];
+		  halvening += first_index->get_reference_lengths()[i];
+	  }
 
 	  for (int j = 0; j < current_realignment_cluster.size(); ++j) {
 		RealignmentStructure* rs = current_realignment_cluster[j];
@@ -533,6 +943,13 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 		ref_number = rs->ref_number;
 
 		int64_t ref_data_len = first_index->get_reference_lengths()[rs->ref_number];
+
+
+		int8_t *ref_data_int  = (int8_t *) &first_index->get_data()[0];
+		const char *ref_data = (const char *) ref_data_int;
+
+		int len_total = 0;
+
 		int64_t *coverage_array = coverages_array[rs->ref_number];
 		int counter = std::max(7, rs->start);
 
@@ -637,15 +1054,13 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 		continue;
 	  }
 
-//	  myfile << "exon_cluster_avg_coverage: " << exon_cluster.avg_covereage() << std::endl;
-
 	  int8_t *ref_data_int  = (int8_t *) &first_index->get_data()[0];
 	  const char *ref_data = (const char *) ref_data_int;
 	  int64_t ref_data_lenInner = first_index->get_reference_lengths()[0];
 
-	  if(!exon_cluster.isValid() || exon_cluster.exons.size() <= 0) {
-		  continue;
-	  }
+//	  if(!exon_cluster.isValid() || exon_cluster.exons.size() <= 0) {
+//		  continue;
+//	  }
 
 	  int start = exon_cluster.exons[0].start;
 	  int stop = exon_cluster.exons[exon_cluster.exons.size()-1].stop;
@@ -656,14 +1071,21 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 		  cutted_reference += ref_data[i];
 	  }
 
-	  if (cutted_reference.size() > 10000) {
-		continue;
-	  }
+//	  if (cutted_reference.size() > 10000) {
+//		continue;
+//	  }
 
 	  exon_cluster.cuttedRefStart = 0;
 	  exon_cluster.cuttedRefEnd = cutted_reference.size();
 
+	  std::vector<ExonInfo> exons;
+
+//	  std::cout << "current_realignment_cluster.size() " << current_realignment_cluster.size() << std::endl;
+
+	  int number_of_reads_processed = 0;
+
 	  for (int i = 0; i < current_realignment_cluster.size(); ++i) {
+
 		RealignmentStructure* realignment_structure = current_realignment_cluster[i];
 		const SingleSequence *read = realignment_structure->sequence;
 
@@ -679,215 +1101,591 @@ void GraphMap::PostprocessRNAData(std::vector<RealignmentStructure *> realignmen
 
 		std::vector<CigarExon> new_cigar_exons;
 
-		if (orientation == kReverse) {
-		  ss->ReverseComplement();
-		  score = RealignRead(ss, indexes_[0], &(*mapping_data_realing), parameters, cutted_reference, exon_cluster, orientation, ref_number, &new_cigar_exons);
+//		if (orientation == kReverse) {
+//		  ss->ReverseComplement();
+//		  score = RealignRead(ss, indexes_[0], &(*mapping_data_realing), parameters, cutted_reference, exon_cluster, orientation, ref_number, &new_cigar_exons);
+//		} else {
+//		  score = RealignRead(read, indexes_[0], &(*mapping_data_realing), parameters, cutted_reference, exon_cluster, orientation, ref_number, &new_cigar_exons);
+//		}
+
+		if (true) {
+			number_of_reads_processed += 1;
+
+			std::string read_string = (const char*) read->get_data();
+
+			int sumaRef = 0;
+			int suma = 0;
+
+			int order_number = 0;
+
+			std::vector<CigarExon> previousCigarExons;
+
+			if (orientation == kReverse) {
+				for(int i = realignment_structure->previousCigarExons.size()-1; i >= 0; i--) {
+					previousCigarExons.push_back(realignment_structure->previousCigarExons[i]);
+				}
+
+				ss->ReverseComplement();
+				read_string = (const char*) ss->get_data();
+
+			} else {
+				for(CigarExon &ce: realignment_structure->previousCigarExons) {
+					previousCigarExons.push_back(ce);
+				}
+			}
+
+			bool isEdgeExonSet = false;
+
+			for(CigarExon &ce: previousCigarExons) {
+				if(!ce.isGap) {
+					int length = 0;
+					int lengthRef = 0;
+					for (is::CigarOp &op: ce.cigar) {
+						if (op.op != 'N' && op.op != 'D') {
+							length += op.count;
+						}
+						if (op.op != 'I' && op.op != 'S') {
+							lengthRef += op.count;
+						}
+					}
+
+					ExonInfo ei = ExonInfo(ce, order_number, false, 0, 0);
+
+					if(!isEdgeExonSet) {
+						ei.isStartExon = true;
+						isEdgeExonSet = true;
+					}
+
+					order_number += 1;
+
+					long location = realignment_structure->raw_start;
+
+					if(location > halvening) {
+
+						location = realignment_structure->raw_stop;
+
+						long buffer_offset = 0;
+						long desired_index = 0;
+						bool found_index = false;
+
+						for(int i = 0; i < first_index->get_reference_lengths().size()/2; i++) {
+							long len = first_index->get_reference_lengths()[i];
+							if(!found_index) {
+								if(buffer_offset + len < (location-halvening)) {
+									buffer_offset += len;
+								} else {
+									found_index = true;
+									desired_index = i;
+								}
+							}
+						}
+
+						location = buffer_offset + (first_index->get_reference_lengths()[desired_index] - ((location - halvening) - buffer_offset));
+					}
+
+					std::string cut_reff;
+					for (int iks = (sumaRef + location); iks < (sumaRef + location+lengthRef); ++iks) {
+					  cut_reff += ref_data[iks];
+					}
+
+					ei.start = sumaRef + location;
+					ei.stop = sumaRef + location + lengthRef;
+
+					ei.content = read_string.substr(suma, length);
+					ei.reference = cut_reff;
+					ei.read_id = read->get_header();
+					exons.push_back(ei);
+
+					suma += length;
+					sumaRef += lengthRef;
+				} else {
+					for (is::CigarOp &op: ce.cigar) {
+						sumaRef += op.count;
+					}
+				}
+			}
+
+			exons[exons.size()-1].isEndExon = true;
 		} else {
-		  score = RealignRead(read, indexes_[0], &(*mapping_data_realing), parameters, cutted_reference, exon_cluster, orientation, ref_number, &new_cigar_exons);
 		}
 
 		if (mapping_data_realing->final_mapping_ptrs.size() <= 0) {
 			continue;
 		}
 
-		std::vector<CigarExon> previous_cigar_exons = realignment_structure->previousCigarExons;
+//		std::vector<CigarExon> previous_cigar_exons = realignment_structure->previousCigarExons;
 
-		PathGraphEntry* entry = mapping_data_realing->final_mapping_ptrs.back();
-		std::vector<AlignmentResults> alignments = entry->get_alignments();
-		if (alignments.size() > 0) {
-		  AlignmentResults ar = alignments.back();
-		  if (orientation == kReverse) {
-			CollectAlignments(ss, parameters, &(*mapping_data_realing), sam_line_realigned);
+//		PathGraphEntry* entry = mapping_data_realing->final_mapping_ptrs.back();
+//		std::vector<AlignmentResults> alignments = entry->get_alignments();
+//		if (false) {
+////			if (alignments.size() > 0) {
+//		  AlignmentResults ar = alignments.back();
+//		  if (orientation == kReverse) {
+//			CollectAlignments(ss, parameters, &(*mapping_data_realing), sam_line_realigned);
+//		  } else {
+//			CollectAlignments(realignment_structure->sequence, parameters, &(*mapping_data_realing), sam_line_realigned);
+//		  }
+//		  mapping_data_realing->clear();
+//
+//		  double difference = abs(score-old_score);
+//		  if (old_score > score+0.05) {
+//		  } else if(difference < 0.05) {
+//			if (previous_cigar_exons.size() != new_cigar_exons.size()) {
+//			} else {
+//			  std::vector<int> visitingGaps;
+//
+//			  int numberOfGaps = 0;
+//			  for (int varGaps = 0; varGaps < previous_cigar_exons.size(); varGaps++) {
+//				  if (previous_cigar_exons[varGaps].isGap) {
+//					  numberOfGaps += 1;
+//				  }
+//			  }
+//
+//			  for (int varz = 0; varz < numberOfGaps; ++varz) {
+//				  visitingGaps.push_back(0);
+//			  }
+//
+//			  int currentGap = -1;
+//			  int firstCigarSum = 0;
+//			  int secondCigarSum = 0;
+//
+//			  for (int vary = 0; vary < previous_cigar_exons.size()-1; ++vary) {
+//				  CigarExon c1 = previous_cigar_exons[vary];
+//				  CigarExon c2 = new_cigar_exons[vary];
+//
+//				  if (abs(firstCigarSum-secondCigarSum) > 5) {
+//					  visitingGaps[currentGap] = 1;
+//				  }
+//
+//				  if (!c1.isGap) {
+//					  currentGap += 1;
+//				  }
+//
+//				  firstCigarSum += c1.length;
+//				  secondCigarSum += c2.length;
+//
+//				  if (abs(firstCigarSum-secondCigarSum) > 5) {
+//					  visitingGaps[currentGap] = 1;
+//				  }
+//			  }
+//
+//			  currentGap = 0;
+//			  CigarExon previousExon1 = previous_cigar_exons[0];
+//			  CigarExon previousExon2 = new_cigar_exons[0];
+//
+//			  bool isVisiting = false;
+//			  for (int varvisiting = 0; varvisiting < visitingGaps.size(); ++varvisiting) {
+//				  if (visitingGaps[varvisiting]) {
+//					  isVisiting = true;
+//					  break;
+//				  }
+//			  }
+//
+//			  int total1Sum = 0;
+//			  int total2Sum = 0;
+//
+//			  for (int vary = 1; vary < previous_cigar_exons.size()-1; ++vary) {
+//				  CigarExon currentExon1 = previous_cigar_exons[vary];
+//				  CigarExon currentExon2 = new_cigar_exons[vary];
+//
+//				  if (!currentExon1.isGap) {
+//					  previousExon1 = currentExon1;
+//					  previousExon2 = currentExon2;
+//					  continue;
+//				  }
+//
+//				  CigarExon nextExon1 = previous_cigar_exons[vary+1];
+//				  CigarExon nextExon2 = new_cigar_exons[vary+1];
+//
+//				  if (visitingGaps[currentGap]) {
+//					  int sum1 = 0;
+//					  int count1 = 0;
+//					  for (auto& c: nextExon1.cigar) {
+//							int numberOfBases = (int) c.count;
+//							if (numberOfBases + count1 > 10) {
+//								if (c.op == '=') {
+//									sum1 += (10-count1) * 5;
+//								} else {
+//									sum1 += (10-count1) * -4;
+//								}
+//								break;
+//							} else {
+//								if (c.op == '=') {
+//									sum1 += numberOfBases * 5;
+//								} else {
+//									sum1 += numberOfBases * -4;
+//								}
+//								count1 += numberOfBases;
+//							}
+//					  }
+//
+//					  int sum1Back = 0;
+//					  int count1Back = 0;
+//					  for (int unutar1 = previousExon1.cigar.size()-1; unutar1 >= 0; unutar1--) {
+//
+//							int numberOfBases = (int) previousExon1.cigar[unutar1].count;
+//							if (numberOfBases + count1Back > 10) {
+//								if (previousExon1.cigar[unutar1].op == '=') {
+//									sum1Back += (10-count1Back) * 5;
+//								} else {
+//									sum1Back += (10-count1Back) * -4;
+//								}
+//								break;
+//							} else {
+//								if (previousExon1.cigar[unutar1].op == '=') {
+//									sum1Back += numberOfBases * 5;
+//								} else {
+//									sum1Back += numberOfBases * -4;
+//								}
+//								count1Back += numberOfBases;
+//							}
+//					  }
+//
+//					  int sum2 = 0;
+//					  int count2 = 0;
+//					  for (auto& c: nextExon2.cigar) {
+//							int numberOfBases = (int) c.count;
+//							if (numberOfBases + count2 > 10) {
+//								if (c.op == '=') {
+//									sum2 += (10-count2) * 5;
+//								} else {
+//									sum2 += (10-count2) * -4;
+//								}
+//								break;
+//							} else {
+//								if (c.op == '=') {
+//									sum2 += numberOfBases * 5;
+//								} else {
+//									sum2 += numberOfBases * -4;
+//								}
+//								count2 += numberOfBases;
+//							}
+//					  }
+//
+//					  int sum2Back = 0;
+//					  int count2Back = 0;
+//					  for (int unutar1 = previousExon2.cigar.size()-1; unutar1 >= 0; unutar1--) {
+//
+//							int numberOfBases = (int) previousExon2.cigar[unutar1].count;
+//							if (numberOfBases + count2Back > 10) {
+//								if (previousExon2.cigar[unutar1].op == '=') {
+//									sum2Back += (10-count2Back) * 5;
+//								} else {
+//									sum2Back += (10-count2Back) * -4;
+//								}
+//								break;
+//							} else {
+//								if (previousExon2.cigar[unutar1].op == '=') {
+//									sum2Back += numberOfBases * 5;
+//								} else {
+//									sum2Back += numberOfBases * -4;
+//								}
+//								count2Back += numberOfBases;
+//							}
+//					  }
+//
+//					  total1Sum += (sum1 + sum1Back);
+//					  total2Sum += (sum2 + sum2Back);
+//				  }
+//
+//				  currentGap += 1;
+//			  }
+//
+//			  if (!isVisiting) {
+//				  if (score >= old_score) {
+//					  #pragma omp critical
+//					  if (orientation == kReverse) {
+////						  (*sam_lines)[realignment_structure->order_number] = "";
+//					  } else {
+////						  (*sam_lines)[realignment_structure->order_number] = sam_line_realigned;
+//					  }
+//				  }
+//			  } else if (total1Sum <= total2Sum) {
+//				  #pragma omp critical
+//				  if (orientation == kReverse) {
+////					  (*sam_lines)[realignment_structure->order_number] = "";
+//				  } else {
+////					  (*sam_lines)[realignment_structure->order_number] = sam_line_realigned;
+//				  }
+//			  }
+//			}
+//		  }
+//		}
+		delete ss;
+	  }
+
+//	  std::cout << "Number of exons " << exons.size() << std::endl;
+	  std::sort(std::begin(exons), std::end(exons), [](ExonInfo a, ExonInfo b) {
+		  if(a.start == b.start) {
+			  return a.stop < b.stop;
 		  } else {
-			CollectAlignments(realignment_structure->sequence, parameters, &(*mapping_data_realing), sam_line_realigned);
+			  return a.start < b.start;
 		  }
-		  mapping_data_realing->clear();
+	  });
+	  std::vector<std::vector<ExonInfo>> clusters_of_exons_mid;
 
-		  double difference = abs(score-old_score);
-		  if (old_score > score+0.05) {
-		  } else if(difference < 0.05) {
-			if (previous_cigar_exons.size() != new_cigar_exons.size()) {
-			} else {
-			  std::vector<int> visitingGaps;
+	  if(exons.size() > 0) {
+		  std::vector<ExonInfo> current_exons;
+		  long current_stop = exons[0].stop;
 
-			  int numberOfGaps = 0;
-			  for (int varGaps = 0; varGaps < previous_cigar_exons.size(); varGaps++) {
-				  if (previous_cigar_exons[varGaps].isGap) {
-					  numberOfGaps += 1;
+		  for(ExonInfo &exon: exons) {
+			 if(current_stop < exon.start) {
+				 clusters_of_exons_mid.push_back(current_exons);
+				 current_exons.clear();
+				 current_exons.push_back(exon);
+				 current_stop = exon.stop;
+			 } else {
+				 current_exons.push_back(exon);
+				 current_stop = std::max(exon.stop, current_stop);
+			 }
+		  }
+
+		  clusters_of_exons_mid.push_back(current_exons);
+	  }
+
+	  std::vector<std::vector<ExonInfo>> clusters_of_exons;
+
+	  for(std::vector<ExonInfo> &cluster_of_exons: clusters_of_exons_mid) {
+
+		  if(cluster_of_exons.size() > 4000) {
+			  continue;
+		  }
+
+		  std::vector<std::vector<int>> equivalency_matrix;
+
+		  for(int i = 0; i < cluster_of_exons.size(); i++) {
+			  std::vector<int> tmp_vector;
+			  for (int j = 0; j < cluster_of_exons.size(); j++) {
+				  tmp_vector.push_back(0);
+			  }
+			  equivalency_matrix.push_back(tmp_vector);
+		  }
+
+		  for(int i = 0; i < cluster_of_exons.size()-1; i++) {
+			  ExonInfo ei1 = cluster_of_exons[i];
+			  for(int j = i+1; j < cluster_of_exons.size(); j++) {
+				  ExonInfo ei2 = cluster_of_exons[j];
+				  if(abs(ei1.start - ei2.start) < 40 && (ei1.stop - ei2.stop) < 40) {
+					  equivalency_matrix[i][j] = 1;
 				  }
 			  }
+		  }
 
-			  for (int varz = 0; varz < numberOfGaps; ++varz) {
-				  visitingGaps.push_back(0);
+		  std::vector<std::vector<int>> classes;
+		  std::vector<int> equivalency_class;
+		  equivalency_class.push_back(0);
+		  classes.push_back(equivalency_class);
+
+		  std::vector<int> visited_nodes;
+
+		  for(auto node: cluster_of_exons) {
+			  visited_nodes.push_back(0);
+		  }
+
+		  FindEquivavlencyClasses(&classes, &equivalency_matrix, &visited_nodes, 0, cluster_of_exons.size());
+
+		  for(int i = 1; i < cluster_of_exons.size(); i++) {
+			  if(visited_nodes[i] == 0) {
+				  std::vector<int> equivalency_class;
+				  equivalency_class.push_back(i);
+				  classes.push_back(equivalency_class);
+				  FindEquivavlencyClasses(&classes, &equivalency_matrix, &visited_nodes, i, cluster_of_exons.size());
 			  }
+		  }
 
-			  int currentGap = -1;
-			  int firstCigarSum = 0;
-			  int secondCigarSum = 0;
-
-			  for (int vary = 0; vary < previous_cigar_exons.size()-1; ++vary) {
-				  CigarExon c1 = previous_cigar_exons[vary];
-				  CigarExon c2 = new_cigar_exons[vary];
-
-				  if (abs(firstCigarSum-secondCigarSum) > 5) {
-					  visitingGaps[currentGap] = 1;
-				  }
-
-				  if (!c1.isGap) {
-					  currentGap += 1;
-				  }
-
-				  firstCigarSum += c1.length;
-				  secondCigarSum += c2.length;
-
-				  if (abs(firstCigarSum-secondCigarSum) > 5) {
-					  visitingGaps[currentGap] = 1;
-				  }
+		  for(auto &eq_class: classes) {
+			  std::vector<ExonInfo> cluster;
+			  for(int index: eq_class) {
+				  cluster.push_back(cluster_of_exons[index]);
 			  }
+			  clusters_of_exons.push_back(cluster);
+		  }
+	  }
 
-			  currentGap = 0;
-			  CigarExon previousExon1 = previous_cigar_exons[0];
-			  CigarExon previousExon2 = new_cigar_exons[0];
+	  for(std::vector<ExonInfo> &exon_cluster: clusters_of_exons) {
 
-			  bool isVisiting = false;
-			  for (int varvisiting = 0; varvisiting < visitingGaps.size(); ++varvisiting) {
-				  if (visitingGaps[varvisiting]) {
-					  isVisiting = true;
-					  break;
-				  }
+//		for(ExonInfo ei: exon_cluster) {
+//			std::cout << ei.start << "-" << ei.stop << "  " << ei.isStartExon << " " << ei.isEndExon << " (" << ei.invalid << ")" << std::endl;
+//		}
+//		std::cout << std::endl;
+
+	    	 if (exon_cluster.size() / (double) number_of_reads_processed > 0.1) {
+	    		 std::vector<std::string> sequences;
+	    		 std::sort(std::begin(exon_cluster), std::end(exon_cluster), [](ExonInfo a, ExonInfo b) { return a.reference.size() > b.reference.size(); });
+
+	    		 long minLocation = LONG_MAX;
+			 long maxLocation = 0;
+			 for(ExonInfo &einfo: exon_cluster) {
+				 if(einfo.stop > maxLocation) {
+					 maxLocation = einfo.stop;
+				 }
+				 if(einfo.start < minLocation) {
+					 minLocation = einfo.start;
+				 }
+			 }
+
+			 int coverageSize = (int) maxLocation - minLocation;
+			 int coverageArray[coverageSize];
+
+			 int coverageArray2[coverageSize];
+			 int coverageArray3[coverageSize];
+
+			 for (int location = 0; location < coverageSize; ++location) {
+				 coverageArray[location] = 0;
+				 coverageArray2[location] = 0;
+				 coverageArray3[location] = 0;
+			 }
+
+			 for(ExonInfo &einfo: exon_cluster) {
+				 for (long location = einfo.start; location < einfo.stop; ++location) {
+					 long value = location - minLocation;
+					 coverageArray[(int)value] += 1;
+				 }
+			 }
+
+			 int max_coverage = exon_cluster.size();
+			 std::vector<int> start_pivots;
+			 std::vector<int> end_pivots;
+
+	    	 	 for (int location = 0; location < coverageSize; ++location) {
+	    	 		 if((coverageArray2[location] / (double) max_coverage) > 0.1) {
+	    	 			 start_pivots.push_back(location);
+	    	 		 }
+	    	 		 if((coverageArray3[location] / (double) max_coverage) > 0.1) {
+    	 				 end_pivots.push_back(location);
+	    	 		 }
+	    	 	 }
+
+			 bool isEnd = false;
+		    	 bool isStart = true;
+		    	 int startOffset = 0;
+		    	 int endOffset = 0;
+
+		    	 // checkpoint podesit parametre
+		    	 for (int location = 0; location < coverageSize; ++location) {
+		    		 if (isStart) {
+		    			 if ( (coverageArray[location] / (double) max_coverage) < 0.5) {
+		    				 startOffset += 1;
+		    			 } else {
+		    				 isStart = false;
+		    			 }
+		    		 } else if (isEnd) {
+		    			 endOffset += 1;
+		    		 } else {
+		    			 if ( (coverageArray[location] / (double) max_coverage) < 0.5) {
+		    				 endOffset += 1;
+		    				 isEnd = true;
+		    			 }
+		    		 }
+		    	 }
+
+		    	 for(ExonInfo &einfo: exon_cluster) {
+
+//			    	 int startOffset = 0;
+//			    	 int endOffset = 0;
+//
+//			    	 int distance_start = max_coverage + 1;
+//
+//			    	 for(int pivot: start_pivots) {
+//			    		 int current_location = (int)(einfo.start-minLocation);
+//			    		 int new_distance = abs(pivot - current_location);
+//			    		 if(new_distance < distance_start) {
+//			    			 distance_start = new_distance;
+//			    			 startOffset = pivot;
+//			    		 }
+//			    	 }
+//
+//			    	 int distance_end = max_coverage + 1;
+//
+//			    	 for(int pivot: end_pivots) {
+//			    		 int current_location = (int)((einfo.stop-minLocation)-1);
+////			    		 std::cout << current_location << std::endl;
+//			    		 int new_distance = abs(pivot - current_location);
+////			    		 std::cout << new_distance << std::endl;
+//			    		 if(new_distance < distance_end) {
+//			    			 distance_end = new_distance;
+//			    			 endOffset = (coverageSize-1) - pivot;
+//			    		 }
+//			    	 }
+//
+//			    	 std::cout << "startOffset " << startOffset << " , endOffset " << endOffset << std::endl;
+////			    	 std::cout << einfo.start << " " << einfo.stop << std::endl;
+//
+//			    	 if(!einfo.isStartExon) {
+//			    		 einfo.leftOffset = (einfo.start - minLocation) - startOffset;
+//			    	 } else {
+//			    		 einfo.leftOffset = 0;
+//			    	 }
+//			    	 if(!einfo.isEndExon) {
+//			    		 einfo.rightOffset = (maxLocation - einfo.stop) - endOffset;
+//			    	 } else {
+//			    		 einfo.rightOffset = 0;
+//			    	 }
+
+		    		 einfo.leftOffset = (einfo.start - minLocation) - startOffset;
+		    		 einfo.rightOffset = (maxLocation - einfo.stop) - endOffset;
+		    	 }
+	    	 } else {
+			 for(ExonInfo &einfo: exon_cluster) {
+				if(einfo.stop - einfo.start < 15) {
+					einfo.invalid = true;
+				}
+			 }
+	    	 }
+	  }
+
+	  std::map<std::string, std::vector<ExonInfo>> map_of_exons;
+
+	  for(std::vector<ExonInfo> &exon_cluster: clusters_of_exons) {
+		for(ExonInfo &einfo: exon_cluster) {
+			  if (map_of_exons.find(einfo.read_id) != map_of_exons.end()) {
+				  std::map<std::string, std::vector<ExonInfo>>::iterator i = map_of_exons.find(einfo.read_id);
+				  i->second.push_back(einfo);
+			  } else {
+				  std::vector<ExonInfo> read_exons;
+				  read_exons.push_back(einfo);
+				  map_of_exons[einfo.read_id] = read_exons;
 			  }
+		}
+	  }
 
-			  int total1Sum = 0;
-			  int total2Sum = 0;
+	  for (auto x : map_of_exons) {
+		 std::vector<is::CigarOp> rez = ProcessReadExons(x.second, ref_data);
+		 if (rez.size() > 0 && x.second.size() > 0) {
 
-			  for (int vary = 1; vary < previous_cigar_exons.size()-1; ++vary) {
-				  CigarExon currentExon1 = previous_cigar_exons[vary];
-				  CigarExon currentExon2 = new_cigar_exons[vary];
+			  for (int i = 0; i < current_realignment_cluster.size(); ++i) {
+				  RealignmentStructure* realignment_structure = current_realignment_cluster[i];
 
-				  if (!currentExon1.isGap) {
-					  previousExon1 = currentExon1;
-					  previousExon2 = currentExon2;
+				  if (realignment_structure->sequence->get_header() == x.second[0].read_id) {
+					  std::string sam_line_test = "";
+
+					  auto mapping_data_test = std::unique_ptr<MappingData>(new MappingData);
+
+					  SingleSequence *ss = new SingleSequence();
+					  ss->CopyFrom(*realignment_structure->sequence);
+					  ss->ReverseComplement();
+
+					  bool is_aligned = GetMappingData(realignment_structure, indexes_[0], &(*mapping_data_test), parameters, rez, ss);
+
+					  CollectAlignments(realignment_structure->sequence, parameters, &(*mapping_data_test), sam_line_test);
+
+					  if (is_aligned) {
+						  (*sam_lines)	[realignment_structure->order_number] = sam_line_test;
+					  } else {
+					  }
+
+					  delete ss;
+
 					  continue;
 				  }
-
-				  CigarExon nextExon1 = previous_cigar_exons[vary+1];
-				  CigarExon nextExon2 = new_cigar_exons[vary+1];
-
-				  if (visitingGaps[currentGap]) {
-					  int sum1 = 0;
-					  int count1 = 0;
-					  for (auto& c: nextExon1.cigar) {
-							int numberOfBases = (int) c.count;
-							if (numberOfBases + count1 > 10) {
-								if (c.op == '=') {
-									sum1 += (10-count1) * 5;
-								} else {
-									sum1 += (10-count1) * -4;
-								}
-								break;
-							} else {
-								if (c.op == '=') {
-									sum1 += numberOfBases * 5;
-								} else {
-									sum1 += numberOfBases * -4;
-								}
-								count1 += numberOfBases;
-							}
-					  }
-
-					  int sum1Back = 0;
-					  int count1Back = 0;
-					  for (int unutar1 = previousExon1.cigar.size()-1; unutar1 >= 0; unutar1--) {
-
-							int numberOfBases = (int) previousExon1.cigar[unutar1].count;
-							if (numberOfBases + count1Back > 10) {
-								if (previousExon1.cigar[unutar1].op == '=') {
-									sum1Back += (10-count1Back) * 5;
-								} else {
-									sum1Back += (10-count1Back) * -4;
-								}
-								break;
-							} else {
-								if (previousExon1.cigar[unutar1].op == '=') {
-									sum1Back += numberOfBases * 5;
-								} else {
-									sum1Back += numberOfBases * -4;
-								}
-								count1Back += numberOfBases;
-							}
-					  }
-
-					  int sum2 = 0;
-					  int count2 = 0;
-					  for (auto& c: nextExon2.cigar) {
-							int numberOfBases = (int) c.count;
-							if (numberOfBases + count2 > 10) {
-								if (c.op == '=') {
-									sum2 += (10-count2) * 5;
-								} else {
-									sum2 += (10-count2) * -4;
-								}
-								break;
-							} else {
-								if (c.op == '=') {
-									sum2 += numberOfBases * 5;
-								} else {
-									sum2 += numberOfBases * -4;
-								}
-								count2 += numberOfBases;
-							}
-					  }
-
-					  int sum2Back = 0;
-					  int count2Back = 0;
-					  for (int unutar1 = previousExon2.cigar.size()-1; unutar1 >= 0; unutar1--) {
-
-							int numberOfBases = (int) previousExon2.cigar[unutar1].count;
-							if (numberOfBases + count2Back > 10) {
-								if (previousExon2.cigar[unutar1].op == '=') {
-									sum2Back += (10-count2Back) * 5;
-								} else {
-									sum2Back += (10-count2Back) * -4;
-								}
-								break;
-							} else {
-								if (previousExon2.cigar[unutar1].op == '=') {
-									sum2Back += numberOfBases * 5;
-								} else {
-									sum2Back += numberOfBases * -4;
-								}
-								count2Back += numberOfBases;
-							}
-					  }
-
-					  total1Sum += (sum1 + sum1Back);
-					  total2Sum += (sum2 + sum2Back);
-				  }
-
-				  currentGap += 1;
 			  }
-
-			  if (!isVisiting) {
-				  if (score >= old_score) {
-					  #pragma omp critical
-					  (*sam_lines)[realignment_structure->order_number] = sam_line_realigned;
-				  }
-			  } else if (total1Sum <= total2Sum) {
-				  #pragma omp critical
-				  (*sam_lines)[realignment_structure->order_number] = sam_line_realigned;
-			  }
-			}
-		  }
 		}
-		delete ss;
 	  }
 	}
 
 	for (int var = 0; var < number_of_refs; ++var) {
 	  delete [] coverages_array[var];
 	}
-
-//	myfile.close();
 }
 
 int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const SequenceFile *reads, clock_t *last_time, FILE *fp_out, int64_t *ret_num_mapped, int64_t *ret_num_unmapped) {
@@ -902,8 +1700,9 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
 //  int64_t num_threads = std::min(24, ((int) omp_get_num_procs()) / 2);
 //
 //  if (parameters->num_threads > 0)
+    int64_t num_threads = 12;
 
-  int64_t num_threads = (int64_t) parameters->num_threads;
+//  int64_t num_threads = (int64_t) parameters->num_threads;
   LogSystem::GetInstance().Log(VERBOSE_LEVEL_HIGH | VERBOSE_LEVEL_MED, true, FormatString("Using %ld threads.", num_threads), "ProcessReads");
 
   // Set up the starting and ending read index.
@@ -1005,7 +1804,9 @@ int GraphMap::ProcessSequenceFileInParallel(ProgramParameters *parameters, const
     }
     else {
       #pragma omp critical
-      sam_lines[i] = sam_line;
+    	  sam_lines[i] = sam_line;
+//    	  if(realignment_structures[realignment_structures.size()-1]->orientation == kReverse) {
+//    	  }
     }
   }
 

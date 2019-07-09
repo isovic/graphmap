@@ -7,7 +7,6 @@
 
 #include "containers/path_graph_entry.h"
 #include "alignment/cigargen.h"
-
 #include <iostream>
 
 //PathGraphEntry::PathGraphEntry() {
@@ -309,6 +308,7 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
   std::string rname = alignment_info.ref_header; // region_info_.rname;
   std::string rname_for_out = (verbose_sam_output < 4) ? (TrimToFirstSpace(rname)) : (rname);
 
+
   uint32_t reverse = (alignment_info.is_reverse == false) ? 0 : SAM_THIS_SEG_REVERSED;
   uint32_t mapped = (alignment_info.is_aligned) ? 0 : SAM_THIS_SEG_UNMAPPED;  // This means that the segment is mapped.
   uint32_t secondary_alignment = ((is_primary == true) ? (0) : (SAM_SECONDARY_ALIGNMENT));
@@ -400,7 +400,10 @@ std::string PathGraphEntry::GenerateSAMFromInfoAlignment_(const AlignmentResults
 std::string PathGraphEntry::GenerateSAM(bool is_primary, int64_t verbose_sam_output) const {
   std::stringstream ss;
 
+//  std::cout << "generating sam " << std::endl;
   int64_t aln_counter = 0;
+
+//  std::cout << "alignments_.size() " << alignments_.size() << std::endl;
   for (int64_t i=0; i<alignments_.size(); i++) {
     if (alignments_[i].is_aligned == true) {
       if (aln_counter > 0) { ss << "\n"; }

@@ -9,6 +9,8 @@
 #include "aligner_util.hpp"
 #include <iostream>
 
+//#include <chrono>
+
 namespace is {
 
 std::shared_ptr<AnchorAligner> createAnchorAligner(std::shared_ptr<is::AlignerBase> aligner) {
@@ -240,7 +242,11 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 	int left_offset_read = left_offset_ref > 0 ? 0 : FindReadLeftOffset(query, left_offset_ref, *start_position_read, cigar_stack);
 	int right_offset_read = right_offset_ref < 0 ? 0 : FindReadRightOffset(query, right_offset_ref, *start_position_read + number_of_bases, cigar_queue);
 
+//	std::cout << "lr " << left_offset_read << " " << left_offset_ref << std::endl;
+//	std::cout << "rr " << right_offset_read << " " << right_offset_ref << std::endl;
+
 	if (left_offset_ref >= 0 && right_offset_ref <= 0) {
+//		std::cout << "1" << std::endl;
 		if(left_offset_ref > 0) {
 			is::CigarOp c_left = is::CigarOp('D', left_offset_ref);
 			cigar_stack->push(c_left);
@@ -255,6 +261,7 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 		*start_position_ref += number_of_bases;
 
 	} else if (left_offset_ref <= 0 && right_offset_ref >= 0) {
+//		std::cout << "2" << std::endl;
 		if(left_offset_read > 0) {
 			is::CigarOp c_left = is::CigarOp('I', left_offset_read);
 			cigar_stack->push(c_left);
@@ -270,6 +277,7 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 		*start_position_read += (right_offset_read);
 
 	} else if (left_offset_ref >= 0 && right_offset_ref >= 0) {
+//		std::cout << "3" << std::endl;
 		std::string ref_string;
 		for(int i = 0; i < left_offset_ref; i++) {
 			ref_string.push_back(ref[*start_position_ref + i]);
@@ -295,6 +303,7 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 		*start_position_read += (right_offset_read);
 
 	} else if (left_offset_ref <= 0 && right_offset_ref <= 0) {
+//		std::cout << "4" << std::endl;
 		std::string ref_string;
 		for(int i = right_offset_ref; i < 0; i++) {
 			ref_string.push_back(ref[*start_position_ref + number_of_bases - i]);
@@ -320,6 +329,20 @@ void AnchorAligner::AdjustEnds(int left_offset_ref, int right_offset_ref, const 
 	}
 }
 
+std::shared_ptr<AlignmentResult> AnchorAligner::CreateAlignmentResult(int rstart, int rend, int qstart, int qend, std::vector<is::CigarOp> rez) {
+	  auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
+
+	  for(is::CigarOp &c: rez) {
+		  result->cigar.push_back(c);
+	  }
+
+	  result->edit_dist = EditDistFromExtCIGAR(result->cigar);
+	  result->position = is::AlignmentPosition(qstart, qend, rstart, rend);
+	  result->k = -1;
+	  result->rv = is::AlignmentReturnValue::OK;
+
+	  return result;
+}
 
 std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchoredWithClipping(const char *query, int64_t qlen, const char *ref, int64_t rlen, const std::vector<AlignmentAnchor>& anchors) {
   auto result = std::shared_ptr<AlignmentResult>(new AlignmentResult);
@@ -654,6 +677,23 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
   int64_t firstQuery_q = anchors[0].qstart;
   int64_t refLen_q = 0;
 
+//  for (int64_t i = 0; i < anchors.size(); i++) {
+//	  std::cout << (anchors[i].qstart) << " " << (anchors[i].qend) << " " << (anchors[i].qend-anchors[i].qstart) << std::endl;
+//	  std::cout << (anchors[i].rstart-1890000) << " " << (anchors[i].rend-1890000) << " " << (anchors[i].rend-anchors[i].rstart) << std::endl;
+//  }
+
+//  std::cout << "anchors" << std::endl;
+//  for(auto &anchor: anchors) {
+//	  std::cout << anchor.rstart << " " << anchor.rend << std::endl;
+//  }
+
+//  std::ofstream ofs1;
+//  std::ofstream ofs2;
+//  std::ofstream ofs3;
+//  ofs1.open ("reads.fasta", std::ofstream::out | std::ofstream::app);
+//  ofs2.open ("references.fasta", std::ofstream::out | std::ofstream::app);
+//  ofs3.open ("cigars.fasta", std::ofstream::out | std::ofstream::app);
+
   // Align between anchors.
   for (int64_t i = 0; i < (anchors.size() - 1); i++) {
 	  int64_t start_ref = anchors[i].rstart + offset;
@@ -663,17 +703,57 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
 		  return result;
 	  }
 
+//		std::ofstream myfile;
+//		std::string ime_filea = "speed.txt";
+//		myfile.open (ime_filea, std::fstream::in | std::fstream::out | std::fstream::app);
+//
+//		std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
+
 	  aligner_->Global(query + start_ref_q, anchors[i+1].qend - start_ref_q,
 		                      ref + start_ref, anchors[i+1].rend - start_ref, type);
+
+//	  std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+//
+//	  auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+//
+//	  if(type == false) {
+//			myfile << duration << std::endl;
+//	  }
+//
+//		myfile.close();
+
+
+//	  ofs1 << "> x" << abs_ref_id << i << std::endl;
+//	  std::cout << start_ref_q << " " << anchors[i+1].qend - start_ref_q << std::endl;
+//	  for (int var = start_ref_q; var < anchors[i+1].qend; ++var) {
+//		  ofs1 << query[var];
+//	  }
+//	  ofs1 << std::endl;
+
+//	  std::cout << start_ref << " " << anchors[i+1].rend - start_ref << std::endl;
+//	  for (int var = start_ref; var < anchors[i+1].rend; ++var) {
+//		  ofs2 << ref[var];
+//	  }
+//	  ofs2 << std::endl;
 
 	  auto aln_result = aligner_->getResults();
 	  int64_t cigar_length = 0;
 	  int64_t cigar_length_q = 0;
 
+//	  for (is::CigarOp &op : aln_result->cigar) {
+//		  ofs3 << op.count << op.op;
+//	  }
+//	  ofs3 << std::endl;
 
 	  auto left_part = ExtractCigarBetweenQueryCoords(aln_result->cigar,
 		                                                    0,
 		                                                    anchors[i+1].qstart - anchors[i].qstart, &cigar_length, &cigar_length_q); // Leave next anchor for the next alignment.
+
+//	  for(is::CigarOp &op: left_part) {
+//		  std::cout << op.count << op.op;
+//	  }
+//	  std::cout << std::endl;
 
 	  refLen += cigar_length;
 	  refLen_q += cigar_length_q;
@@ -693,7 +773,27 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
 
   result->cigar.insert(result->cigar.end(), aln_result->cigar.begin(), aln_result->cigar.end());
 
+//  for (int var = anchors.back().qstart; var < anchors.back().qend; ++var) {
+//	  ofs1 << query[var];
+//  }
+//  ofs1 << std::endl;
+//
+//  for (int var = anchors.back().rstart; var < anchors.back().rend; ++var) {
+//	  ofs2 << ref[var];
+//  }
+//  ofs2 << std::endl;
+//
+//  for (is::CigarOp &op : aln_result->cigar) {
+//	  ofs3 << op.count << op.op;
+//  }
+//  ofs3 << std::endl;
+
+
   const int64_t MIN_INTRON_LEN = 10;
+
+//  ofs1.close();
+//  ofs2.close();
+//  ofs3.close();
 
   int64_t s_min_value = 13;
   int64_t exon_min_value = 15;
@@ -911,6 +1011,8 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
   result->k = -1;
   result->rv = is::AlignmentReturnValue::OK;
 
+//  std::cout << "very import " << anchors.front().qstart-current_len2 << " " << anchors.back().qend+current_len << " " << anchors.front().rstart-current_ref_len2 << " " << anchors.back().rend + current_ref_len << std::endl;
+
   for (auto& c: result->cigar) {
     if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
       c.op = 'N';
@@ -946,12 +1048,20 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
 		int64_t right_offset_ref = 0;
 		bool found_base_pairs = FindRefOffsets(ref, 'G', 'T', 'A', 'G', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
 		if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
+//			std::cout << "prvi" << std::endl;
+//			std::cout << ref[start_position_ref - 3] << ref[start_position_ref - 2] << ref[start_position_ref - 1] << ref[start_position_ref] << ref[start_position_ref + 1] << ref[start_position_ref + 2] << ref[start_position_ref + 3] << ref[start_position_ref + 4] << std::endl;
+//			std::cout << ref[start_position_ref + number_of_bases - 4] << ref[start_position_ref + number_of_bases - 3] << ref[start_position_ref + number_of_bases - 2] << ref[start_position_ref + number_of_bases - 1] << ref[start_position_ref + number_of_bases] << ref[start_position_ref + number_of_bases + 1] << ref[start_position_ref + number_of_bases + 2] << ref[start_position_ref + number_of_bases + 3] << ref[start_position_ref + number_of_bases + 4] << std::endl;
+//			std::cout << left_offset_ref << " " << right_offset_ref << std::endl;
 			AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
 		} else {
 			int64_t left_offset_ref = 0;
 			int64_t right_offset_ref = 0;
 			bool found_base_pairs = FindRefOffsets(ref, 'C', 'T', 'A', 'C', &left_offset_ref, &right_offset_ref, start_position_ref, number_of_bases);
 			if(found_base_pairs && (left_offset_ref != 0 || right_offset_ref != 0)) {
+//				std::cout << "drugi" << std::endl;
+//				std::cout << ref[start_position_ref - 3] << ref[start_position_ref - 2] << ref[start_position_ref - 1] << ref[start_position_ref] << ref[start_position_ref + 1] << ref[start_position_ref + 2] << ref[start_position_ref + 3] << ref[start_position_ref + 4] << std::endl;
+//				std::cout << ref[start_position_ref + number_of_bases - 4] << ref[start_position_ref + number_of_bases - 3] << ref[start_position_ref + number_of_bases - 2] << ref[start_position_ref + number_of_bases - 1] << ref[start_position_ref + number_of_bases] << ref[start_position_ref + number_of_bases + 1] << ref[start_position_ref + number_of_bases + 2] << ref[start_position_ref + number_of_bases + 3] << ref[start_position_ref + number_of_bases + 4] << std::endl;
+//				std::cout << left_offset_ref << " " << right_offset_ref << std::endl;
 				AdjustEnds(left_offset_ref, right_offset_ref, query, ref, &start_position_ref, &start_position_read, number_of_bases, &cigar_stack, &cigar_queue, 1);
 			} else {
 				cigar_stack.push(cigar_op);

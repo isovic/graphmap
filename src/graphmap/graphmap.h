@@ -76,6 +76,11 @@ public:
 	int length;
 	std::vector<is::CigarOp> cigar;
 	bool isGap;
+	CigarExon(const CigarExon& ce) {
+		length = ce.length;
+		cigar = ce.cigar;
+		isGap = ce.isGap;
+	}
 	CigarExon(int _length, std::vector<is::CigarOp> _cigar, bool _isGap) {
 		length = _length;
 		cigar = _cigar;
@@ -93,6 +98,10 @@ public:
 	const SingleSequence* sequence;
 	int start;
 	int stop;
+	int raw_start;
+	int raw_stop;
+	int query_start;
+	int query_end;
 	double score;
 	bool isAligned;
 	int64_t ref_number;
@@ -117,15 +126,79 @@ public:
 				orientation = ar.orientation;
 				start = ar.ref_start;
 				stop = ar.ref_end;
+				raw_start = ar.raw_pos_start;
+				raw_stop = ar.raw_pos_end;
+				query_start = ar.query_start;
+				query_end = ar.query_end;
 			} else {
 				start = 0;
 				stop = 0;
+				raw_start = 0;
+				raw_stop = 0;
 			}
 			isAligned = true;
 		} else {
 			isAligned = false;
 		}
 	}
+};
+
+class ExonInfo {
+public:
+	ExonInfo(CigarExon _cigar_exon, int _order_number, bool _invalid, int _leftOffset, int _rightOffset) {
+		cigar = _cigar_exon.cigar;
+		order_number = _order_number;
+		invalid = _invalid;
+		leftOffset = _leftOffset;
+		rightOffset = _rightOffset;
+		start = 0;
+		stop = 0;
+		read_id = "";
+		content = "";
+		reference = "";
+		isStartExon = false;
+		isEndExon = false;
+	}
+
+	ExonInfo(ExonInfo ei1, ExonInfo ei2) {
+		for(is::CigarOp &op: ei1.cigar) {
+			cigar.push_back(op);
+		}
+		cigar.push_back(is::CigarOp('D', (ei2.start - ei1.stop)));
+		for(is::CigarOp &op: ei2.cigar) {
+			cigar.push_back(op);
+		}
+
+		order_number = ei1.order_number;
+		invalid = false;
+		leftOffset = ei1.leftOffset;
+		rightOffset = ei2.rightOffset;
+		start = ei1.start;
+		stop = ei2.stop;
+		read_id = ei1.read_id;
+		content = ei1.content + ei2.content;
+		reference = "";
+		isStartExon = false;
+		isEndExon = false;
+	}
+
+	long start;
+	long stop;
+
+	std::string read_id;
+	int order_number;
+
+	std::string content;
+	std::string reference;
+	std::vector<is::CigarOp> cigar;
+
+	bool invalid;
+
+	bool isStartExon;
+	bool isEndExon;
+
+	int leftOffset;
+	int rightOffset;
 };
 
 class GraphMap {
@@ -140,6 +213,8 @@ class GraphMap {
 
   // Generates or loads the index of the reference genome.
   int BuildIndexes(ProgramParameters &parameters);
+
+  bool GetMappingData(RealignmentStructure* rs, std::shared_ptr<is::MinimizerIndex> index, MappingData *mapping_data, const ProgramParameters *parameters, std::vector<is::CigarOp> rez, SingleSequence *reversed);
 
   double RealignRead(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, MappingData *mapping_data, const ProgramParameters *parameters, std::string cutted_reference, ExonsCluster exonsClusters, SeqOrientation orientation, int64_t ref_number, std::vector<CigarExon> *cigarExons);
   // Loads reads from a file in batches of given size (in MiB), or all at once.
@@ -161,6 +236,7 @@ class GraphMap {
   // after which the above function is called. Headers for sequences are automatically generated: ref_%d and query_%d for ref_seqs and read_seqs, respectivelly.
   int Align(std::vector<std::string> ref_seqs, std::vector<std::string> read_seqs, const ProgramParameters &parameters);
 
+  std::vector<is::CigarOp> ProcessReadExons(std::vector<ExonInfo> &exonsInfos, const char *ref_data);
   void PostprocessRNAData(std::vector<RealignmentStructure *> realignment_structures, std::vector<std::string> *sam_lines, int64_t num_threads, ProgramParameters *parameters, EValueParams *evalue_params);
 
  private:

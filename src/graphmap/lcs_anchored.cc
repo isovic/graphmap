@@ -46,12 +46,14 @@ int GraphMap::AnchoredPostProcessRegionWithLCS_(ScoreRegistry* local_score, Mapp
   // int64_t min_covered_bases = 50; // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
   // int64_t cluster_size_cutoff = 2; // TODO: need to experiment with this. 1; // 2
   double indel_bandwidth_margin = parameters->anchor_chain_indel_bandwidth;
-//  int32_t max_dist = parameters->anchor_chain_max_dist;
-//  int64_t min_covered_bases = parameters->anchor_chain_min_cov_bases;
+  int32_t max_dist = parameters->anchor_chain_max_dist;
+  int64_t min_covered_bases = parameters->anchor_chain_min_cov_bases;
   int64_t cluster_size_cutoff = parameters->anchor_chain_size_cutoff;
 
-  int32_t max_dist = 100;
-  int64_t min_covered_bases = 30;
+  if (parameters->composite_parameters == "rnaseq") {
+	max_dist = 100;
+	min_covered_bases = 30;
+  }
 
   FilterAnchorsByChaining(read, local_score, parameters, lcskpp_indices, indel_bandwidth_margin, max_dist, 0, min_covered_bases, cluster_size_cutoff, first_filtered_lcskpp_indices, NULL);
   FilterAnchorsByDiff(read, local_score, parameters, first_filtered_lcskpp_indices, second_filtered_lcskpp_indices);

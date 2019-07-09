@@ -277,11 +277,14 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
   int64_t read_length = 0;
   int64_t ref_length = 0;
 
+//  std::cout << "important alignement size " << alignment.size() << std::endl;
+
   for (int i = 0; i <= alignment.size(); i++) {
     char alignment_char = 255;
 
     if (i < alignment.size()) {
       alignment_char = alignment[i];
+//      std::cout << static_cast<unsigned>(alignment_char);
       if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X || alignment[i] == EDLIB_I || alignment[i] == EDLIB_S)
         read_length += 1;
       if (alignment[i] == EDLIB_M || alignment[i] == EDLIB_EQUAL || alignment[i] == EDLIB_X || alignment[i] == EDLIB_D || alignment[i] == EDLIB_N)
@@ -305,6 +308,10 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
     num_same_moves++;
   }
 
+//  std::cout << std::endl;
+
+//  std::cout << "read_length " << read_length << std::endl;
+//  std::cout << "read->get_sequence_length() " << read->get_sequence_length() << std::endl;
   if (read != NULL && read_length != read->get_sequence_length()) {
     LOG_DEBUG("CheckAlignmentSane returned false! return 3. Mismatch in length of the read determined from the alignmend and the actual length. Calculated read length = %ld (from alignment), read->get_sequence_length() = %ld.\n", read_length, read->get_sequence_length());
     return 3;
@@ -313,6 +320,14 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
     LOG_DEBUG("CheckAlignmentSane returned false! return 4. Calculated reference length (from alignment) is longer than the actual reference. (ref_length = %ld, index->get_reference_lengths()[reference_hit_id] = %ld", ref_length, index->get_reference_lengths()[reference_hit_id]);
     return 4;
   }
+
+//  std::cout << "reference_hit_id " << reference_hit_id << std::endl;
+//  std::cout << "reference_hit_pos " << reference_hit_pos << std::endl;
+//  std::cout << "ref_length " << ref_length << std::endl;
+//
+//  std::cout << "index->get_reference_starting_pos()[reference_hit_id] " << index->get_reference_starting_pos()[reference_hit_id] << std::endl;
+//  std::cout << "index->get_reference_lengths()[reference_hit_id] " << index->get_reference_lengths()[reference_hit_id] << std::endl;
+
   if ((index != nullptr && reference_hit_id >= 0 && reference_hit_pos >= 0) &&
 	   ((reference_hit_pos < index->get_reference_starting_pos()[reference_hit_id]) ||
        (reference_hit_pos + ref_length) > (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]))) {
@@ -327,6 +342,8 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
         index->get_reference_starting_pos()[reference_hit_id], index->get_reference_lengths()[reference_hit_id],
         (index->get_reference_starting_pos()[reference_hit_id] + index->get_reference_lengths()[reference_hit_id]));
     LOG_DEBUG("reference_hit_id = %ld\n", reference_hit_id);
+
+//    std::cout << index->get_reference_starting_pos()[reference_hit_id] << " " << index->get_reference_lengths()[reference_hit_id] << " " << std::endl;
 
     return 5;
   }

@@ -15,7 +15,6 @@
 #include "alignment/alignment.h"
 #include "utility/tictoc.h"
 
-
 #include "aligner/aligner_containers.h"
 #include "aligner/aligner_ksw2.h"
 #include "aligner/anchor_aligner.h"
@@ -250,6 +249,13 @@ int GraphMap::ProcessRead(int order_number, MappingData *mapping_data, const Sin
   begin_clock = clock();
 
   if (parameters->composite_parameters == "rnaseq") {
+
+//		std::ofstream myfile;
+//		std::string ime_filea = "speed.txt";
+//		myfile.open (ime_filea, std::fstream::in | std::fstream::out | std::fstream::app);
+//		myfile << read->get_header() << std::endl;
+//		myfile.close();
+
     RNAGenerateAlignments_(order_number, mapping_data, indexes[0], transcriptome, read, parameters, evalue_params, realignment_structures);
   } else {
     GenerateAlignments_(mapping_data, indexes[0], transcriptome, read, parameters, evalue_params);
@@ -736,10 +742,19 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
   aln.raw_pos_end = aln_result->position.tend;   //
   aln.reg_pos_start = aln_result->position.tstart; // Starting position of the alignment within a region (offset from the beginning of the region).
   aln.reg_pos_end = aln_result->position.tend;   // End position of the alignment within a region (offset from the beginning of the region).
+
+//  std::cout << "import test " << aln_result->position.tstart << " " << aln_result->position.tend << " " << std::endl;
+
   // These values need to be set individually:
   //   Handled by CountAlignmentOperations below: &aln.num_eq_ops, &aln.num_x_ops, &aln.num_i_ops, &aln.num_d_ops, &aln.alignment_score, &aln.nonclipped_length
   //   Handled by each Align* function: aln.raw_alignment, aln.alignment, where aln.alignment is the same as raw_alignment if orientation == kForward, and reverse-complemented if orientation == kReverse.
   //                                    aln.ref_start, aln.ref_end, aln.query_start, aln.query_end, aln.raw_pos_start, aln.raw_pos_end, aln.reg_pos_start, aln.reg_pos_end
+
+
+//  std::cout << aln_result->position.tstart << std::endl;
+//  std::cout << aln_result->position.tend << std::endl;
+//  std::cout << aln_result->position.qstart << std::endl;
+//  std::cout << aln_result->position.qend << std::endl;
 
   if (aln.orientation == kReverse) ReverseArray(aln.alignment);
   new_entry->AddAlignmentData(aln);
@@ -752,9 +767,21 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
   for (int32_t i=0; i<new_entry->get_alignments().size(); i++) {
     AlignmentResults *curr_aln = &new_entry->get_alignments()[i];
 
+//    std::cout << "curr_aln->is_aligned " << curr_aln->is_aligned << std::endl;
+
+//    if (aln.orientation != kReverse) {
+//  	  curr_aln->is_aligned = false;
+//    }
+
+//    std::cout << "orientation " << aln.orientation << std::endl;
+//
+//    std::cout << "temp temp 1" << std::endl;
+
     if (curr_aln->is_aligned == false) {
     		continue;
     }
+
+//    std::cout << "temp temp" << std::endl;
 
     /// Verbose debug.
     LOG_DEBUG_SPEC("Alignment part %d / %d:\n", (i + 1), new_entry->get_alignments().size());
@@ -782,6 +809,8 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
     FixAlignmentLeadingTrailingID(curr_aln->alignment, &curr_aln->ref_start, &curr_aln->ref_end);
 
     LOG_DEBUG_SPEC("Checking if the alignment is sane.\n");
+//    std::cout << "abs_ref_id " << abs_ref_id << std::endl;
+//    std::cout << "curr_aln->raw_pos_start " << curr_aln->raw_pos_start << std::endl;
     int res_check = CheckAlignmentSane((std::vector<unsigned char> &) curr_aln->raw_alignment, read, index, abs_ref_id, curr_aln->raw_pos_start);
 //    std::cout << "res_check " << res_check << std::endl;
     if (res_check != 0) {
@@ -819,6 +848,8 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
     		bestScore = ratioScore;
 	}
 
+//    std::cout << "ratioScore" << ratioScore << std::endl;
+
     LOG_DEBUG_SPEC("Calculating alignment statistics.\n");
 
     double error_rate = ((double) curr_aln->num_x_ops + curr_aln->num_i_ops + curr_aln->num_d_ops) / ((double) curr_aln->nonclipped_length);
@@ -842,11 +873,68 @@ bool HackIntermediateMapping(MappingData *mapping_data, std::shared_ptr<is::Mini
 
   LOG_DEBUG_SPEC("Adding to intermediate mappings.\n");
 
+//  std::cout << "Pushing new data" << std::endl;
   mapping_data->intermediate_mappings.push_back(new_entry);
 
   *score = bestScore;
   return isGlobalyAligned;
 
+}
+
+bool GraphMap::GetMappingData(RealignmentStructure* rs, std::shared_ptr<is::MinimizerIndex> index, MappingData *mapping_data, const ProgramParameters *parameters, std::vector<is::CigarOp> rez, SingleSequence* reversed) {
+
+	is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
+	is::AlignmentOptions aln_opt;
+
+	auto aligner = is::createAlignerKSW2(p, aln_opt);
+	auto anchor_aligner = is::createAnchorAligner(aligner);
+
+	auto result = anchor_aligner->CreateAlignmentResult(rs->raw_start, rs->raw_stop, rs->query_start, rs->query_end, rez);
+
+	if(rs->orientation == kReverse) {
+		int halvening = 0;
+		for(int i = 0; i < index->get_reference_lengths().size()/2; i++) {
+			int len = index->get_reference_lengths()[i];
+			halvening += index->get_reference_lengths()[i];
+		}
+
+		long buffer_offset = 0;
+		long desired_index = 0;
+		bool found_index = false;
+
+		for(int i = 0; i < index->get_reference_lengths().size()/2; i++) {
+			long len = index->get_reference_lengths()[i];
+			if(!found_index) {
+				if(buffer_offset + len < (rs->raw_start-halvening)) {
+					buffer_offset += len;
+				} else {
+					found_index = true;
+					desired_index = i;
+				}
+			}
+		}
+
+		long new_start = buffer_offset + (index->get_reference_lengths()[desired_index] - ((rs->raw_stop - halvening) - buffer_offset));
+		long new_stop = buffer_offset + (index->get_reference_lengths()[desired_index] - ((rs->raw_start - halvening) - buffer_offset));
+
+		result = anchor_aligner->CreateAlignmentResult(new_start, new_stop, rs->query_start, rs->query_end, rez);
+	}
+
+//	std::cout << "important order number = " << rs->ref_number << std::endl;
+
+	double score = 0;
+
+	bool is_aligned = false;
+
+	if(rs->orientation == kReverse) {
+		is_aligned = HackIntermediateMapping(mapping_data, index, reversed, parameters, rs->ref_number, result, &score);
+	} else {
+		is_aligned = HackIntermediateMapping(mapping_data, index, rs->sequence, parameters, rs->ref_number, result, &score);
+	}
+
+	mapping_data->final_mapping_ptrs.push_back(mapping_data->intermediate_mappings.back());
+
+	return is_aligned;
 }
 
 double GraphMap::RealignRead(const SingleSequence *read, std::shared_ptr<is::MinimizerIndex> index, MappingData *mapping_data, const ProgramParameters *parameters, std::string cutted_reference, ExonsCluster exonsClusters, SeqOrientation orientation, int64_t ref_number, std::vector<CigarExon> *cigarExons) {
@@ -938,6 +1026,8 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
     return 1;
   }
 
+//  std::cout << read->get_header() << std::endl;
+
   EvaluateMappings_(mapping_data, read, parameters);
   CollectFinalMappingsAndMapQ_(true, mapping_data, read, parameters);
 
@@ -962,6 +1052,11 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
   }
 
   std::sort(alignment_anchors.begin(), alignment_anchors.end(), [](const is::AlignmentAnchor& a, const is::AlignmentAnchor& b) { return b.rstart > a.rstart; });
+
+//  std::cout << "anchors" << std::endl;
+//  for(auto &anchor: alignment_anchors) {
+//	  std::cout << anchor.rstart << " " << anchor.rend << std::endl;
+//  }
 
   is::PiecewisePenalties p(2, -4, std::vector<is::AffinePiece>{is::AffinePiece(-2, -4), is::AffinePiece(-1, -13)});
   is::AlignmentOptions aln_opt;
@@ -994,6 +1089,21 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
 	  tmp_entry = mapping_data->intermediate_mappings.back();
   }
 
+//  std::ofstream ofs1;
+//  std::ofstream ofs2;
+//  std::ofstream ofs3;
+//  ofs1.open ("reads.fasta", std::ofstream::out | std::ofstream::app);
+//  ofs2.open ("references.fasta", std::ofstream::out | std::ofstream::app);
+//  ofs3.open ("cigars.fasta", std::ofstream::out | std::ofstream::app);
+//
+//  ofs1 << "> " << read->get_header() << std::endl;
+//  ofs2 << "> " << read->get_header() << std::endl;
+//  ofs3 << "> " << read->get_header() << std::endl;
+//
+//  ofs1.close();
+//  ofs2.close();
+//  ofs3.close();
+
   auto aln_result2 = anchor_aligner->GlobalAnchoredWithExtend(abs_ref_id, index ,(const char *) read->get_data(), read->get_sequence_length(),
                                                 ((const char *) ref_data), total_ref_data_len, alignment_anchors, -1, 400, false);
 
@@ -1002,6 +1112,22 @@ int GraphMap::RNAGenerateAlignments_(int order_number, MappingData *mapping_data
       c.op = 'N';
     }
   }
+
+//  std::cout << read->get_header() << std::endl;
+
+//  std::string someString(read->get_header());
+//  if(someString.compare("m160713_222007_42182_c101000162550000001823232709161622_s1_p0/40834/0_3300") == 0) {
+//	  std::cout << "middle man" << std::endl;
+//	  for (auto& c: aln_result2->cigar) {
+//		  std::cout << c.count << c.op;
+//	  }
+//	  std::cout << std::endl;
+//	  std::cout << "middle man" << std::endl;
+//	  for (auto& c: aln_result->cigar) {
+//		  std::cout << c.count << c.op;
+//	  }
+//	  std::cout << std::endl;
+//  }
 
   double score22;
 
@@ -1287,15 +1413,22 @@ int GraphMap::CollectAlignments(const SingleSequence *read, const ProgramParamet
 
   int64_t num_mapped_alignments = 0;
   int64_t num_unmapped_alignments = 0;
+
+//  std::cout << "mapping_data->final_mapping_ptrs.size() " << mapping_data->final_mapping_ptrs.size() << std::endl;
+
   for (int64_t i = 0; i < mapping_data->final_mapping_ptrs.size(); i++) {
+//	  std::cout << "iteration" << std::endl;
+
     if (mapping_data->final_mapping_ptrs.at(i)->IsAligned() == false) {
       num_unmapped_alignments += 1;
+//	  std::cout << "continue" << std::endl;
       continue;
     }
     if (ss.tellp() > 0)
       ss << "\n";
 
     if (parameters->outfmt == "sam") {
+//    	  std::cout << "printing sam" << std::endl;
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateSAM((num_mapped_alignments == 0), parameters->verbose_sam_output);  // TODO: Don't make the first alignment primary by default, but the best one.
     } else if (parameters->outfmt == "afg") {
       ss << mapping_data->final_mapping_ptrs.at(i)->GenerateAFG();
