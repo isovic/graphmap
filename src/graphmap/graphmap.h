@@ -96,12 +96,12 @@ class RealignmentStructure {
 public:
 	int order_number;
 	const SingleSequence* sequence;
-	int start;
-	int stop;
-	int raw_start;
-	int raw_stop;
-	int query_start;
-	int query_end;
+	int64_t start;
+	int64_t stop;
+	int64_t raw_start;
+	int64_t raw_stop;
+	int64_t query_start;
+	int64_t query_end;
 	double score;
 	bool isAligned;
 	int64_t ref_number;
@@ -182,8 +182,8 @@ public:
 		isEndExon = false;
 	}
 
-	long start;
-	long stop;
+	int64_t start;
+	int64_t stop;
 
 	std::string read_id;
 	int order_number;

@@ -297,7 +297,7 @@ int CheckAlignmentSane(std::vector<unsigned char> &alignment, const SingleSequen
           // If there are insertions following deletions (or other way around), something is wrong again.
           if ((last_move == EDLIB_I && alignment_char == EDLIB_D) || (last_move == EDLIB_D && alignment_char == EDLIB_I)) {
             LogSystem::GetInstance().Log(VERBOSE_LEVEL_ALL_DEBUG, true, FormatString("CheckAlignmentSane returned false! return 2. Consecutive I and D operations! last_move = %c, alignment_char = %c. num_same_moves = %ld, qname: '%s', read_length: %ld, ref_length: %ld\n", (last_move == EDLIB_I) ? 'I' : 'D', (alignment_char == EDLIB_I) ? 'I' : 'D', num_same_moves, read->get_header(), read_length, ref_length), "CheckAlignmentSane");
-            return 2;
+            return 0;
           }
         }
         if (i < alignment.size()) {

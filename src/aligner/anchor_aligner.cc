@@ -677,23 +677,6 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
   int64_t firstQuery_q = anchors[0].qstart;
   int64_t refLen_q = 0;
 
-//  for (int64_t i = 0; i < anchors.size(); i++) {
-//	  std::cout << (anchors[i].qstart) << " " << (anchors[i].qend) << " " << (anchors[i].qend-anchors[i].qstart) << std::endl;
-//	  std::cout << (anchors[i].rstart-1890000) << " " << (anchors[i].rend-1890000) << " " << (anchors[i].rend-anchors[i].rstart) << std::endl;
-//  }
-
-//  std::cout << "anchors" << std::endl;
-//  for(auto &anchor: anchors) {
-//	  std::cout << anchor.rstart << " " << anchor.rend << std::endl;
-//  }
-
-//  std::ofstream ofs1;
-//  std::ofstream ofs2;
-//  std::ofstream ofs3;
-//  ofs1.open ("reads.fasta", std::ofstream::out | std::ofstream::app);
-//  ofs2.open ("references.fasta", std::ofstream::out | std::ofstream::app);
-//  ofs3.open ("cigars.fasta", std::ofstream::out | std::ofstream::app);
-
   // Align between anchors.
   for (int64_t i = 0; i < (anchors.size() - 1); i++) {
 	  int64_t start_ref = anchors[i].rstart + offset;
@@ -703,57 +686,17 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
 		  return result;
 	  }
 
-//		std::ofstream myfile;
-//		std::string ime_filea = "speed.txt";
-//		myfile.open (ime_filea, std::fstream::in | std::fstream::out | std::fstream::app);
-//
-//		std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-
 
 	  aligner_->Global(query + start_ref_q, anchors[i+1].qend - start_ref_q,
 		                      ref + start_ref, anchors[i+1].rend - start_ref, type);
-
-//	  std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-//
-//	  auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
-//
-//	  if(type == false) {
-//			myfile << duration << std::endl;
-//	  }
-//
-//		myfile.close();
-
-
-//	  ofs1 << "> x" << abs_ref_id << i << std::endl;
-//	  std::cout << start_ref_q << " " << anchors[i+1].qend - start_ref_q << std::endl;
-//	  for (int var = start_ref_q; var < anchors[i+1].qend; ++var) {
-//		  ofs1 << query[var];
-//	  }
-//	  ofs1 << std::endl;
-
-//	  std::cout << start_ref << " " << anchors[i+1].rend - start_ref << std::endl;
-//	  for (int var = start_ref; var < anchors[i+1].rend; ++var) {
-//		  ofs2 << ref[var];
-//	  }
-//	  ofs2 << std::endl;
 
 	  auto aln_result = aligner_->getResults();
 	  int64_t cigar_length = 0;
 	  int64_t cigar_length_q = 0;
 
-//	  for (is::CigarOp &op : aln_result->cigar) {
-//		  ofs3 << op.count << op.op;
-//	  }
-//	  ofs3 << std::endl;
-
 	  auto left_part = ExtractCigarBetweenQueryCoords(aln_result->cigar,
 		                                                    0,
 		                                                    anchors[i+1].qstart - anchors[i].qstart, &cigar_length, &cigar_length_q); // Leave next anchor for the next alignment.
-
-//	  for(is::CigarOp &op: left_part) {
-//		  std::cout << op.count << op.op;
-//	  }
-//	  std::cout << std::endl;
 
 	  refLen += cigar_length;
 	  refLen_q += cigar_length_q;
@@ -773,27 +716,7 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
 
   result->cigar.insert(result->cigar.end(), aln_result->cigar.begin(), aln_result->cigar.end());
 
-//  for (int var = anchors.back().qstart; var < anchors.back().qend; ++var) {
-//	  ofs1 << query[var];
-//  }
-//  ofs1 << std::endl;
-//
-//  for (int var = anchors.back().rstart; var < anchors.back().rend; ++var) {
-//	  ofs2 << ref[var];
-//  }
-//  ofs2 << std::endl;
-//
-//  for (is::CigarOp &op : aln_result->cigar) {
-//	  ofs3 << op.count << op.op;
-//  }
-//  ofs3 << std::endl;
-
-
   const int64_t MIN_INTRON_LEN = 10;
-
-//  ofs1.close();
-//  ofs2.close();
-//  ofs3.close();
 
   int64_t s_min_value = 13;
   int64_t exon_min_value = 15;
@@ -1010,8 +933,6 @@ std::shared_ptr<AlignmentResult> AnchorAligner::GlobalAnchored(int64_t abs_ref_i
   result->position = is::AlignmentPosition(anchors.front().qstart-current_len2, anchors.back().qend+current_len, anchors.front().rstart-current_ref_len2, anchors.back().rend + current_ref_len);
   result->k = -1;
   result->rv = is::AlignmentReturnValue::OK;
-
-//  std::cout << "very import " << anchors.front().qstart-current_len2 << " " << anchors.back().qend+current_len << " " << anchors.front().rstart-current_ref_len2 << " " << anchors.back().rend + current_ref_len << std::endl;
 
   for (auto& c: result->cigar) {
     if (c.op == 'D' && c.count >= MIN_INTRON_LEN) {
